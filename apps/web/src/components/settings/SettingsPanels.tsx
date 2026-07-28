@@ -76,7 +76,12 @@ import {
 } from "../../providerInstances";
 import { ensureLocalApi, readLocalApi } from "../../localApi";
 import { isMacPlatform } from "../../lib/utils";
-import { primaryServerObservabilityAtom, primaryServerProvidersAtom } from "../../state/server";
+import {
+  primaryServerObservabilityAtom,
+  primaryServerProvidersAtom,
+  serverEnvironment,
+} from "../../state/server";
+import { usePrimaryEnvironment } from "../../state/environments";
 import { useProjects } from "../../state/entities";
 import { useArchivedThreadSnapshots } from "../../lib/archivedThreadsState";
 import { formatRelativeTimeLabel } from "../../timestampFormat";
@@ -131,6 +136,7 @@ import {
   readLastEnabledProjectGroupingMode,
   rememberEnabledProjectGroupingMode,
   resolveBackgroundActivityProfileOption,
+  resolveTerminalShellPath,
 } from "./SettingsPanels.logic";
 import {
   PolicyTooltip,
@@ -517,6 +523,9 @@ export function useSettingsRestore(onRestored?: () => void) {
       ...(settings.addProjectBaseDirectory !== DEFAULT_UNIFIED_SETTINGS.addProjectBaseDirectory
         ? ["Add project base directory"]
         : []),
+      ...(settings.terminalShellPath !== DEFAULT_UNIFIED_SETTINGS.terminalShellPath
+        ? ["Terminal shell"]
+        : []),
       ...(settings.confirmThreadArchive !== DEFAULT_UNIFIED_SETTINGS.confirmThreadArchive
         ? ["Archive confirmation"]
         : []),
@@ -531,6 +540,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       settings.confirmThreadArchive,
       settings.confirmThreadDelete,
       settings.addProjectBaseDirectory,
+      settings.terminalShellPath,
       settings.defaultThreadEnvMode,
       settings.newWorktreesStartFromOrigin,
       settings.diffIgnoreWhitespace,
@@ -637,6 +647,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       defaultThreadEnvMode: DEFAULT_UNIFIED_SETTINGS.defaultThreadEnvMode,
       newWorktreesStartFromOrigin: DEFAULT_UNIFIED_SETTINGS.newWorktreesStartFromOrigin,
       addProjectBaseDirectory: DEFAULT_UNIFIED_SETTINGS.addProjectBaseDirectory,
+      terminalShellPath: DEFAULT_UNIFIED_SETTINGS.terminalShellPath,
       confirmThreadArchive: DEFAULT_UNIFIED_SETTINGS.confirmThreadArchive,
       confirmThreadDelete: DEFAULT_UNIFIED_SETTINGS.confirmThreadDelete,
       textGenerationModelSelection: DEFAULT_UNIFIED_SETTINGS.textGenerationModelSelection,
@@ -1740,6 +1751,10 @@ export function GeneralSettingsPanel() {
   const settings = usePrimarySettings();
   const updateSettings = useUpdatePrimarySettings();
   const [backgroundActivityDialogOpen, setBackgroundActivityDialogOpen] = useState(false);
+  const primaryEnvironment = usePrimaryEnvironment();
+  const serverConfig = useAtomValue(
+    serverEnvironment.configValueAtom(primaryEnvironment?.environmentId ?? null),
+  );
   const lastEnabledProjectGroupingMode = useRef<SidebarProjectGroupingMode>(
     readLastEnabledProjectGroupingMode(),
   );
@@ -1788,6 +1803,9 @@ export function GeneralSettingsPanel() {
     settings.backgroundActivity,
     DEFAULT_UNIFIED_SETTINGS.backgroundActivity,
   );
+  const platform = serverConfig?.environment.platform.os;
+  const defaultShellPath = resolveTerminalShellPath("", platform);
+  const terminalShellPath = resolveTerminalShellPath(settings.terminalShellPath, platform);
 
   return (
     <SettingsPageContainer>
@@ -2151,7 +2169,40 @@ export function GeneralSettingsPanel() {
         />
 
         <SettingsRow
+          title="Terminal shell"
+          description="Pick the default shell for newly created terminal tabs."
+          resetAction={
+            settings.terminalShellPath !== DEFAULT_UNIFIED_SETTINGS.terminalShellPath ? (
+              <SettingResetButton
+                label="terminal shell"
+                onClick={() =>
+                  updateSettings({
+                    terminalShellPath: DEFAULT_UNIFIED_SETTINGS.terminalShellPath,
+                  })
+                }
+              />
+            ) : null
+          }
+          control={
+            <DraftInput
+              className="w-full font-mono sm:w-72"
+              value={terminalShellPath}
+              onCommit={(next) => {
+                const normalized = resolveTerminalShellPath(next, platform);
+                updateSettings({
+                  terminalShellPath: normalized === defaultShellPath ? "" : normalized,
+                });
+              }}
+              placeholder={defaultShellPath || "System default"}
+              spellCheck={false}
+              aria-label="Terminal shell path"
+            />
+          }
+        />
+
+        <SettingsRow
           {...searchableSetting("archive-confirmation")}
+          title="Archive confirmation"
           description="Require a second click on the inline archive action before a thread is archived."
           resetAction={
             settings.confirmThreadArchive !== DEFAULT_UNIFIED_SETTINGS.confirmThreadArchive ? (
