@@ -1,0 +1,312 @@
+name: Downstream upstream release sync
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: downstream-upstream-release-sync
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_REPOSITORY: ${{ vars.UPSTREAM_REPOSITORY || 'pingdotgg/t3code' }}
+
+jobs:
+  sync:
+    name: Merge latest stable upstream release into a PR
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Refuse to run in the upstream repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REPOSITORY" == "$UPSTREAM_REPOSITORY" ]]; then
+            echo "This downstream-only workflow cannot run in $UPSTREAM_REPOSITORY." >&2
+            exit 1
+          fi
+
+      - name: Checkout downstream main
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version-file: package.json
+          cache: true
+          run-install: true
+
+      - name: Verify remotes
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_origin="https://github.com/${GITHUB_REPOSITORY}.git"
+          origin_url="$(git remote get-url origin)"
+          if [[ "$origin_url" != "$expected_origin" && "$origin_url" != "${expected_origin%.git}" ]]; then
+            echo "Refusing to push: origin is '$origin_url', expected '$expected_origin'." >&2
+            exit 1
+          fi
+
+          upstream_url="https://github.com/${UPSTREAM_REPOSITORY}.git"
+          if git remote get-url upstream >/dev/null 2>&1; then
+            git remote set-url upstream "$upstream_url"
+          else
+            git remote add upstream "$upstream_url"
+          fi
+
+          if [[ "$(git remote get-url upstream)" != "$upstream_url" ]]; then
+            echo "Failed to configure the verified upstream URL." >&2
+            exit 1
+          fi
+
+      - id: upstream
+        name: Resolve latest stable upstream release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          release_json="$(gh api "repos/${UPSTREAM_REPOSITORY}/releases/latest")"
+          tag="$(jq -r '.tag_name' <<<"$release_json")"
+          is_draft="$(jq -r '.draft' <<<"$release_json")"
+          is_prerelease="$(jq -r '.prerelease' <<<"$release_json")"
+          release_url="$(jq -r '.html_url' <<<"$release_json")"
+
+          if [[ "$is_draft" != "false" || "$is_prerelease" != "false" ]]; then
+            echo "The upstream latest release must be published and non-prerelease." >&2
+            exit 1
+          fi
+          if [[ ! "$tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Unsupported upstream stable tag: $tag" >&2
+            exit 1
+          fi
+
+          git fetch --no-tags upstream \
+            main \
+            "refs/tags/${tag}:refs/tags/upstream/${tag}"
+          commit="$(git rev-parse "refs/tags/upstream/${tag}^{commit}")"
+          if ! git merge-base --is-ancestor "$commit" upstream/main; then
+            echo "Upstream release $tag ($commit) is not an ancestor of upstream/main." >&2
+            exit 1
+          fi
+
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+          echo "release_url=$release_url" >> "$GITHUB_OUTPUT"
+
+      - id: resolution
+        name: Compare recorded upstream state
+        run: |
+          node scripts/downstream-release-state.ts resolve-sync \
+            --state .github/upstream-release.json \
+            --repository "$UPSTREAM_REPOSITORY" \
+            --tag "${{ steps.upstream.outputs.tag }}" \
+            --commit "${{ steps.upstream.outputs.commit }}" \
+            --github-output
+
+      - name: Report already synchronized release
+        if: steps.resolution.outputs.status == 'already-synced'
+        run: |
+          echo "Upstream ${{ steps.upstream.outputs.tag }} at ${{ steps.upstream.outputs.commit }} is already recorded."
+
+      - id: pull_request
+        name: Reuse an existing synchronization PR
+        if: steps.resolution.outputs.status == 'needs-sync'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPSTREAM_TAG: ${{ steps.upstream.outputs.tag }}
+        run: |
+          set -euo pipefail
+          branch="sync/upstream-${UPSTREAM_TAG}"
+          pr_url="$(
+            gh pr list \
+              --repo "$GITHUB_REPOSITORY" \
+              --base main \
+              --head "$branch" \
+              --state open \
+              --json url \
+              --jq '.[0].url // ""'
+          )"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
+          if [[ -n "$pr_url" ]]; then
+            git fetch --no-tags origin "$branch"
+            existing_state="$RUNNER_TEMP/existing-upstream-release.json"
+            git show "origin/${branch}:.github/upstream-release.json" >"$existing_state"
+            node scripts/downstream-release-state.ts resolve-sync \
+              --state "$existing_state" \
+              --repository "$UPSTREAM_REPOSITORY" \
+              --tag "${{ steps.upstream.outputs.tag }}" \
+              --commit "${{ steps.upstream.outputs.commit }}" \
+              --github-output
+            branch_status="$(grep '^status=' "$GITHUB_OUTPUT" | tail -n 1 | cut -d= -f2-)"
+            if [[ "$branch_status" != "already-synced" ]]; then
+              echo "Existing PR $pr_url does not contain the resolved upstream release state." >&2
+              exit 1
+            fi
+            echo "existing=true" >> "$GITHUB_OUTPUT"
+            echo "url=$pr_url" >> "$GITHUB_OUTPUT"
+            echo "Reusing synchronization PR: $pr_url"
+          else
+            echo "existing=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Prepare synchronization branch
+        if: steps.resolution.outputs.status == 'needs-sync' && steps.pull_request.outputs.existing != 'true'
+        shell: bash
+        env:
+          BRANCH: ${{ steps.pull_request.outputs.branch }}
+          UPSTREAM_TAG: ${{ steps.upstream.outputs.tag }}
+          UPSTREAM_COMMIT: ${{ steps.upstream.outputs.commit }}
+          DOWNSTREAM_VERSION: ${{ steps.resolution.outputs.downstream_version }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --no-tags origin main
+
+          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+            git fetch --no-tags origin "$BRANCH"
+            git switch --create "$BRANCH" --track "origin/$BRANCH"
+            if ! git merge --no-edit origin/main; then
+              git merge --abort
+              echo "Existing sync branch conflicts with current downstream main; no changes were pushed." >&2
+              exit 1
+            fi
+          else
+            git switch --create "$BRANCH" origin/main
+          fi
+
+          if ! git merge --no-ff --no-edit "refs/tags/upstream/${UPSTREAM_TAG}"; then
+            git merge --abort
+            echo "Upstream release merge conflicts with downstream main; no changes were pushed." >&2
+            exit 1
+          fi
+
+          node scripts/update-release-package-versions.ts "$DOWNSTREAM_VERSION"
+          vp install --lockfile-only --ignore-scripts
+          node scripts/downstream-release-state.ts write \
+            --state .github/upstream-release.json \
+            --repository "$UPSTREAM_REPOSITORY" \
+            --tag "$UPSTREAM_TAG" \
+            --commit "$UPSTREAM_COMMIT" \
+            --downstream-version "$DOWNSTREAM_VERSION"
+
+          git add \
+            .github/upstream-release.json \
+            apps/server/package.json \
+            apps/desktop/package.json \
+            apps/web/package.json \
+            packages/contracts/package.json \
+            pnpm-lock.yaml
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(release): prepare ${DOWNSTREAM_VERSION}"
+          fi
+
+          git push origin "HEAD:refs/heads/${BRANCH}"
+
+      - name: Refresh existing synchronization branch
+        if: steps.resolution.outputs.status == 'needs-sync' && steps.pull_request.outputs.existing == 'true'
+        shell: bash
+        env:
+          BRANCH: ${{ steps.pull_request.outputs.branch }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch --no-tags origin main "$BRANCH"
+          git switch --create "$BRANCH" --track "origin/$BRANCH"
+          before="$(git rev-parse HEAD)"
+          if ! git merge --no-edit origin/main; then
+            git merge --abort
+            echo "Existing sync PR conflicts with current downstream main; no changes were pushed." >&2
+            exit 1
+          fi
+          if [[ "$(git rev-parse HEAD)" != "$before" ]]; then
+            git push origin "HEAD:refs/heads/${BRANCH}"
+          fi
+
+      - id: create_pr
+        name: Open synchronization PR
+        if: steps.resolution.outputs.status == 'needs-sync' && steps.pull_request.outputs.existing != 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ steps.pull_request.outputs.branch }}
+          UPSTREAM_TAG: ${{ steps.upstream.outputs.tag }}
+          UPSTREAM_COMMIT: ${{ steps.upstream.outputs.commit }}
+          UPSTREAM_RELEASE_URL: ${{ steps.upstream.outputs.release_url }}
+          DOWNSTREAM_VERSION: ${{ steps.resolution.outputs.downstream_version }}
+        run: |
+          set -euo pipefail
+          body_file="$RUNNER_TEMP/downstream-sync-pr.md"
+          cat >"$body_file" <<EOF
+          Imports the latest stable upstream release into downstream \`main\`.
+
+          - Upstream repository: \`${UPSTREAM_REPOSITORY}\`
+          - Upstream tag: \`${UPSTREAM_TAG}\`
+          - Peeled release commit: \`${UPSTREAM_COMMIT}\`
+          - Downstream version: \`${DOWNSTREAM_VERSION}\`
+          - Upstream release: ${UPSTREAM_RELEASE_URL}
+
+          Required fork CI is dispatched for this branch. After it passes, this PR will auto-merge with a merge commit and the downstream Windows x64 release workflow will publish \`v${DOWNSTREAM_VERSION}\`.
+          EOF
+
+          pr_url="$(
+            gh pr create \
+              --repo "$GITHUB_REPOSITORY" \
+              --base main \
+              --head "$BRANCH" \
+              --title "chore(upstream): merge ${UPSTREAM_TAG}" \
+              --body-file "$body_file"
+          )"
+          echo "url=$pr_url" >> "$GITHUB_OUTPUT"
+          echo "Created synchronization PR: $pr_url"
+
+      - name: Run CI and enable merge-commit auto-merge
+        if: steps.resolution.outputs.status == 'needs-sync'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ steps.pull_request.outputs.branch }}
+          PR_URL: ${{ steps.pull_request.outputs.url || steps.create_pr.outputs.url }}
+        run: |
+          set -euo pipefail
+          head_sha="$(gh pr view "$PR_URL" --repo "$GITHUB_REPOSITORY" --json headRefOid --jq '.headRefOid')"
+          runs_json="$(
+            gh run list \
+              --repo "$GITHUB_REPOSITORY" \
+              --workflow ci.yml \
+              --branch "$BRANCH" \
+              --limit 20 \
+              --json headSha
+          )"
+          matching_runs="$(jq --arg sha "$head_sha" '[.[] | select(.headSha == $sha)] | length' <<<"$runs_json")"
+          if [[ "$matching_runs" == "0" ]]; then
+            gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"
+            echo "Dispatched CI for $BRANCH at $head_sha."
+          else
+            echo "CI has already been dispatched for $BRANCH at $head_sha."
+          fi
+
+          auto_merge_method="$(
+            gh pr view "$PR_URL" \
+              --repo "$GITHUB_REPOSITORY" \
+              --json autoMergeRequest \
+              --jq '.autoMergeRequest.mergeMethod // ""'
+          )"
+          if [[ -z "$auto_merge_method" ]]; then
+            gh pr merge "$PR_URL" --repo "$GITHUB_REPOSITORY" --auto --merge
+            echo "Enabled merge-commit auto-merge for $PR_URL."
+          else
+            echo "Auto-merge is already enabled for $PR_URL using $auto_merge_method."
+          fi

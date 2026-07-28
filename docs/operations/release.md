@@ -1,286 +1,134 @@
-# Release Checklist
+# Downstream fork releases
 
-This document covers the unified release workflow for stable and nightly desktop releases.
+This repository maintains fork-specific commits on a stable downstream `main` while importing exact
+stable releases from [`pingdotgg/t3code`](https://github.com/pingdotgg/t3code). Upstream releases are
+merged through pull requests; downstream `main` and published tags are never rewritten.
 
-## What the workflow does
+The inherited `.github/workflows/release.yml` is restricted to `pingdotgg/t3code`. Fork releases are
+owned by:
 
-- Workflow: `.github/workflows/release.yml`
-- Triggers:
-  - push tag matching `v*.*.*` for stable releases
-  - scheduled nightly check every three hours
-  - manual `workflow_dispatch` for either channel
-- Runs quality gates first: lint, typecheck, test.
-- Reads the shared production T3 Connect relay URL and Clerk client configuration before packaging clients.
-- Builds four artifacts in parallel for both channels:
-  - macOS `arm64` DMG
-  - macOS `x64` DMG
-  - Linux `x64` AppImage
-  - Windows `x64` NSIS installer
-- Publishes one GitHub Release with all produced files.
-  - Stable tags with a suffix after `X.Y.Z` (for example `1.2.3-alpha.1`) are published as GitHub prereleases.
-  - Only plain stable `X.Y.Z` releases are marked as the repository's latest release.
-  - Nightly runs are always GitHub prereleases and never marked latest.
-  - Automatically generated release notes are pinned to the previous tag in the same channel, so stable compares to the previous stable tag and nightly compares to the previous nightly tag.
-- Includes Electron auto-update metadata (for example `latest*.yml`, `nightly*.yml`, and `*.blockmap`) in release assets.
-- Publishes the CLI package (`apps/server`, npm package `t3`) with OIDC trusted publishing from the same workflow file:
-  - stable releases publish npm dist-tag `latest`
-  - nightly releases publish npm dist-tag `nightly`
-- Deploys the hosted web app to Vercel only after a release is published:
-  - stable releases are aliased to the `latest` hosted app channel
-  - nightly releases are aliased to the `nightly` hosted app channel
-- Signing is optional and auto-detected per platform from secrets.
+- `.github/workflows/downstream-sync.yml`
+- `.github/workflows/downstream-release.yml`
+- `.github/upstream-release.json`
 
-## T3 Connect relay deployment
+## Repository setup
 
-The relay is a shared control plane versioned separately from client releases. Stable and nightly
-client builds must point at the same relay so users see the same linked environments when switching
-release channels.
+Use the conventional two-remote layout before enabling either workflow:
 
-`.github/workflows/deploy-relay.yml` deploys Alchemy stage `prod` on every push to `main`. The
-release workflow reads the relay URL and Clerk client configuration from the existing `production`
-GitHub Actions environment before building desktop, CLI, or hosted web artifacts.
-
-Required repository variables shared by relay deployments:
-
-- `CLOUDFLARE_ACCOUNT_ID`
-- `PLANETSCALE_ORGANIZATION`
-- `AXIOM_ORG_ID`
-
-Required repository secrets shared by relay deployments:
-
-- `CLOUDFLARE_API_TOKEN`
-- `PLANETSCALE_API_TOKEN_ID`
-- `PLANETSCALE_API_TOKEN`
-- `AXIOM_TOKEN`
-
-Required `production` environment variables:
-
-- `RELAY_API_ZONE_NAME`
-- `RELAY_TUNNEL_ZONE_NAME`
-- `CLERK_PUBLISHABLE_KEY`
-- `CLERK_JWT_AUDIENCE`
-- `CLERK_JWT_TEMPLATE`
-- `CLERK_CLI_OAUTH_CLIENT_ID`
-- `APNS_ENVIRONMENT`
-- `APNS_TEAM_ID`
-- `APNS_KEY_ID`
-- `APNS_BUNDLE_ID`
-
-Optional `production` environment variables:
-
-- `RELAY_DOMAIN` when overriding the derived `relay.<RELAY_API_ZONE_NAME>` domain
-
-Required `production` environment secrets:
-
-- `CLERK_SECRET_KEY`
-- `APNS_PRIVATE_KEY`
-
-The account-scoped repository credentials are consumed by Alchemy while provisioning relay stages; they
-are not bound into the relay Worker. The production deployment uses an Axiom personal access token,
-so `AXIOM_ORG_ID` must accompany `AXIOM_TOKEN`. The `prod` stage owns the retained PlanetScale
-database. Local personal stages provision isolated branches from it and are never deployed by CI.
-Production adopts the configured relay API and tunnel DNS zones as retained Cloudflare resources.
-Personal stages reference the production-owned zones.
-
-Developers deploy personal stages locally rather than through pull-request automation:
-
-```sh
-vp run --filter t3code-relay deploy -- --stage "$USER" --env-file .env.local
+```text
+origin    https://github.com/<fork-owner>/<fork-repository>.git
+upstream  https://github.com/pingdotgg/t3code.git
 ```
 
-## Hosted web app release deployment
+Verify rather than assume the configured URLs:
 
-The hosted app is intentionally not deployed by Vercel's Git integration. The
-web project disables automatic Git deployments in `apps/web/vercel.ts` via
-`git.deploymentEnabled: false`, and `.github/workflows/release.yml` deploys the
-web app with Vercel CLI after the GitHub Release succeeds.
+```sh
+git remote -v
+git remote set-url origin https://github.com/<fork-owner>/<fork-repository>.git
+git remote add upstream https://github.com/pingdotgg/t3code.git
+```
 
-Required GitHub Actions secrets:
+If `upstream` already exists, use `git remote set-url upstream` instead. Protect downstream `main`,
+require synchronization changes to merge through pull requests, and do not permit force pushes.
 
-- `VERCEL_TOKEN`
-- `VERCEL_ORG_ID`
-- `VERCEL_PROJECT_ID`
+Repository Actions settings must allow GitHub Actions to create pull requests. The synchronization
+workflow uses `GITHUB_TOKEN` with only `contents: write` and `pull-requests: write`. If organization
+policy prohibits PR creation with `GITHUB_TOKEN`, replace that token with a narrowly scoped GitHub
+App token; do not grant automation a path to force-push `main`.
 
-Optional GitHub Actions variables:
+Optional repository variable:
 
-- `VERCEL_TEAM_SLUG`: overrides the Vercel CLI scope when the team slug is preferred over the `VERCEL_ORG_ID` secret.
-- `T3CODE_WEB_ROUTER_URL`: defaults to `https://app.t3.codes`.
-- `T3CODE_WEB_LATEST_DOMAIN`: defaults to `latest.app.t3.codes`.
-- `T3CODE_WEB_NIGHTLY_DOMAIN`: defaults to `nightly.app.t3.codes`.
+- `UPSTREAM_REPOSITORY`: defaults to `pingdotgg/t3code`.
 
-Required Vercel domains:
+The workflows refuse to run when the current repository is the configured upstream repository and
+verify the checkout's `origin` URL before any push.
 
-- `app.t3.codes`: the router domain users open, updated by stable releases.
-- `latest.app.t3.codes`: channel alias updated by stable releases.
-- `nightly.app.t3.codes`: channel alias updated by nightly releases.
+## Recorded upstream state
 
-The router domain uses `apps/web/vercel.ts` routes. Users opt into a channel by
-visiting `/__t3code/channel?channel=latest` or
-`/__t3code/channel?channel=nightly`; the router stores the
-`t3code_web_channel` cookie and rewrites future requests on `app.t3.codes` to
-the matching channel alias.
+`.github/upstream-release.json` records the source and release version:
 
-The release deploy job rewrites release package versions before upload so the
-hosted app's About panel renders the release version. Stable deploys alias the
-same deployment to both the `latest` channel and the router domain so the router
-rules stay current. Nightly deploys only alias the `nightly` channel. The job
-also passes `VITE_HOSTED_APP_CHANNEL=latest|nightly`, which renders the hosted
-update track selector in the About panel. Changing the selector navigates
-through `/__t3code/channel` on the router domain so the user's channel cookie is
-updated before redirecting to the hosted app root.
+```json
+{
+  "repository": "pingdotgg/t3code",
+  "tag": "v0.0.29",
+  "commit": "1153afb4fb694944b5c25e2153b904a85cf47d70",
+  "downstreamVersion": "0.0.29-fork.1"
+}
+```
 
-One-time Vercel dashboard setup:
+`scripts/downstream-release-state.ts` validates the file, requires a plain stable upstream tag,
+requires a full peeled commit SHA, and requires the downstream version to use the same upstream base.
+The synchronization workflow changes this file only on its pull-request branch.
 
-1. Confirm the web project root directory remains `apps/web`.
-2. Add the three domains above to the web project.
-3. Disable automatic Git deployments in the dashboard if desired; the committed
-   `vercel.ts` setting is the source-of-truth, but disconnecting Git in the
-   dashboard is also safe.
-4. Run one stable release deployment, or manually alias the current stable
-   deployment, so `app.t3.codes` points at a deployment containing the router
-   rules in `apps/web/vercel.ts`. Future stable releases keep this alias current.
+Downstream versions and immutable tags use:
 
-## Nightly builds
+```text
+0.0.29-fork.1
+v0.0.29-fork.1
+```
 
-- Workflow: `.github/workflows/release.yml`
-- Triggers:
-  - scheduled check every three hours
-  - manual `workflow_dispatch` with `channel=nightly`
-- Runs the same desktop quality gates and artifact matrix as the tagged release flow.
-- Publishes a GitHub prerelease only:
-  - tag format: `nightly-vX.Y.Z-nightly.YYYYMMDD.<run_number>`
-  - release name includes the short commit SHA
-  - `make_latest` is always `false`
-- Uses the next stable patch version as the nightly base. For example, `0.0.17` produces nightlies on `0.0.18-nightly.*`.
-- Publishes Electron auto-update metadata to the dedicated `nightly` updater channel, so desktop users can opt into that track independently from stable.
-- Publishes the CLI package (`apps/server`, npm package `t3`) to the `nightly` npm dist-tag using the same nightly version.
-- Does not commit version bumps back to `main`.
+The numeric fork revision increases for downstream-only releases on the same upstream base and
+resets to `1` for a new upstream base.
 
-## Server self-update release invariant
+## Importing an upstream release
 
-Connected servers update to the client's exact version, not to an npm dist-tag. Every released
-desktop or hosted client version must therefore have a matching `t3@<version>` package available on
-npm before users can receive that client.
+`.github/workflows/downstream-sync.yml` runs every six hours and can be dispatched manually. It:
 
-The workflow enforces this ordering:
+1. Reads the upstream repository's latest non-prerelease GitHub Release.
+2. Accepts only a tag matching `vX.Y.Z`.
+3. Fetches and peels that exact tag, then verifies its commit is on upstream `main`.
+4. Compares the tag and SHA with the recorded state, failing if a recorded tag moved.
+5. Reuses an existing `sync/upstream-vX.Y.Z` pull request when one is open.
+6. Otherwise creates or resumes the sync branch without changing downstream `main`.
+7. Merges the exact upstream release with `--no-ff`.
+8. Sets package manifests and state to `X.Y.Z-fork.1`, then refreshes `pnpm-lock.yaml`.
+9. Pushes only the short-lived branch and opens a PR into downstream `main`.
+10. Dispatches CI for the exact PR head and enables merge-commit auto-merge.
 
-1. `publish_cli` publishes the exact stable or nightly version to npm.
-2. `release` depends on `publish_cli` before exposing desktop artifacts in GitHub Releases.
-3. `deploy_web` depends on `release` before moving the hosted channel to the new client.
+If either the upstream merge or updating an existing sync branch conflicts, the workflow aborts the
+merge and exits before pushing. A maintainer must resolve the conflict on a normal branch or PR.
+Otherwise, GitHub merges the PR automatically only after the required `Check`, `Test`, and
+`Release Smoke` checks pass. A failed check leaves the PR open.
 
-Preserve these dependencies when changing the release graph. Publishing a client first would leave
-the **Update server** action targeting a package version that does not exist yet.
+A rerun is a successful no-op when the recorded tag and SHA match. It never moves an upstream tag,
+creates an upstream-named release tag, rebases downstream `main`, or force-pushes `main`.
 
-For a release smoke test, confirm `npm view t3@<version> version` returns the expected version, then
-connect the new client to a server on the previous version and verify that the update action
-reconnects to the matching server. Test one automatic path and the manual or desktop-managed
-guidance when those environments are available.
+## Publishing the Windows release
 
-## Desktop auto-update notes
+`.github/workflows/downstream-release.yml` runs when release state or releasable package versions
+change on downstream `main`. It can also be dispatched manually with an optional exact
+`X.Y.Z-fork.N` version.
 
-- Runtime updater: `electron-updater` in `apps/desktop/src/main.ts`.
-- Update UX:
-  - Background checks run on startup delay + interval.
-  - No automatic download or install.
-  - The desktop UI shows a rocket update button when an update is available; click once to download, click again after download to restart/install.
-- Provider: GitHub Releases (`provider: github`) configured at build time.
-- Repository slug source:
-  - `T3CODE_DESKTOP_UPDATE_REPOSITORY` (format `owner/repo`), if set.
-  - otherwise `GITHUB_REPOSITORY` from GitHub Actions.
-- Temporary private-repo auth workaround:
-  - set `T3CODE_DESKTOP_UPDATE_GITHUB_TOKEN` (or `GH_TOKEN`) in the desktop app runtime environment.
-  - the app forwards it as an `Authorization: Bearer <token>` request header for updater HTTP calls.
-- Required release assets for updater:
-  - platform installers (`.exe`, `.dmg`, `.AppImage`, plus macOS `.zip` for Squirrel.Mac update payloads)
-  - channel metadata: `latest*.yml` for stable releases, `nightly*.yml` for nightly releases
-  - `*.blockmap` files (used for differential downloads)
-- macOS metadata note:
-  - `electron-updater` reads `latest-mac.yml` on stable and `nightly-mac.yml` on nightly, for both Intel and Apple Silicon.
-  - The workflow merges the per-arch mac manifests into one channel-specific mac manifest before publishing the GitHub Release.
+Preflight requires:
 
-## 0) npm OIDC trusted publishing setup (CLI)
+- `.github/upstream-release.json` to be valid.
+- `apps/server/package.json`, `apps/desktop/package.json`, `apps/web/package.json`, and
+  `packages/contracts/package.json` to contain the exact recorded downstream version.
+- `pnpm-lock.yaml` to pass a frozen install.
+- The checkout to equal current `origin/main`.
+- `v<version>` to be absent, or already point to that exact commit.
 
-The workflow publishes the CLI with `npm publish` from `apps/server` after bumping
-the package version to the release tag version.
+If both the immutable tag and GitHub Release already exist, the workflow exits successfully. If a
+correct tag exists without a release, the workflow rebuilds and completes the release. A tag that
+points anywhere else is never moved.
 
-Checklist:
+The release pipeline uses GitHub-hosted runners:
 
-1. Confirm npm org/user owns package `t3` (or rename package first if needed).
-2. In npm package settings, configure Trusted Publisher:
-   - Provider: GitHub Actions
-   - Repository: this repo
-   - Workflow file: `.github/workflows/release.yml`
-   - Environment (if used): match your npm trusted publishing config
-3. Ensure npm account and org policies allow trusted publishing for the package.
-4. Create release tag `vX.Y.Z` and push; workflow will:
-   - set `apps/server/package.json` version to `X.Y.Z`
-   - build web + server
-   - run `npm publish --access public --tag latest`
-5. Nightly runs from the same workflow file publish with `npm publish --access public --tag nightly`.
+- `windows-2025` builds the Windows x64 NSIS installer.
+- `ubuntu-24.04` creates the immutable tag and GitHub Release.
 
-## 1) Dry-run release without signing
+Only the installer (`*.exe`), installer blockmap (`*.blockmap`), and updater manifests (`*.yml`) are
+uploaded. The workflow requires `latest.yml` and verifies that its version matches the release
+version. Fork versions are published as normal, non-prerelease GitHub Releases and marked latest,
+even though `-fork.N` is a SemVer prerelease component.
 
-Use this first to validate the release pipeline.
+macOS, Linux desktop, Windows arm64, mobile, npm, relay, Vercel, and Discord release work are not part
+of this downstream workflow. The personal fork also omits the Linux `node-pty` prebuild used by the
+optional WSL backend; the Windows package is intended to use the local Git Bash shell instead.
 
-1. Confirm no signing secrets are required for this test.
-2. Create a test tag:
-   - `git tag v0.0.0-test.1`
-   - `git push origin v0.0.0-test.1`
-3. Wait for `.github/workflows/release.yml` to finish.
-4. Verify the GitHub Release contains all platform artifacts.
-5. Download each artifact and sanity-check installation on each OS.
+## Windows signing
 
-## 2) Apple signing + notarization setup (macOS)
-
-Required secrets used by the workflow:
-
-- `CSC_LINK`
-- `CSC_KEY_PASSWORD`
-- `APPLE_API_KEY`
-- `APPLE_API_KEY_ID`
-- `APPLE_API_ISSUER`
-- `MACOS_PROVISIONING_PROFILE` (base64-encoded provisioning profile with Associated Domains)
-
-Required repository variables:
-
-- `APPLE_TEAM_ID`
-
-Optional repository variables:
-
-- `CLERK_PASSKEY_RP_DOMAINS`: comma-separated RP-domain override. By default, the build derives the
-  domain from the production Clerk publishable key.
-
-Checklist:
-
-1. Apple Developer account access:
-   - Team has rights to create Developer ID certificates.
-2. Create an explicit App ID for `com.t3tools.t3code` and enable Associated Domains.
-3. Create a `Developer ID Application` certificate and a compatible provisioning profile for that
-   App ID with Associated Domains enabled.
-4. Export the certificate + private key as `.p12` from Keychain.
-5. Base64-encode the `.p12` and store as `CSC_LINK`.
-6. Base64-encode the provisioning profile and store it as `MACOS_PROVISIONING_PROFILE`.
-7. Store the `.p12` export password as `CSC_KEY_PASSWORD`, and set `APPLE_TEAM_ID` to the
-   10-character Apple Developer Team ID.
-8. In App Store Connect, create an API key (Team key).
-9. Add API key values:
-   - `APPLE_API_KEY`: contents of the downloaded `.p8`
-   - `APPLE_API_KEY_ID`: Key ID
-   - `APPLE_API_ISSUER`: Issuer ID
-10. Complete the Clerk Native API and AASA setup in [T3 Connect Clerk Setup](../cloud/t3-connect-clerk.md#desktop-passkeys).
-11. Re-run a tag release and confirm macOS artifacts are signed/notarized and contain the expected
-    `com.apple.developer.associated-domains` entitlement.
-
-Notes:
-
-- `APPLE_API_KEY` is stored as raw key text in secrets.
-- The workflow writes it to a temporary `AuthKey_<id>.p8` file at runtime.
-- The workflow decodes `MACOS_PROVISIONING_PROFILE`, validates it with `security cms`, and passes it
-  to the desktop packager.
-
-## 3) Azure Trusted Signing setup (Windows)
-
-Required secrets used by the workflow:
+Azure Trusted Signing is enabled only when all of these secrets are configured:
 
 - `AZURE_TENANT_ID`
 - `AZURE_CLIENT_ID`
@@ -290,41 +138,56 @@ Required secrets used by the workflow:
 - `AZURE_TRUSTED_SIGNING_CERTIFICATE_PROFILE_NAME`
 - `AZURE_TRUSTED_SIGNING_PUBLISHER_NAME`
 
-Checklist:
+When any value is missing, the workflow publishes an unsigned installer. The optional
+`CLERK_PASSKEY_RP_DOMAINS` repository variable is still passed to the Windows build.
 
-1. Create Azure Trusted Signing account and certificate profile.
-2. Record ATS values:
-   - Endpoint
-   - Account name
-   - Certificate profile name
-   - Publisher name
-3. Create/choose an Entra app registration (service principal).
-4. Grant service principal permissions required by Trusted Signing.
-5. Create a client secret for the service principal.
-6. Add Azure secrets listed above in GitHub Actions secrets.
-7. Re-run a tag release and confirm Windows installer is signed.
+## Downstream-only patch release
 
-## 4) Ongoing release checklist
+Prepare a normal PR that changes the recorded version and all releasable package manifests, for
+example from `0.0.29-fork.1` to `0.0.29-fork.2`:
 
-1. Ensure `main` is green in CI.
-2. Bump app version as needed.
-3. Create release tag: `vX.Y.Z`.
-4. Push tag.
-5. Verify workflow steps:
-   - preflight passes
-   - all matrix builds pass
-   - `publish_cli` publishes the exact release version before the release job
-   - release job uploads expected files
-6. Smoke test downloaded artifacts.
+```sh
+node scripts/downstream-release-state.ts increment 0.0.29-fork.1
+node scripts/update-release-package-versions.ts 0.0.29-fork.2
+```
 
-## 5) Troubleshooting
+Then update only `downstreamVersion` in `.github/upstream-release.json` to the same value and run:
 
-- macOS build unsigned when expected signed:
-  - Check all Apple secrets plus `APPLE_TEAM_ID` are populated and non-empty.
-  - Confirm the provisioning profile belongs to `APPLE_TEAM_ID.com.t3tools.t3code` and includes
-    Associated Domains.
-- Windows build unsigned when expected signed:
-  - Check all Azure ATS and auth secrets are populated and non-empty.
-- Build fails with signing error:
-  - Retry with secrets removed to confirm unsigned path still works.
-  - Re-check certificate/profile names and tenant/client credentials.
+```sh
+vp install --lockfile-only --ignore-scripts
+node scripts/downstream-release-state.ts validate-release
+```
+
+After the PR merges, the normal downstream workflow publishes `v0.0.29-fork.2`; no new upstream
+release is required.
+
+## Desktop updates
+
+The Electron updater implementation is unchanged. The Windows build sets:
+
+```text
+T3CODE_DESKTOP_UPDATE_REPOSITORY=${{ github.repository }}
+```
+
+The packaged `resources/app-update.yml` therefore points fork builds at this fork's public GitHub
+Releases. Existing official builds still check the upstream repository, so users must manually
+install the first fork build. Later monotonically increasing fork releases are detected through the
+normal `latest` updater channel. Rebuilding the same version does not create an update.
+
+Private-repository updater authentication is not configured by this workflow.
+
+## GitHub-side dry run
+
+Before relying on the schedule:
+
+1. Confirm `origin`, `upstream`, branch protection, Actions PR permissions, and hosted runner access.
+2. Dispatch the sync workflow with the recorded upstream release current; it should no-op.
+3. In an isolated test fork, record an older upstream state and dispatch sync.
+4. Confirm one branch and one PR are created without changing `main`.
+5. Confirm CI is dispatched for the sync branch and auto-merge waits for all three required checks.
+6. Dispatch again if needed and confirm the existing PR is reused rather than duplicated.
+7. Confirm the PR merges with a merge commit and the immutable downstream tag is created.
+8. Confirm the GitHub Release is non-prerelease, marked latest, and contains `.exe`, `.blockmap`, and
+   `latest.yml`.
+9. Manually install that first fork build, publish a higher fork revision, and confirm the update is
+   detected from the fork.
