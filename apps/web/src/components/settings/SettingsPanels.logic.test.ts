@@ -10,6 +10,7 @@ import {
   formatDiagnosticsDescription,
   isProjectGroupingEnabled,
   projectGroupingModeFromToggle,
+  resolveTerminalShellPath,
 } from "./SettingsPanels.logic";
 
 describe("project grouping toggle", () => {
@@ -24,6 +25,23 @@ describe("project grouping toggle", () => {
   it("restores repository path grouping when the toggle is cycled", () => {
     expect(projectGroupingModeFromToggle(false, "repository_path")).toBe("separate");
     expect(projectGroupingModeFromToggle(true, "repository_path")).toBe("repository_path");
+  });
+});
+
+describe("resolveTerminalShellPath", () => {
+  it("shows PowerShell as the Windows default", () => {
+    expect(resolveTerminalShellPath("", "windows")).toBe("pwsh.exe");
+  });
+
+  it("normalizes a quoted shell executable path", () => {
+    expect(resolveTerminalShellPath('"C:\\Program Files\\Git\\bin\\bash.exe"', "windows")).toBe(
+      "C:\\Program Files\\Git\\bin\\bash.exe",
+    );
+  });
+
+  it("leaves non-Windows platform defaults to the server", () => {
+    expect(resolveTerminalShellPath("", "darwin")).toBe("");
+    expect(resolveTerminalShellPath("", "linux")).toBe("");
   });
 });
 

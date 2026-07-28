@@ -64,6 +64,7 @@ import {
 import { ensureLocalApi, readLocalApi } from "../../localApi";
 import {
   primaryServerObservabilityAtom,
+  primaryServerConfigAtom,
   primaryServerProvidersAtom,
   serverEnvironment,
 } from "../../state/server";
@@ -94,6 +95,7 @@ import {
   projectGroupingModeFromToggle,
   readLastEnabledProjectGroupingMode,
   rememberEnabledProjectGroupingMode,
+  resolveTerminalShellPath,
 } from "./SettingsPanels.logic";
 import {
   SettingResetButton,
@@ -455,6 +457,9 @@ export function useSettingsRestore(onRestored?: () => void) {
       ...(settings.addProjectBaseDirectory !== DEFAULT_UNIFIED_SETTINGS.addProjectBaseDirectory
         ? ["Add project base directory"]
         : []),
+      ...(settings.terminalShellPath !== DEFAULT_UNIFIED_SETTINGS.terminalShellPath
+        ? ["Terminal shell"]
+        : []),
       ...(settings.confirmThreadArchive !== DEFAULT_UNIFIED_SETTINGS.confirmThreadArchive
         ? ["Archive confirmation"]
         : []),
@@ -469,6 +474,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       settings.confirmThreadArchive,
       settings.confirmThreadDelete,
       settings.addProjectBaseDirectory,
+      settings.terminalShellPath,
       settings.defaultThreadEnvMode,
       settings.newWorktreesStartFromOrigin,
       settings.diffIgnoreWhitespace,
@@ -511,6 +517,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       defaultThreadEnvMode: DEFAULT_UNIFIED_SETTINGS.defaultThreadEnvMode,
       newWorktreesStartFromOrigin: DEFAULT_UNIFIED_SETTINGS.newWorktreesStartFromOrigin,
       addProjectBaseDirectory: DEFAULT_UNIFIED_SETTINGS.addProjectBaseDirectory,
+      terminalShellPath: DEFAULT_UNIFIED_SETTINGS.terminalShellPath,
       confirmThreadArchive: DEFAULT_UNIFIED_SETTINGS.confirmThreadArchive,
       confirmThreadDelete: DEFAULT_UNIFIED_SETTINGS.confirmThreadDelete,
       textGenerationModelSelection: DEFAULT_UNIFIED_SETTINGS.textGenerationModelSelection,
@@ -693,6 +700,7 @@ export function AppearanceSettingsPanel() {
 export function GeneralSettingsPanel() {
   const settings = usePrimarySettings();
   const updateSettings = useUpdatePrimarySettings();
+  const serverConfig = useAtomValue(primaryServerConfigAtom);
   const lastEnabledProjectGroupingMode = useRef<SidebarProjectGroupingMode>(
     readLastEnabledProjectGroupingMode(),
   );
@@ -728,6 +736,9 @@ export function GeneralSettingsPanel() {
     settings.textGenerationModelSelection ?? null,
     DEFAULT_UNIFIED_SETTINGS.textGenerationModelSelection ?? null,
   );
+  const platform = serverConfig?.environment.platform.os;
+  const defaultShellPath = resolveTerminalShellPath("", platform);
+  const terminalShellPath = resolveTerminalShellPath(settings.terminalShellPath, platform);
 
   return (
     <SettingsPageContainer>
@@ -1016,6 +1027,38 @@ export function GeneralSettingsPanel() {
               placeholder="~/"
               spellCheck={false}
               aria-label="Add project base directory"
+            />
+          }
+        />
+
+        <SettingsRow
+          title="Terminal shell"
+          description="Pick the default shell for newly created terminal tabs."
+          resetAction={
+            settings.terminalShellPath !== DEFAULT_UNIFIED_SETTINGS.terminalShellPath ? (
+              <SettingResetButton
+                label="terminal shell"
+                onClick={() =>
+                  updateSettings({
+                    terminalShellPath: DEFAULT_UNIFIED_SETTINGS.terminalShellPath,
+                  })
+                }
+              />
+            ) : null
+          }
+          control={
+            <DraftInput
+              className="w-full font-mono sm:w-72"
+              value={terminalShellPath}
+              onCommit={(next) => {
+                const normalized = resolveTerminalShellPath(next, platform);
+                updateSettings({
+                  terminalShellPath: normalized === defaultShellPath ? "" : normalized,
+                });
+              }}
+              placeholder={defaultShellPath || "System default"}
+              spellCheck={false}
+              aria-label="Terminal shell path"
             />
           }
         />

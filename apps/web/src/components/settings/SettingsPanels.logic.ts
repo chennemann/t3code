@@ -1,4 +1,5 @@
 import type {
+  ExecutionEnvironmentPlatformOs,
   ProviderDriverKind,
   ProviderInstanceConfig,
   ProviderInstanceId,
@@ -18,6 +19,19 @@ export function projectGroupingModeFromToggle(
 ): SidebarProjectGroupingMode {
   if (!enabled) return "separate";
   return lastEnabledMode === "repository_path" ? "repository_path" : "repository";
+}
+
+function defaultTerminalShellPath(platform: ExecutionEnvironmentPlatformOs | undefined): string {
+  return platform === "windows" ? "pwsh.exe" : "";
+}
+
+export function resolveTerminalShellPath(
+  configuredPath: string,
+  platform: ExecutionEnvironmentPlatformOs | undefined,
+): string {
+  const trimmed = configuredPath.trim();
+  const unquoted = (trimmed.match(/^(["'])(.*)\1$/)?.[2] ?? trimmed).trim();
+  return unquoted || defaultTerminalShellPath(platform);
 }
 
 const LAST_ENABLED_PROJECT_GROUPING_MODE_KEY = "t3code:last-enabled-project-grouping-mode";
