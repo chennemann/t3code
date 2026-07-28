@@ -59,6 +59,7 @@ import {
 } from "../observability/Metrics.ts";
 import * as ProcessRunner from "../processRunner.ts";
 import * as PortScanner from "../preview/PortScanner.ts";
+import * as ServerSettings from "../serverSettings.ts";
 import * as PtyAdapter from "./PtyAdapter.ts";
 
 export {
@@ -461,7 +462,7 @@ function normalizeShellCommand(
   if (trimmed.length === 0) return null;
 
   if (platform === "win32") {
-    return trimmed;
+    return (trimmed.match(/^(["'])(.*)\1$/)?.[2] ?? trimmed).trim() || null;
   }
 
   const firstToken = trimmed.split(/\s+/g)[0]?.trim();
@@ -540,12 +541,12 @@ function uniqueShellCandidates(candidates: Array<ShellCandidate | null>): ShellC
 }
 
 function resolveShellCandidates(
-  shellResolver: () => string,
+  requestedShell: string,
   platform: NodeJS.Platform,
   env: NodeJS.ProcessEnv,
 ): ShellCandidate[] {
   const requested = shellCandidateFromCommand(
-    normalizeShellCommand(shellResolver(), platform),
+    normalizeShellCommand(requestedShell, platform),
     platform,
   );
 
@@ -1112,7 +1113,7 @@ interface TerminalManagerOptions {
   logsDir: string;
   historyLineLimit?: number;
   ptyAdapter: PtyAdapter.PtyAdapter["Service"];
-  shellResolver?: () => string;
+  shellResolver?: Effect.Effect<string>;
   env?: NodeJS.ProcessEnv;
   subprocessInspector?: TerminalSubprocessInspector;
   subprocessPollIntervalMs?: number;
@@ -1133,9 +1134,19 @@ export const make = Effect.fn("TerminalManager.make")(function* () {
   const { terminalLogsDir } = yield* ServerConfig.ServerConfig;
   const ptyAdapter = yield* PtyAdapter.PtyAdapter;
   const portDiscovery = yield* PortScanner.PortDiscovery;
+  const serverSettings = yield* ServerSettings.ServerSettingsService;
   return yield* makeWithOptions({
     logsDir: terminalLogsDir,
     ptyAdapter,
+    shellResolver: serverSettings.getSettings.pipe(
+      Effect.map((settings) => settings.terminalShellPath),
+      Effect.catch((error) =>
+        Effect.logWarning("failed to read terminal shell setting; using platform default", {
+          operation: error.operation,
+          cause: error.cause,
+        }).pipe(Effect.as("")),
+      ),
+    ),
     registerTerminalProcesses: portDiscovery.registerTerminalProcesses,
     unregisterTerminal: portDiscovery.unregisterTerminal,
   });
@@ -1157,7 +1168,7 @@ export const makeWithOptions = Effect.fn("TerminalManager.makeWithOptions")(func
   // things like PSModulePath, DISPLAY, proxies, and toolchain variables.
   // `options.env` is the test seam.
   const baseEnv = options.env ?? process.env;
-  const shellResolver = options.shellResolver ?? (() => defaultShellResolver(platform, baseEnv));
+  const shellResolver = options.shellResolver ?? Effect.succeed("");
   const processRunner = yield* ProcessRunner.ProcessRunner;
   // One process-table snapshot per poll tick, shared across every terminal.
   // Per-terminal `pgrep`/`ps` calls multiply spawn load by terminal count and
@@ -1867,7 +1878,9 @@ export const makeWithOptions = Effect.fn("TerminalManager.makeWithOptions")(func
       increment(terminalSessionsTotal, { lifecycle: eventType }).pipe(
         Effect.andThen(
           Effect.gen(function* () {
-            const shellCandidates = resolveShellCandidates(shellResolver, platform, baseEnv);
+            const configuredShell = (yield* shellResolver).trim();
+            const requestedShell = configuredShell || defaultShellResolver(platform, baseEnv);
+            const shellCandidates = resolveShellCandidates(requestedShell, platform, baseEnv);
             const terminalEnv = createTerminalSpawnEnv(baseEnv, session.runtimeEnv);
             const spawnResult = yield* trySpawn(shellCandidates, terminalEnv, session);
             ptyProcess = spawnResult.process;

@@ -203,7 +203,7 @@ const multiTerminalHistoryLogPath = (
   );
 
 interface CreateManagerOptions {
-  shellResolver?: () => string;
+  shellResolver?: Effect.Effect<string>;
   env?: NodeJS.ProcessEnv;
   subprocessInspector?: (terminalPid: number) => Effect.Effect<{
     readonly hasRunningSubprocess: boolean;
@@ -1404,7 +1404,7 @@ it.layer(
       const missingShell =
         platform === "win32" ? "C:\\definitely\\missing-shell.exe" : "/definitely/missing-shell -l";
       const { manager, ptyAdapter } = yield* createManager(5, {
-        shellResolver: () => missingShell,
+        shellResolver: Effect.succeed(missingShell),
       });
       ptyAdapter.spawnFailures.push(new Error("posix_spawnp failed."));
 
@@ -1461,7 +1461,7 @@ it.layer(
       const ptyAdapter = new FakePtyAdapter();
       const { manager } = yield* createManager(5, {
         ptyAdapter,
-        shellResolver: () => "C:\\missing\\custom-shell.exe",
+        shellResolver: Effect.succeed("C:\\missing\\custom-shell.exe"),
         env: {
           ComSpec: "C:\\Windows\\System32\\cmd.exe",
           PATH: "C:\\Windows\\System32",
@@ -1482,6 +1482,32 @@ it.layer(
       ]);
       expect(ptyAdapter.spawnInputs[1]?.args).toEqual(["-NoLogo"]);
       expect(ptyAdapter.spawnInputs[2]?.args).toEqual(["-NoLogo"]);
+    }),
+  );
+
+  it.effect("uses the latest configured shell path for newly started terminals", () =>
+    Effect.gen(function* () {
+      const configuredShellPath = yield* Ref.make("pwsh.exe");
+      const { manager, ptyAdapter } = yield* createManager(5, {
+        shellResolver: Ref.get(configuredShellPath),
+      }).pipe(Effect.provide(withHostPlatform("win32")));
+
+      yield* manager.open(openInput({ terminalId: "term-1" }));
+      yield* Ref.set(configuredShellPath, '"C:\\Program Files\\Git\\bin\\bash.exe"');
+      yield* manager.open(openInput({ terminalId: "term-2" }));
+
+      expect(ptyAdapter.spawnInputs[0]).toEqual(
+        expect.objectContaining({
+          shell: "pwsh.exe",
+          args: ["-NoLogo"],
+        }),
+      );
+      expect(ptyAdapter.spawnInputs[1]).toEqual(
+        expect.objectContaining({
+          shell: "C:\\Program Files\\Git\\bin\\bash.exe",
+        }),
+      );
+      expect(ptyAdapter.spawnInputs[1]?.args).toBeUndefined();
     }),
   );
 
@@ -1599,7 +1625,7 @@ it.layer(
     Effect.gen(function* () {
       if ((yield* HostProcessPlatform) === "win32") return;
       const { manager, ptyAdapter } = yield* createManager(5, {
-        shellResolver: () => "/bin/zsh",
+        shellResolver: Effect.succeed("/bin/zsh"),
       });
       yield* manager.open(openInput());
       const spawnInput = ptyAdapter.spawnInputs[0];
