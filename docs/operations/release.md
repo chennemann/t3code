@@ -53,7 +53,8 @@ verify the checkout's `origin` URL before any push.
 
 ## Recorded upstream state
 
-`.github/upstream-release.json` records the source and release version:
+`.github/upstream-release.json` records the upstream source and the minimum fork version for that
+upstream base:
 
 ```json
 {
@@ -75,8 +76,11 @@ Downstream versions and immutable tags use:
 v0.0.29-fork.1
 ```
 
-The numeric fork revision increases for downstream-only releases on the same upstream base and
-resets to `1` for a new upstream base.
+The numeric fork revision is the downstream release workflow's monotonically increasing GitHub run
+number. This makes revisions unique and correctly ordered even when multiple merges build in
+parallel. The revision therefore may contain gaps and does not reset when the upstream base changes.
+The recorded `downstreamVersion` remains a same-base floor and is normally reset to `fork.1` by an
+upstream synchronization PR.
 
 ## Importing an upstream release
 
@@ -89,7 +93,8 @@ resets to `1` for a new upstream base.
 5. Reuses an existing `sync/upstream-vX.Y.Z` pull request when one is open.
 6. Otherwise creates or resumes the sync branch without changing downstream `main`.
 7. Merges the exact upstream release with `--no-ff`.
-8. Sets package manifests and state to `X.Y.Z-fork.1`, then refreshes `pnpm-lock.yaml`.
+8. Sets package manifests and the recorded version floor to `X.Y.Z-fork.1`, then refreshes
+   `pnpm-lock.yaml`.
 9. Pushes only the short-lived branch and opens a PR into downstream `main`.
 10. Lets normal pull-request CI run and enables merge-commit auto-merge.
 
@@ -103,17 +108,26 @@ creates an upstream-named release tag, rebases downstream `main`, or force-pushe
 
 ## Publishing the Windows release
 
-`.github/workflows/downstream-release.yml` runs when release state or releasable package versions
-change on downstream `main`. It can also be dispatched manually with an optional exact
-`X.Y.Z-fork.N` version.
+`.github/workflows/downstream-release.yml` runs on every push to downstream `main`, so every merged
+PR produces a fork release for its resulting commit. It can also be dispatched manually; the
+optional exact `X.Y.Z-fork.N` input is an assertion for a retry, not a way to skip or choose a new
+revision.
+
+For a new commit, the workflow combines the recorded upstream base with its GitHub run number. For
+example, run 42 on the `v0.0.29` base publishes `0.0.29-fork.42`. A rerun discovers the immutable tag
+already attached to the target commit and reuses that version. Releasable package manifests and the
+lockfile are updated only in the isolated build checkout, so the release workflow does not create a
+follow-up commit or trigger itself recursively.
 
 Preflight requires:
 
 - `.github/upstream-release.json` to be valid.
+- The resolved release version to use the upstream base recorded in
+  `.github/upstream-release.json`.
 - `apps/server/package.json`, `apps/desktop/package.json`, `apps/web/package.json`, and
-  `packages/contracts/package.json` to contain the exact recorded downstream version.
-- `pnpm-lock.yaml` to pass a frozen install.
-- The checkout to equal current `origin/main`.
+  `packages/contracts/package.json` to contain the resolved version after build-checkout preparation.
+- The prepared `pnpm-lock.yaml` to pass a frozen install.
+- A push checkout to still be on current `origin/main`, or a manual checkout to equal it.
 - `v<version>` to be absent, or already point to that exact commit.
 
 If both the immutable tag and GitHub Release already exist, the workflow exits successfully. If a
@@ -127,8 +141,9 @@ The release pipeline uses GitHub-hosted runners:
 
 Only the installer (`*.exe`), installer blockmap (`*.blockmap`), and updater manifests (`*.yml`) are
 uploaded. The workflow requires `latest.yml` and verifies that its version matches the release
-version. Fork versions are published as normal, non-prerelease GitHub Releases and marked latest,
-even though `-fork.N` is a SemVer prerelease component.
+version. Fork versions are published as normal, non-prerelease GitHub Releases, even though
+`-fork.N` is a SemVer prerelease component. After parallel builds, the workflow explicitly marks the
+highest fork version as latest so a slower older build cannot replace a newer update.
 
 macOS, Linux desktop, Windows arm64, mobile, npm, relay, Vercel, and Discord release work are not part
 of this downstream workflow. The personal fork also omits the Linux `node-pty` prebuild used by the
@@ -149,25 +164,11 @@ Azure Trusted Signing is enabled only when all of these secrets are configured:
 When any value is missing, the workflow publishes an unsigned installer. The optional
 `CLERK_PASSKEY_RP_DOMAINS` repository variable is still passed to the Windows build.
 
-## Downstream-only patch release
+## Downstream-only releases
 
-Prepare a normal PR that changes the recorded version and all releasable package manifests, for
-example from `0.0.29-fork.1` to `0.0.29-fork.2`:
-
-```sh
-node scripts/downstream-release-state.ts increment 0.0.29-fork.1
-node scripts/update-release-package-versions.ts 0.0.29-fork.2
-```
-
-Then update only `downstreamVersion` in `.github/upstream-release.json` to the same value and run:
-
-```sh
-vp install --lockfile-only --ignore-scripts
-node scripts/downstream-release-state.ts validate-release
-```
-
-After the PR merges, the normal downstream workflow publishes `v0.0.29-fork.2`; no new upstream
-release is required.
+No release-specific version-bump PR is needed. Merge the downstream change through a normal PR.
+The resulting push to `main` automatically receives the run-number-based fork version and publishes
+the Windows release; no new upstream release is required.
 
 ## Desktop updates
 
@@ -198,5 +199,5 @@ Before relying on the schedule:
 7. Confirm the PR merges with a merge commit and the immutable downstream tag is created.
 8. Confirm the GitHub Release is non-prerelease, marked latest, and contains `.exe`, `.blockmap`, and
    `latest.yml`.
-9. Manually install that first fork build, publish a higher fork revision, and confirm the update is
-   detected from the fork.
+9. Manually install that first fork build, merge another test PR, and confirm its higher fork
+   revision is detected from the fork.

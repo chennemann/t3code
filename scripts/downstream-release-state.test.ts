@@ -3,6 +3,7 @@ import * as Effect from "effect/Effect";
 
 import {
   DownstreamReleaseStateBaseMismatchError,
+  DownstreamReleaseVersionResolutionError,
   InvalidDownstreamReleaseVersionError,
   InvalidUpstreamReleaseTagError,
   UpstreamRepositoryMismatchError,
@@ -10,6 +11,7 @@ import {
   decodeDownstreamReleaseVersion,
   firstDownstreamVersion,
   incrementDownstreamVersion,
+  resolveDownstreamReleaseVersion,
   resolveUpstreamSync,
   validateUpstreamReleaseState,
 } from "./downstream-release-state.ts";
@@ -30,6 +32,93 @@ it.effect("creates the first fork version for a new upstream stable tag", () =>
 it.effect("increments a downstream-only revision on the same upstream base", () =>
   Effect.gen(function* () {
     assert.equal(yield* incrementDownstreamVersion("0.0.30-fork.9"), "0.0.30-fork.10");
+  }),
+);
+
+it.effect("uses the recorded revision when an upstream base has no fork release tag yet", () =>
+  Effect.gen(function* () {
+    const resolution = yield* resolveDownstreamReleaseVersion(recordedState);
+
+    assert.deepStrictEqual(resolution, {
+      status: "new",
+      version: "0.0.29-fork.2",
+      releaseTag: "v0.0.29-fork.2",
+    });
+  }),
+);
+
+it.effect("increments the highest immutable tag for a new main commit", () =>
+  Effect.gen(function* () {
+    const resolution = yield* resolveDownstreamReleaseVersion(recordedState, {
+      existingTags: ["v0.0.28-fork.40", "v0.0.29-fork.1", "v0.0.29-fork.3", "v0.0.29-fork.invalid"],
+    });
+
+    assert.deepStrictEqual(resolution, {
+      status: "new",
+      version: "0.0.29-fork.4",
+      releaseTag: "v0.0.29-fork.4",
+    });
+  }),
+);
+
+it.effect("uses the workflow sequence as a collision-free exact revision", () =>
+  Effect.gen(function* () {
+    const resolution = yield* resolveDownstreamReleaseVersion(recordedState, {
+      existingTags: ["v0.0.29-fork.50"],
+      revision: 41,
+    });
+
+    assert.deepStrictEqual(resolution, {
+      status: "new",
+      version: "0.0.29-fork.41",
+      releaseTag: "v0.0.29-fork.41",
+    });
+  }),
+);
+
+it.effect("rejects a workflow revision below the recorded version floor", () =>
+  Effect.gen(function* () {
+    const error = yield* resolveDownstreamReleaseVersion(recordedState, {
+      revision: 1,
+    }).pipe(Effect.flip);
+
+    assert.instanceOf(error, DownstreamReleaseVersionResolutionError);
+  }),
+);
+
+it.effect("reuses the target commit's immutable tag on a release retry", () =>
+  Effect.gen(function* () {
+    const resolution = yield* resolveDownstreamReleaseVersion(recordedState, {
+      existingTags: ["v0.0.29-fork.1", "v0.0.29-fork.2"],
+      targetTags: ["v0.0.29-fork.2"],
+    });
+
+    assert.deepStrictEqual(resolution, {
+      status: "retry",
+      version: "0.0.29-fork.2",
+      releaseTag: "v0.0.29-fork.2",
+    });
+  }),
+);
+
+it.effect("rejects a requested version that skips the next immutable revision", () =>
+  Effect.gen(function* () {
+    const error = yield* resolveDownstreamReleaseVersion(recordedState, {
+      existingTags: ["v0.0.29-fork.2"],
+      requestedVersion: "0.0.29-fork.4",
+    }).pipe(Effect.flip);
+
+    assert.instanceOf(error, DownstreamReleaseVersionResolutionError);
+  }),
+);
+
+it.effect("rejects multiple fork release tags on the same target commit", () =>
+  Effect.gen(function* () {
+    const error = yield* resolveDownstreamReleaseVersion(recordedState, {
+      targetTags: ["v0.0.29-fork.2", "v0.0.29-fork.3"],
+    }).pipe(Effect.flip);
+
+    assert.instanceOf(error, DownstreamReleaseVersionResolutionError);
   }),
 );
 

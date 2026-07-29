@@ -4,26 +4,16 @@ on:
   push:
     branches:
       - main
-    paths:
-      - ".github/upstream-release.json"
-      - "apps/server/package.json"
-      - "apps/desktop/package.json"
-      - "apps/web/package.json"
-      - "packages/contracts/package.json"
   workflow_dispatch:
     inputs:
       version:
-        description: "Exact downstream version (X.Y.Z-fork.N); defaults to recorded state"
+        description: "Expected exact version for a retry (X.Y.Z-fork.N)"
         required: false
         type: string
 
 permissions:
   contents: read
   id-token: none
-
-concurrency:
-  group: downstream-release-${{ github.ref }}
-  cancel-in-progress: false
 
 jobs:
   preflight:
@@ -39,7 +29,7 @@ jobs:
       - name: Checkout downstream main
         uses: actions/checkout@v6
         with:
-          ref: main
+          ref: ${{ github.event_name == 'push' && github.sha || 'main' }}
           fetch-depth: 0
 
       - name: Setup Vite+
@@ -49,38 +39,19 @@ jobs:
           cache: true
           run-install: true
 
-      - id: release
-        name: Validate state and package versions
-        shell: bash
-        env:
-          REQUESTED_VERSION: ${{ inputs.version }}
-        run: |
-          set -euo pipefail
-          args=(
-            validate-release
-            --state .github/upstream-release.json
-            --root "$GITHUB_WORKSPACE"
-            --github-output
-          )
-          if [[ -n "$REQUESTED_VERSION" ]]; then
-            args+=(--version "$REQUESTED_VERSION")
-          fi
-          node scripts/downstream-release-state.ts "${args[@]}"
-          vp install --frozen-lockfile --ignore-scripts
-
       - id: commit
         name: Verify release commit and remotes
         shell: bash
         env:
-          UPSTREAM_REPOSITORY: ${{ steps.release.outputs.repository }}
+          EVENT_SHA: ${{ github.event_name == 'push' && github.sha || '' }}
         run: |
           set -euo pipefail
-          if [[ "$GITHUB_REPOSITORY" == "$UPSTREAM_REPOSITORY" ]]; then
+          upstream_repository="$(
+            node scripts/downstream-release-state.ts validate --github-output
+            grep '^repository=' "$GITHUB_OUTPUT" | tail -n 1 | cut -d= -f2-
+          )"
+          if [[ "$GITHUB_REPOSITORY" == "$upstream_repository" ]]; then
             echo "The downstream release workflow cannot publish from the upstream repository." >&2
-            exit 1
-          fi
-          if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
-            echo "Downstream releases must run from main, not $GITHUB_REF." >&2
             exit 1
           fi
 
@@ -92,13 +63,55 @@ jobs:
           fi
 
           git fetch --no-tags origin main
+          git fetch --tags --no-force origin
           sha="$(git rev-parse HEAD)"
           main_sha="$(git rev-parse origin/main)"
-          if [[ "$sha" != "$main_sha" ]]; then
+          if [[ -n "$EVENT_SHA" && "$sha" != "$EVENT_SHA" ]]; then
+            echo "Release checkout $sha does not match push commit $EVENT_SHA." >&2
+            exit 1
+          fi
+          if [[ -n "$EVENT_SHA" ]] && ! git merge-base --is-ancestor "$sha" origin/main; then
+            echo "Push commit $sha is no longer on current origin/main." >&2
+            exit 1
+          fi
+          if [[ -z "$EVENT_SHA" && "$sha" != "$main_sha" ]]; then
             echo "Release checkout $sha is not current origin/main $main_sha." >&2
             exit 1
           fi
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - id: release
+        name: Resolve and validate fork release version
+        shell: bash
+        env:
+          RELEASE_SHA: ${{ steps.commit.outputs.sha }}
+          REQUESTED_VERSION: ${{ inputs.version }}
+          RELEASE_REVISION: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          existing_tags="$(git tag --list 'v*-fork.*')"
+          target_tags="$(git tag --points-at "$RELEASE_SHA" --list 'v*-fork.*')"
+          args=(
+            resolve-release
+            --state .github/upstream-release.json
+            --existing-tags "$existing_tags"
+            --target-tags "$target_tags"
+            --revision "$RELEASE_REVISION"
+            --github-output
+          )
+          if [[ -n "$REQUESTED_VERSION" ]]; then
+            args+=(--version "$REQUESTED_VERSION")
+          fi
+          node scripts/downstream-release-state.ts "${args[@]}"
+
+          version="$(grep '^version=' "$GITHUB_OUTPUT" | tail -n 1 | cut -d= -f2-)"
+          node scripts/update-release-package-versions.ts "$version"
+          vp install --lockfile-only --ignore-scripts
+          node scripts/downstream-release-state.ts validate-release \
+            --state .github/upstream-release.json \
+            --root "$GITHUB_WORKSPACE" \
+            --version "$version"
+          vp install --frozen-lockfile --ignore-scripts
 
       - id: existing
         name: Check immutable tag and release state
@@ -152,6 +165,13 @@ jobs:
           node-version-file: package.json
           cache: true
           run-install: true
+
+      - name: Prepare resolved package versions
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/update-release-package-versions.ts "${{ needs.preflight.outputs.version }}"
+          vp install --lockfile-only --ignore-scripts
 
       - name: Install Spectre-mitigated MSVC libs
         shell: pwsh
@@ -371,15 +391,30 @@ jobs:
 
           if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "Release $RELEASE_TAG already exists; leaving it unchanged."
-            exit 0
+          else
+            gh release create "$RELEASE_TAG" \
+              release-assets/*.exe \
+              release-assets/*.blockmap \
+              release-assets/*.yml \
+              --repo "$GITHUB_REPOSITORY" \
+              --verify-tag \
+              --title "T3 Code $RELEASE_TAG" \
+              --generate-notes \
+              --latest=false
           fi
 
-          gh release create "$RELEASE_TAG" \
-            release-assets/*.exe \
-            release-assets/*.blockmap \
-            release-assets/*.yml \
-            --repo "$GITHUB_REPOSITORY" \
-            --verify-tag \
-            --title "T3 Code $RELEASE_TAG" \
-            --generate-notes \
-            --latest
+          latest_tag="$(
+            gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
+              --jq '.[] | select(.draft == false and .prerelease == false) | .tag_name' |
+              grep -E '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)-fork\.[1-9][0-9]*$' |
+              sort -V |
+              tail -n 1
+          )"
+          latest_release_id="$(
+            gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${latest_tag}" --jq '.id'
+          )"
+          gh api \
+            --method PATCH \
+            "repos/${GITHUB_REPOSITORY}/releases/${latest_release_id}" \
+            -f make_latest=true >/dev/null
+          echo "Marked highest fork release ${latest_tag} as latest."
