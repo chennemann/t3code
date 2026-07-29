@@ -84,7 +84,7 @@ upstream synchronization PR.
 
 ## Importing an upstream release
 
-`.github/workflows/downstream-sync.yml` runs every six hours and can be dispatched manually. It:
+`.github/workflows/downstream-sync.yml` runs every three hours and can be dispatched manually. It:
 
 1. Reads the upstream repository's latest non-prerelease GitHub Release.
 2. Accepts only a tag matching `vX.Y.Z`.
