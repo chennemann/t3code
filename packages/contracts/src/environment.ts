@@ -51,6 +51,7 @@ export const ExecutionEnvironmentCapabilities = Schema.Struct({
       servers that must be relaunched manually (dev checkouts, Windows
       foreground runs, pre-update servers). */
   serverSelfUpdate: Schema.optionalKey(ServerSelfUpdateCapability),
+  portableClientProtocol: Schema.optionalKey(Schema.Literal(1)),
 });
 export type ExecutionEnvironmentCapabilities = typeof ExecutionEnvironmentCapabilities.Type;
 
