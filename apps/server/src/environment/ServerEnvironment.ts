@@ -1,4 +1,8 @@
-import { EnvironmentId, type ExecutionEnvironmentDescriptor } from "@t3tools/contracts";
+import {
+  EnvironmentId,
+  type ExecutionEnvironmentDescriptor,
+  PORTABLE_CLIENT_PROTOCOL_VERSION,
+} from "@t3tools/contracts";
 import { HostProcessArchitecture, HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
@@ -142,6 +146,7 @@ export const make = Effect.gen(function* () {
       connectionProbe: true,
       threadSettlement: true,
       threadSnooze: true,
+      portableClientProtocol: PORTABLE_CLIENT_PROTOCOL_VERSION,
       ...(serverSelfUpdate === null ? {} : { serverSelfUpdate }),
     },
   };
