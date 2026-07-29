@@ -6,9 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: write
-  contents: write
-  pull-requests: write
+  contents: read
 
 concurrency:
   group: downstream-upstream-release-sync
@@ -23,6 +21,18 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
+      - name: Require downstream automation token
+        shell: bash
+        env:
+          DOWNSTREAM_AUTOMATION_TOKEN: ${{ secrets.DOWNSTREAM_AUTOMATION_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$DOWNSTREAM_AUTOMATION_TOKEN" ]]; then
+            echo "DOWNSTREAM_AUTOMATION_TOKEN must contain a fine-grained personal access token." >&2
+            echo "The separate identity prevents synchronization PR workflows from requiring maintainer approval." >&2
+            exit 1
+          fi
+
       - name: Refuse to run in the upstream repository
         shell: bash
         run: |
@@ -37,6 +47,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+          token: ${{ secrets.DOWNSTREAM_AUTOMATION_TOKEN }}
 
       - name: Setup Vite+
         uses: voidzero-dev/setup-vp@v1
@@ -123,7 +134,7 @@ jobs:
         if: steps.resolution.outputs.status == 'needs-sync'
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.DOWNSTREAM_AUTOMATION_TOKEN }}
           UPSTREAM_TAG: ${{ steps.upstream.outputs.tag }}
         run: |
           set -euo pipefail
@@ -240,7 +251,7 @@ jobs:
         if: steps.resolution.outputs.status == 'needs-sync' && steps.pull_request.outputs.existing != 'true'
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.DOWNSTREAM_AUTOMATION_TOKEN }}
           BRANCH: ${{ steps.pull_request.outputs.branch }}
           UPSTREAM_TAG: ${{ steps.upstream.outputs.tag }}
           UPSTREAM_COMMIT: ${{ steps.upstream.outputs.commit }}
@@ -258,7 +269,7 @@ jobs:
           - Downstream version: \`${DOWNSTREAM_VERSION}\`
           - Upstream release: ${UPSTREAM_RELEASE_URL}
 
-          Required fork CI is dispatched for this branch. After it passes, this PR will auto-merge with a merge commit and the downstream Windows x64 release workflow will publish \`v${DOWNSTREAM_VERSION}\`.
+          Required fork CI runs for this branch. After it passes, this PR will auto-merge with a merge commit and the downstream Windows x64 release workflow will publish \`v${DOWNSTREAM_VERSION}\`.
           EOF
 
           pr_url="$(
@@ -272,32 +283,14 @@ jobs:
           echo "url=$pr_url" >> "$GITHUB_OUTPUT"
           echo "Created synchronization PR: $pr_url"
 
-      - name: Run CI and enable merge-commit auto-merge
+      - name: Enable merge-commit auto-merge
         if: steps.resolution.outputs.status == 'needs-sync'
         shell: bash
         env:
-          GH_TOKEN: ${{ github.token }}
-          BRANCH: ${{ steps.pull_request.outputs.branch }}
+          GH_TOKEN: ${{ secrets.DOWNSTREAM_AUTOMATION_TOKEN }}
           PR_URL: ${{ steps.pull_request.outputs.url || steps.create_pr.outputs.url }}
         run: |
           set -euo pipefail
-          head_sha="$(gh pr view "$PR_URL" --repo "$GITHUB_REPOSITORY" --json headRefOid --jq '.headRefOid')"
-          runs_json="$(
-            gh run list \
-              --repo "$GITHUB_REPOSITORY" \
-              --workflow ci.yml \
-              --branch "$BRANCH" \
-              --limit 20 \
-              --json headSha
-          )"
-          matching_runs="$(jq --arg sha "$head_sha" '[.[] | select(.headSha == $sha)] | length' <<<"$runs_json")"
-          if [[ "$matching_runs" == "0" ]]; then
-            gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"
-            echo "Dispatched CI for $BRANCH at $head_sha."
-          else
-            echo "CI has already been dispatched for $BRANCH at $head_sha."
-          fi
-
           auto_merge_method="$(
             gh pr view "$PR_URL" \
               --repo "$GITHUB_REPOSITORY" \

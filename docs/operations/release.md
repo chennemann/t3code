@@ -4,12 +4,14 @@ This repository maintains fork-specific commits on a stable downstream `main` wh
 stable releases from [`pingdotgg/t3code`](https://github.com/pingdotgg/t3code). Upstream releases are
 merged through pull requests; downstream `main` and published tags are never rewritten.
 
-The inherited `.github/workflows/release.yml` is restricted to `pingdotgg/t3code`. Fork releases are
-owned by:
+Fork releases are owned by:
 
 - `.github/workflows/downstream-sync.yml`
 - `.github/workflows/downstream-release.yml`
 - `.github/upstream-release.json`
+
+`.github/workflows/ci.yml` supplies the required protected-branch checks for synchronization PRs.
+No canonical upstream, relay, mobile, labeling, or PR utility workflows are retained in this fork.
 
 ## Repository setup
 
@@ -31,10 +33,16 @@ git remote add upstream https://github.com/pingdotgg/t3code.git
 If `upstream` already exists, use `git remote set-url upstream` instead. Protect downstream `main`,
 require synchronization changes to merge through pull requests, and do not permit force pushes.
 
-Repository Actions settings must allow GitHub Actions to create pull requests. The synchronization
-workflow uses `GITHUB_TOKEN` with only `contents: write` and `pull-requests: write`. If organization
-policy prohibits PR creation with `GITHUB_TOKEN`, replace that token with a narrowly scoped GitHub
-App token; do not grant automation a path to force-push `main`.
+Configure the `DOWNSTREAM_AUTOMATION_TOKEN` Actions secret with a fine-grained personal access token
+scoped only to this repository. It needs `Contents: read and write`, `Pull requests: read and write`,
+and `Workflows: read and write` permissions. The workflow permission is needed because an imported
+upstream release may update files below `.github/workflows`.
+
+The synchronization workflow deliberately does not create or update pull requests with
+`GITHUB_TOKEN`. GitHub places workflows triggered by those bot-authored pull requests into an
+approval-required state, which prevents unattended auto-merge. The separate identity starts normal
+pull-request CI without a per-release approval. Do not grant the automation a branch-protection
+bypass or a path to force-push `main`.
 
 Optional repository variable:
 
@@ -83,7 +91,7 @@ resets to `1` for a new upstream base.
 7. Merges the exact upstream release with `--no-ff`.
 8. Sets package manifests and state to `X.Y.Z-fork.1`, then refreshes `pnpm-lock.yaml`.
 9. Pushes only the short-lived branch and opens a PR into downstream `main`.
-10. Dispatches CI for the exact PR head and enables merge-commit auto-merge.
+10. Lets normal pull-request CI run and enables merge-commit auto-merge.
 
 If either the upstream merge or updating an existing sync branch conflicts, the workflow aborts the
 merge and exits before pushing. A maintainer must resolve the conflict on a normal branch or PR.
@@ -184,7 +192,8 @@ Before relying on the schedule:
 2. Dispatch the sync workflow with the recorded upstream release current; it should no-op.
 3. In an isolated test fork, record an older upstream state and dispatch sync.
 4. Confirm one branch and one PR are created without changing `main`.
-5. Confirm CI is dispatched for the sync branch and auto-merge waits for all three required checks.
+5. Confirm pull-request CI starts without an approval prompt and auto-merge waits for all three
+   required checks.
 6. Dispatch again if needed and confirm the existing PR is reused rather than duplicated.
 7. Confirm the PR merges with a merge commit and the immutable downstream tag is created.
 8. Confirm the GitHub Release is non-prerelease, marked latest, and contains `.exe`, `.blockmap`, and

@@ -106,9 +106,10 @@ and the next version check determine the result.
 
 ## Release Invariant
 
-The exact client version must exist as the `t3` npm package before a client carrying that version is
-published. The release workflow therefore makes the GitHub release depend on CLI publication, and
-the hosted web deployment depends on that release. See [Release Checklist](../operations/release.md#server-self-update-release-invariant).
+The canonical upstream release process requires the exact client version to exist as the `t3` npm
+package before a client carrying that version is published. This downstream fork publishes only the
+Windows desktop artifacts and does not publish the CLI or hosted web client, so its release workflow
+does not implement that invariant. See [Downstream fork releases](../operations/release.md).
 
 ## Source Map
 
