@@ -77,22 +77,11 @@ The generated tree is deliberately aligned with the store upload fields:
 Edit [mobile-showcase.config.ts](../../scripts/mobile-showcase.config.ts) to change simulator or AVD
 names, light/dark appearance, scenes, output directory, capture delay, Android ABI, or viewport.
 
-## Capture in GitHub Actions
+## Capture automation
 
-Run the `Mobile Showcase Screenshots` workflow from GitHub's Actions tab, choose `all`, `ios`, or
-`android`, and select `light`, `dark`, or `both`. The default dispatch captures both appearances and
-runs iOS and Android concurrently: iPhone and iPad capture on a
-12-vCPU Blacksmith macOS runner, while Android phone, 7-inch tablet, and 10-inch tablet capture on a
-16-vCPU Blacksmith Linux runner with a KVM-accelerated x86_64 emulator.
-
-Every job uploads its PNGs even when a later capture fails, which makes partial runs useful for
-diagnosis. Download `app-store-connect-screenshots` and `google-play-screenshots` from the workflow
-run's Artifacts section. Each job runs validation again immediately before upload. Artifacts are
-retained for 14 days.
-
-The workflow uses the same checked-in device and scene matrix as local capture. Android remains
-ARM64 by default for local Apple Silicon development; CI sets `T3_SHOWCASE_ANDROID_ABI=x86_64` so the
-debug APK matches its accelerated emulator.
+This downstream fork does not retain the GitHub Actions showcase workflow because its checked-in
+automation is limited to the upstream-sync and Windows release process. Run the commands above
+locally when store screenshots are needed.
 
 ## Fast iteration
 
