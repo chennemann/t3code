@@ -155,6 +155,17 @@ export class DownstreamReleaseVersionMismatchError extends Schema.TaggedErrorCla
   }
 }
 
+export class DownstreamReleaseVersionResolutionError extends Schema.TaggedErrorClass<DownstreamReleaseVersionResolutionError>()(
+  "DownstreamReleaseVersionResolutionError",
+  {
+    detail: Schema.String,
+  },
+) {
+  override get message(): string {
+    return `Could not resolve the fork release version: ${this.detail}`;
+  }
+}
+
 export class DownstreamReleaseManifestError extends Schema.TaggedErrorClass<DownstreamReleaseManifestError>()(
   "DownstreamReleaseManifestError",
   {
@@ -251,6 +262,123 @@ export const incrementDownstreamVersion = Effect.fn("incrementDownstreamVersion"
   const revision = Number(version.slice(separatorIndex + "-fork.".length));
   return `${version.slice(0, separatorIndex)}-fork.${revision + 1}`;
 });
+
+const downstreamRevision = (version: typeof DownstreamReleaseVersion.Type) =>
+  Number(version.slice(version.lastIndexOf("-fork.") + "-fork.".length));
+
+const downstreamVersionFromTag = (
+  tag: string,
+  upstreamBase: string,
+): typeof DownstreamReleaseVersion.Type | undefined => {
+  if (!tag.startsWith("v")) {
+    return undefined;
+  }
+  const version = tag.slice(1);
+  return downstreamVersionPattern.test(version) && downstreamBaseVersion(version) === upstreamBase
+    ? (version as typeof DownstreamReleaseVersion.Type)
+    : undefined;
+};
+
+interface ResolveDownstreamReleaseVersionOptions {
+  readonly existingTags?: ReadonlyArray<string> | undefined;
+  readonly targetTags?: ReadonlyArray<string> | undefined;
+  readonly requestedVersion?: string | undefined;
+  readonly revision?: number | undefined;
+}
+
+export const resolveDownstreamReleaseVersion = Effect.fn("resolveDownstreamReleaseVersion")(
+  function* (
+    currentState: UpstreamReleaseState,
+    options: ResolveDownstreamReleaseVersionOptions = {},
+  ) {
+    const state = yield* validateUpstreamReleaseState(currentState);
+    const upstreamBase = upstreamVersionFromTag(state.tag);
+    const revision = options.revision;
+    if (revision !== undefined && (!Number.isSafeInteger(revision) || revision < 1)) {
+      return yield* new DownstreamReleaseVersionResolutionError({
+        detail: `revision '${revision}' must be a positive safe integer.`,
+      });
+    }
+    if (revision !== undefined && revision < downstreamRevision(state.downstreamVersion)) {
+      return yield* new DownstreamReleaseVersionResolutionError({
+        detail: `revision '${revision}' is below the recorded version floor '${state.downstreamVersion}'.`,
+      });
+    }
+    const existingVersions = (options.existingTags ?? []).flatMap((tag) => {
+      const version = downstreamVersionFromTag(tag, upstreamBase);
+      return version === undefined ? [] : [version];
+    });
+    const targetVersions = [
+      ...new Set(
+        (options.targetTags ?? []).flatMap((tag) => {
+          const version = downstreamVersionFromTag(tag, upstreamBase);
+          return version === undefined ? [] : [version];
+        }),
+      ),
+    ];
+
+    if (targetVersions.length > 1) {
+      return yield* new DownstreamReleaseVersionResolutionError({
+        detail: `target commit already has multiple fork release tags (${targetVersions.join(", ")}).`,
+      });
+    }
+
+    const requestedVersion =
+      options.requestedVersion === undefined
+        ? undefined
+        : yield* decodeDownstreamReleaseVersion(options.requestedVersion);
+    if (
+      requestedVersion !== undefined &&
+      downstreamBaseVersion(requestedVersion) !== upstreamBase
+    ) {
+      return yield* new DownstreamReleaseVersionResolutionError({
+        detail: `requested version '${requestedVersion}' is not based on upstream tag '${state.tag}'.`,
+      });
+    }
+
+    const targetVersion = targetVersions[0];
+    if (targetVersion !== undefined) {
+      if (requestedVersion !== undefined && requestedVersion !== targetVersion) {
+        return yield* new DownstreamReleaseVersionResolutionError({
+          detail: `target commit is already tagged '${targetVersion}', not '${requestedVersion}'.`,
+        });
+      }
+      return {
+        status: "retry" as const,
+        version: targetVersion,
+        releaseTag: `v${targetVersion}`,
+      };
+    }
+
+    const highestExistingRevision = existingVersions.reduce(
+      (highest, version) => Math.max(highest, downstreamRevision(version)),
+      0,
+    );
+    const nextRevision =
+      revision ??
+      Math.max(downstreamRevision(state.downstreamVersion), highestExistingRevision + 1);
+    const nextVersion =
+      `${upstreamBase}-fork.${nextRevision}` as typeof DownstreamReleaseVersion.Type;
+
+    if (existingVersions.includes(nextVersion)) {
+      return yield* new DownstreamReleaseVersionResolutionError({
+        detail: `version '${nextVersion}' is already tagged on a different commit.`,
+      });
+    }
+
+    if (requestedVersion !== undefined && requestedVersion !== nextVersion) {
+      return yield* new DownstreamReleaseVersionResolutionError({
+        detail: `next available version is '${nextVersion}', not '${requestedVersion}'.`,
+      });
+    }
+
+    return {
+      status: "new" as const,
+      version: nextVersion,
+      releaseTag: `v${nextVersion}`,
+    };
+  },
+);
 
 export const validateUpstreamReleaseState = Effect.fn("validateUpstreamReleaseState")(function* (
   input: unknown,
@@ -407,11 +535,10 @@ export const validateDownstreamRelease = Effect.fn("validateDownstreamRelease")(
       ? state.downstreamVersion
       : yield* decodeDownstreamReleaseVersion(options.explicitVersion);
 
-  if (version !== state.downstreamVersion) {
-    return yield* new DownstreamReleaseVersionMismatchError({
-      expectedVersion: state.downstreamVersion,
-      actualVersion: version,
-      source: "the requested release version",
+  if (downstreamBaseVersion(version) !== upstreamVersionFromTag(state.tag)) {
+    return yield* new DownstreamReleaseStateBaseMismatchError({
+      tag: state.tag,
+      downstreamVersion: version,
     });
   }
 
@@ -488,6 +615,7 @@ const statePathFlag = Flag.string("state").pipe(
   Flag.withDescription("Path to the downstream upstream-release state file."),
 );
 const githubOutputFlag = Flag.boolean("github-output").pipe(Flag.withDefault(false));
+const splitTagList = (tags: string) => tags.split(/\r?\n/).filter((tag) => tag.length > 0);
 
 const validateCommand = Command.make(
   "validate",
@@ -574,6 +702,37 @@ const incrementCommand = Command.make(
     ),
 );
 
+const resolveReleaseCommand = Command.make(
+  "resolve-release",
+  {
+    statePath: statePathFlag,
+    existingTags: Flag.string("existing-tags").pipe(Flag.withDefault("")),
+    targetTags: Flag.string("target-tags").pipe(Flag.withDefault("")),
+    version: Flag.string("version").pipe(Flag.optional),
+    revision: Flag.integer("revision").pipe(Flag.optional),
+    githubOutput: githubOutputFlag,
+  },
+  ({ statePath, existingTags, targetTags, version, revision, githubOutput }) =>
+    Effect.gen(function* () {
+      const state = yield* readUpstreamReleaseState(statePath);
+      const release = yield* resolveDownstreamReleaseVersion(state, {
+        existingTags: splitTagList(existingTags),
+        targetTags: splitTagList(targetTags),
+        requestedVersion: Option.getOrUndefined(version),
+        revision: Option.getOrUndefined(revision),
+      });
+      if (githubOutput) {
+        yield* writeGitHubOutput({
+          status: release.status,
+          version: release.version,
+          release_tag: release.releaseTag,
+        });
+      } else {
+        yield* Console.log(JSON.stringify(release, null, 2));
+      }
+    }),
+);
+
 const validateReleaseCommand = Command.make(
   "validate-release",
   {
@@ -608,6 +767,7 @@ export const downstreamReleaseStateCommand = Command.make("downstream-release-st
     resolveSyncCommand,
     writeCommand,
     incrementCommand,
+    resolveReleaseCommand,
     validateReleaseCommand,
   ]),
 );

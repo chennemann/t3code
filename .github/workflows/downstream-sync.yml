@@ -269,7 +269,7 @@ jobs:
           - Downstream version: \`${DOWNSTREAM_VERSION}\`
           - Upstream release: ${UPSTREAM_RELEASE_URL}
 
-          Required fork CI runs for this branch. After it passes, this PR will auto-merge with a merge commit and the downstream Windows x64 release workflow will publish \`v${DOWNSTREAM_VERSION}\`.
+          Required fork CI runs for this branch. After it passes, this PR will auto-merge with a merge commit and the downstream Windows x64 release workflow will publish a new \`${DOWNSTREAM_VERSION%-fork.*}-fork.N\` version for that commit.
           EOF
 
           pr_url="$(

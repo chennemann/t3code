@@ -18,7 +18,8 @@ The fork keeps only the workflows required for its release process:
 - `.github/workflows/ci.yml` supplies the protected-branch checks required before an upstream sync
   PR can merge.
 - `.github/workflows/downstream-sync.yml` imports exact stable upstream tags through PRs.
-- `.github/workflows/downstream-release.yml` builds and publishes only Windows x64 fork releases.
+- `.github/workflows/downstream-release.yml` builds and publishes a Windows x64 fork release for
+  every commit pushed to protected downstream `main`.
 
 They use GitHub-hosted `ubuntu-24.04` and `windows-2025` runners. Relay deployment, canonical
 upstream releases, issue labeling, PR utilities, mobile EAS builds, and showcase capture are
