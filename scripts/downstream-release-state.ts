@@ -728,7 +728,9 @@ const resolveReleaseCommand = Command.make(
           release_tag: release.releaseTag,
         });
       } else {
-        yield* Console.log(JSON.stringify(release, null, 2));
+        yield* Console.log(
+          `status=${release.status}\nversion=${release.version}\nrelease_tag=${release.releaseTag}`,
+        );
       }
     }),
 );
