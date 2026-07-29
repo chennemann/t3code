@@ -2,6 +2,7 @@ import { ProjectId, ThreadId } from "@t3tools/contracts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 import {
+  clearThreadUnread,
   legacyProjectCwdPreferenceKey,
   markThreadUnread,
   markThreadVisited,
@@ -22,6 +23,7 @@ function makeUiState(overrides: Partial<UiState> = {}): UiState {
     projectExpandedById: {},
     projectOrder: [],
     threadLastVisitedAtById: {},
+    threadNeedsAttentionById: {},
     threadChangedFilesExpandedById: {},
     defaultAdvertisedEndpointKey: null,
     ...overrides,
@@ -39,7 +41,7 @@ describe("uiStateStore pure functions", () => {
     expect(markThreadVisited(visited, threadId, "not-a-date")).toBe(visited);
   });
 
-  it("marks a completed thread unread using the server completion timestamp", () => {
+  it("marks any thread unread independently of completion state", () => {
     const threadId = ThreadId.make("thread-1");
     const initialState = makeUiState({
       threadLastVisitedAtById: {
@@ -47,10 +49,22 @@ describe("uiStateStore pure functions", () => {
       },
     });
 
-    const next = markThreadUnread(initialState, threadId, "2026-02-25T12:30:00.000Z");
+    const next = markThreadUnread(initialState, threadId);
+    const visitedWhileMarked = markThreadVisited(next, threadId, "2026-02-25T12:40:00.000Z");
 
-    expect(next.threadLastVisitedAtById[threadId]).toBe("2026-02-25T12:29:59.999Z");
-    expect(markThreadUnread(next, threadId, null)).toBe(next);
+    expect(next.threadNeedsAttentionById[threadId]).toBe(true);
+    expect(next.threadLastVisitedAtById).toBe(initialState.threadLastVisitedAtById);
+    expect(visitedWhileMarked.threadNeedsAttentionById[threadId]).toBe(true);
+    expect(markThreadUnread(next, threadId)).toBe(next);
+  });
+
+  it("clears a manual unread marker without changing automatic visit state", () => {
+    const threadId = ThreadId.make("thread-1");
+    const unread = markThreadUnread(makeUiState(), threadId);
+    const cleared = clearThreadUnread(unread, threadId);
+
+    expect(cleared.threadNeedsAttentionById).toEqual({});
+    expect(clearThreadUnread(cleared, threadId)).toBe(cleared);
   });
 
   it("resolves project expansion from logical, physical, and legacy preference keys", () => {
@@ -158,6 +172,11 @@ describe("parsePersistedState", () => {
         "environment:thread-1": "2026-02-25T12:35:00.000Z",
         invalid: "not-a-date",
       },
+      threadNeedsAttentionById: {
+        "environment:thread-1": true,
+        read: false,
+        invalid: "yes" as unknown as boolean,
+      },
       defaultAdvertisedEndpointKey: "desktop-core:lan:http",
       threadChangedFilesExpansionVersion: 1,
       threadChangedFilesExpandedById: {
@@ -175,6 +194,9 @@ describe("parsePersistedState", () => {
       projectOrder: ["physical-b", "physical-a"],
       threadLastVisitedAtById: {
         "environment:thread-1": "2026-02-25T12:35:00.000Z",
+      },
+      threadNeedsAttentionById: {
+        "environment:thread-1": true,
       },
       defaultAdvertisedEndpointKey: "desktop-core:lan:http",
       threadChangedFilesExpandedById: {
@@ -264,7 +286,7 @@ describe("uiStateStore persistence", () => {
     vi.unstubAllGlobals();
   });
 
-  it("persists raw UI preferences including thread visit markers", () => {
+  it("persists raw UI preferences including thread attention markers", () => {
     const state = makeUiState({
       projectExpandedById: {
         logical: false,
@@ -272,6 +294,9 @@ describe("uiStateStore persistence", () => {
       projectOrder: ["physical-b", "physical-a"],
       threadLastVisitedAtById: {
         "environment:thread-1": "2026-02-25T12:35:00.000Z",
+      },
+      threadNeedsAttentionById: {
+        "environment:thread-2": true,
       },
       threadChangedFilesExpandedById: {
         "environment:thread-1": {
@@ -294,6 +319,9 @@ describe("uiStateStore persistence", () => {
       projectOrder: ["physical-b", "physical-a"],
       threadLastVisitedAtById: {
         "environment:thread-1": "2026-02-25T12:35:00.000Z",
+      },
+      threadNeedsAttentionById: {
+        "environment:thread-2": true,
       },
       defaultAdvertisedEndpointKey: "desktop-core:lan:http",
       threadChangedFilesExpansionVersion: 1,
