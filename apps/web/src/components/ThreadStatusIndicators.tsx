@@ -6,6 +6,7 @@ import {
 import type { VcsStatusResult } from "@t3tools/contracts";
 import { CloudIcon, FolderGit2Icon, GitPullRequestIcon, TerminalIcon } from "lucide-react";
 import { useMemo } from "react";
+import { useShallow } from "zustand/react/shallow";
 import { useEnvironment, usePrimaryEnvironmentId } from "../state/environments";
 import { useProject } from "../state/entities";
 import { useEnvironmentQuery } from "../state/query";
@@ -231,8 +232,12 @@ export function ThreadStatusLabel({
  */
 export function ThreadRowLeadingStatus({ thread }: { thread: SidebarThreadSummary }) {
   const threadRef = scopeThreadRef(thread.environmentId, thread.id);
-  const lastVisitedAt = useUiStateStore(
-    (state) => state.threadLastVisitedAtById[scopedThreadKey(threadRef)],
+  const threadKey = scopedThreadKey(threadRef);
+  const [lastVisitedAt, markedUnread] = useUiStateStore(
+    useShallow((state) => [
+      state.threadLastVisitedAtById[threadKey],
+      state.threadNeedsAttentionById[threadKey] === true,
+    ]),
   );
   const threadProject = useProject(
     useMemo(
@@ -259,6 +264,7 @@ export function ThreadRowLeadingStatus({ thread }: { thread: SidebarThreadSummar
     thread: {
       ...thread,
       lastVisitedAt,
+      markedUnread,
     },
   });
 

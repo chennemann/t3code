@@ -47,6 +47,7 @@ import {
   type ReactNode,
 } from "react";
 import { useParams, useRouter } from "@tanstack/react-router";
+import { useShallow } from "zustand/react/shallow";
 
 import {
   isAtomCommandInterrupted,
@@ -107,10 +108,10 @@ import { cn } from "~/lib/utils";
 import {
   formatWorkingDurationLabel,
   firstValidTimestampMs,
-  hasUnseenCompletion,
   isTrailingDoubleClick,
   orderItemsByPreferredIds,
   resolveAdjacentThreadId,
+  resolveThreadAttentionKind,
   resolveSettledTimestamp,
   resolveSidebarV2Status,
   resolveWorkingStartedAt,
@@ -421,13 +422,19 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
     [thread.environmentId, thread.id],
   );
   const threadKey = scopedThreadKey(threadRef);
-  const lastVisitedAt = useUiStateStore((state) => state.threadLastVisitedAtById[threadKey]);
+  const [lastVisitedAt, markedUnread] = useUiStateStore(
+    useShallow((state) => [
+      state.threadLastVisitedAtById[threadKey],
+      state.threadNeedsAttentionById[threadKey] === true,
+    ]),
+  );
   const isSelected = useThreadSelectionStore((state) => state.selectedThreadKeys.has(threadKey));
   const openPrLink = useOpenPrLink();
 
   // Same semantics as v1 (never-visited counts as read): flipping the beta
   // flag must not light up every historical thread as unread.
-  const isUnread = hasUnseenCompletion({ ...thread, lastVisitedAt });
+  const attentionKind = resolveThreadAttentionKind({ ...thread, lastVisitedAt, markedUnread });
+  const isUnread = attentionKind !== null;
   const status = resolveSidebarV2Status(thread);
   // A woken thread reappears at its original position (the sort is
   // deliberately static), so the pill has to carry the weight. Snoozing is
@@ -483,13 +490,19 @@ const SidebarV2Row = memo(function SidebarV2Row(props: {
                   icon: "woke" as const,
                   className: "text-amber-700 dark:text-amber-300",
                 }
-              : isUnread
+              : attentionKind === "unread"
                 ? {
-                    label: "Done",
-                    icon: "done" as const,
+                    label: "Unread",
+                    icon: null,
                     className: "text-emerald-700 dark:text-emerald-300",
                   }
-                : null;
+                : attentionKind === "completed"
+                  ? {
+                      label: "Done",
+                      icon: "done" as const,
+                      className: "text-emerald-700 dark:text-emerald-300",
+                    }
+                  : null;
 
   const gitCwd = thread.worktreePath ?? props.projectCwd;
   const gitStatus = useEnvironmentQuery(
@@ -1914,8 +1927,7 @@ export default function SidebarV2() {
       }
       if (clicked.value === "mark-unread") {
         for (const threadKey of threadKeys) {
-          const thread = threadByKeyRef.current.get(threadKey);
-          markThreadUnread(threadKey, thread?.latestTurn?.completedAt);
+          markThreadUnread(threadKey);
         }
         clearSelection();
         return;
@@ -2083,7 +2095,7 @@ export default function SidebarV2() {
             startThreadRename(threadRef, thread.title);
             return;
           case "mark-unread":
-            markThreadUnread(threadKey, thread.latestTurn?.completedAt);
+            markThreadUnread(threadKey);
             return;
           case "delete": {
             if (confirmThreadDelete) {

@@ -17,6 +17,7 @@ import {
   resolveSidebarStageBadgeLabel,
   resolveThreadRowClassName,
   resolveSidebarV2Status,
+  resolveThreadAttentionKind,
   resolveThreadStatusPill,
   resolveWorkingStartedAt,
   formatWorkingDurationLabel,
@@ -244,6 +245,20 @@ describe("hasUnseenCompletion", () => {
         session: null,
       }),
     ).toBe(false);
+  });
+
+  it("prefers an explicit unread marker without requiring a completed turn", () => {
+    expect(
+      resolveThreadAttentionKind({
+        hasActionableProposedPlan: false,
+        hasPendingApprovals: false,
+        hasPendingUserInput: false,
+        interactionMode: "default",
+        latestTurn: null,
+        markedUnread: true,
+        session: null,
+      }),
+    ).toBe("unread");
   });
 });
 
@@ -897,6 +912,22 @@ describe("resolveThreadStatusPill", () => {
         },
       }),
     ).toBeNull();
+  });
+
+  it("shows unread for an explicitly marked thread without a completed turn", () => {
+    expect(
+      resolveThreadStatusPill({
+        thread: {
+          ...baseThread,
+          markedUnread: true,
+          session: {
+            ...baseThread.session,
+            status: "ready",
+            activeTurnId: null,
+          },
+        },
+      }),
+    ).toMatchObject({ label: "Unread", pulse: false });
   });
 
   it("shows completed when there is an unseen completion and no active blocker", () => {

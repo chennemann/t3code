@@ -1207,6 +1207,7 @@ function ChatViewContent(props: ChatViewProps) {
   );
   const activeServerThread = serverThread ?? loadingServerThread;
   const markThreadVisited = useUiStateStore((store) => store.markThreadVisited);
+  const clearThreadUnread = useUiStateStore((store) => store.clearThreadUnread);
   const activeThreadLastVisitedAt = useUiStateStore(
     (store) => store.threadLastVisitedAtById[routeThreadKey],
   );
@@ -1823,6 +1824,13 @@ function ChatViewContent(props: ChatViewProps) {
     },
     [openOrReuseProjectDraftThread],
   );
+
+  // Clear an explicit reminder only when this route is entered. Deliberately
+  // do not subscribe to the reminder itself: marking the currently open
+  // thread unread must remain sticky until the user leaves and opens it again.
+  useEffect(() => {
+    clearThreadUnread(routeThreadKey);
+  }, [clearThreadUnread, routeThreadKey]);
 
   useEffect(() => {
     if (!serverThread?.id) return;
