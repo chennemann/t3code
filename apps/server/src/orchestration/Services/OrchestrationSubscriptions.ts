@@ -67,7 +67,7 @@ function keepMonotonic<A, E, R>(
   );
 }
 
-function isThreadDetailEvent(event: OrchestrationEvent) {
+export function isThreadDetailEvent(event: OrchestrationEvent) {
   return (
     event.type === "thread.message-sent" ||
     event.type === "thread.proposed-plan-upserted" ||

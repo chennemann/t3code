@@ -24,6 +24,7 @@ import {
   OrchestrationDispatchCommandError,
   OrchestrationGetFullThreadDiffError,
   OrchestrationGetSnapshotError,
+  OrchestrationSearchThreadsError,
   OrchestrationGetTurnDiffError,
   ORCHESTRATION_WS_METHODS,
   type ProjectEntriesFailure,
@@ -31,10 +32,13 @@ import {
   type ProjectFileOperation,
   ProjectListEntriesError,
   ProjectReadFileError,
+  ProjectSearchContentsError,
   ProjectSearchEntriesError,
   ProjectWriteFileError,
   RelayClientInstallFailedError,
   type RelayClientInstallProgressEvent,
+  type ServerSelfUpdateError,
+  type ServerSelfUpdateProgressEvent,
   type FilesystemBrowseFailure,
   FilesystemBrowseError,
   AssetWorkspaceContextNotFoundError,
@@ -60,6 +64,7 @@ import * as ExternalLauncher from "./process/externalLauncher.ts";
 import { normalizeDispatchCommand } from "./orchestration/Normalizer.ts";
 import * as OrchestrationEngine from "./orchestration/Services/OrchestrationEngine.ts";
 import * as OrchestrationSubscriptions from "./orchestration/Services/OrchestrationSubscriptions.ts";
+export { isThreadDetailEvent } from "./orchestration/Services/OrchestrationSubscriptions.ts";
 import * as ProjectionSnapshotQuery from "./orchestration/Services/ProjectionSnapshotQuery.ts";
 import {
   observeRpcEffect as instrumentRpcEffect,
@@ -79,6 +84,7 @@ import { issueAssetUrl } from "./assets/AssetAccess.ts";
 import * as PortScanner from "./preview/PortScanner.ts";
 import * as WorkspaceEntries from "./workspace/WorkspaceEntries.ts";
 import * as WorkspaceFileSystem from "./workspace/WorkspaceFileSystem.ts";
+import { readWorkflowScript } from "./orchestration/workflowScriptQuery.ts";
 import * as WorkspacePaths from "./workspace/WorkspacePaths.ts";
 import * as VcsStatusBroadcaster from "./vcs/VcsStatusBroadcaster.ts";
 import * as VcsProvisioningService from "./vcs/VcsProvisioningService.ts";
@@ -656,7 +662,16 @@ const makeWsRpcLayer = (
 
             if (bootstrap?.prepareWorktree) {
               let worktreeBaseRef = bootstrap.prepareWorktree.baseBranch;
-              if (bootstrap.prepareWorktree.startFromOrigin) {
+              // "Start from origin" is a stored default; repos without an
+              // origin remote fall back to the local base branch instead of
+              // failing the whole bootstrap on `git fetch origin`.
+              const startFromOrigin =
+                bootstrap.prepareWorktree.startFromOrigin === true &&
+                (yield* gitWorkflow.remoteExists({
+                  cwd: bootstrap.prepareWorktree.projectCwd,
+                  remoteName: "origin",
+                }));
+              if (startFromOrigin) {
                 yield* gitWorkflow.fetchRemote({
                   cwd: bootstrap.prepareWorktree.projectCwd,
                   remoteName: "origin",
@@ -833,6 +848,12 @@ const makeWsRpcLayer = (
             ),
             { "rpc.aggregate": "orchestration" },
           ),
+        [ORCHESTRATION_WS_METHODS.getWorkflowScript]: (input) =>
+          observeRpcEffect(
+            ORCHESTRATION_WS_METHODS.getWorkflowScript,
+            readWorkflowScript({ scriptPath: input.scriptPath }),
+            { "rpc.aggregate": "orchestration" },
+          ),
         [ORCHESTRATION_WS_METHODS.getTurnDiff]: (input) =>
           observeRpcEffect(
             ORCHESTRATION_WS_METHODS.getTurnDiff,
@@ -855,6 +876,20 @@ const makeWsRpcLayer = (
                 (cause) =>
                   new OrchestrationGetFullThreadDiffError({
                     message: "Failed to load full thread diff",
+                    cause,
+                  }),
+              ),
+            ),
+            { "rpc.aggregate": "orchestration" },
+          ),
+        [ORCHESTRATION_WS_METHODS.searchThreads]: (input) =>
+          observeRpcEffect(
+            ORCHESTRATION_WS_METHODS.searchThreads,
+            projectionSnapshotQuery.searchThreads(input).pipe(
+              Effect.mapError(
+                (cause) =>
+                  new OrchestrationSearchThreadsError({
+                    message: "Failed to search threads",
                     cause,
                   }),
               ),
@@ -919,6 +954,33 @@ const makeWsRpcLayer = (
           observeRpcEffect(WS_METHODS.serverUpdateServer, serverSelfUpdate.update(input), {
             "rpc.aggregate": "server",
           }),
+        [WS_METHODS.serverUpdateServerWithProgress]: (input) =>
+          observeRpcStream(
+            WS_METHODS.serverUpdateServerWithProgress,
+            Stream.callback<ServerSelfUpdateProgressEvent, ServerSelfUpdateError>((queue) =>
+              serverSelfUpdate
+                .update(input, (stage) =>
+                  Queue.offer(queue, {
+                    type: "progress",
+                    stage,
+                  }).pipe(Effect.asVoid),
+                )
+                .pipe(
+                  Effect.flatMap((result) =>
+                    Queue.offer(queue, {
+                      type: "complete",
+                      result,
+                    }),
+                  ),
+                  Effect.catchTags({
+                    ServerSelfUpdateError: (error) => Queue.fail(queue, error),
+                  }),
+                  Effect.andThen(Queue.end(queue)),
+                  Effect.forkScoped,
+                ),
+            ),
+            { "rpc.aggregate": "server" },
+          ),
         [WS_METHODS.serverUpsertKeybinding]: (rule) =>
           observeRpcEffect(
             WS_METHODS.serverUpsertKeybinding,
@@ -1098,6 +1160,23 @@ const makeWsRpcLayer = (
               Effect.mapError(
                 (cause) =>
                   new ProjectSearchEntriesError({
+                    cwd: input.cwd,
+                    queryLength: input.query.length,
+                    limit: input.limit,
+                    ...projectEntriesFailureContext(cause),
+                    cause,
+                  }),
+              ),
+            ),
+            { "rpc.aggregate": "workspace" },
+          ),
+        [WS_METHODS.projectsSearchContents]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.projectsSearchContents,
+            workspaceEntries.searchContents(input).pipe(
+              Effect.mapError(
+                (cause) =>
+                  new ProjectSearchContentsError({
                     cwd: input.cwd,
                     queryLength: input.query.length,
                     limit: input.limit,
@@ -1328,6 +1407,12 @@ const makeWsRpcLayer = (
           observeRpcEffect(WS_METHODS.reviewGetDiffPreview, review.getDiffPreview(input), {
             "rpc.aggregate": "review",
           }),
+        [WS_METHODS.reviewGetDiffFileContents]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.reviewGetDiffFileContents,
+            review.getDiffFileContents(input),
+            { "rpc.aggregate": "review" },
+          ),
         [WS_METHODS.terminalOpen]: (input) =>
           observeRpcEffect(WS_METHODS.terminalOpen, terminalManager.open(input), {
             "rpc.aggregate": "terminal",
