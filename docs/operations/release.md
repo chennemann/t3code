@@ -76,11 +76,12 @@ Downstream versions and immutable tags use:
 v0.0.29-fork.1
 ```
 
-The numeric fork revision is the downstream release workflow's monotonically increasing GitHub run
-number. This makes revisions unique and correctly ordered even when multiple merges build in
-parallel. The revision therefore may contain gaps and does not reset when the upstream base changes.
-The recorded `downstreamVersion` remains a same-base floor and is normally reset to `fork.1` by an
-upstream synchronization PR.
+The numeric fork revision is the commit's first-parent position from the most recent merge that
+changed `.github/upstream-release.json` or the downstream release versioning policy. The baseline
+merge is `fork.1`; later downstream `main` commits on that baseline are `fork.2`, `fork.3`, and so on.
+Tags from an older baseline are excluded, so a corrected policy can restart a sequence without
+moving an immutable tag. This makes revisions deterministic and collision-free even when releases
+build in parallel, while resetting each new upstream base to `fork.1`.
 
 ## Importing an upstream release
 
@@ -113,11 +114,12 @@ PR produces a fork release for its resulting commit. It can also be dispatched m
 optional exact `X.Y.Z-fork.N` input is an assertion for a retry, not a way to skip or choose a new
 revision.
 
-For a new commit, the workflow combines the recorded upstream base with its GitHub run number. For
-example, run 42 on the `v0.0.29` base publishes `0.0.29-fork.42`. A rerun discovers the immutable tag
-already attached to the target commit and reuses that version. Releasable package manifests and the
-lockfile are updated only in the isolated build checkout, so the release workflow does not create a
-follow-up commit or trigger itself recursively.
+For a new commit, the workflow combines the recorded upstream base with that baseline-relative
+first-parent position. For example, the `v0.0.29` baseline merge publishes `0.0.29-fork.1`, and the
+next downstream merge publishes `0.0.29-fork.2`. A rerun discovers the immutable tag already attached
+to the target commit and reuses that version. Releasable package manifests and the lockfile are
+updated only in the isolated build checkout, so the release workflow does not create a follow-up
+commit or trigger itself recursively.
 
 Preflight requires:
 
