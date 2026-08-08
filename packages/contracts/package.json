@@ -1,6 +1,6 @@
 {
   "name": "@t3tools/contracts",
-  "version": "0.0.31-fork.1",
+  "version": "0.0.32-fork.1",
   "private": true,
   "files": [
     "dist"
@@ -21,8 +21,6 @@
     }
   },
   "scripts": {
-    "artifacts:portable": "node scripts/generatePortableClientArtifacts.ts",
-    "artifacts:portable:check": "node scripts/generatePortableClientArtifacts.ts --check",
     "typecheck": "tsgo --noEmit",
     "test": "vp test run"
   },

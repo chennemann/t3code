@@ -67,7 +67,7 @@ function keepMonotonic<A, E, R>(
   );
 }
 
-function isThreadDetailEvent(event: OrchestrationEvent) {
+export function isThreadDetailEvent(event: OrchestrationEvent) {
   return (
     event.type === "thread.message-sent" ||
     event.type === "thread.proposed-plan-upserted" ||
@@ -316,27 +316,32 @@ export const make = Effect.gen(function* () {
             live,
           )
         : live;
-    const snapshot = snapshots.getThreadDetailSnapshot(input.threadId).pipe(
-      Effect.mapError(
-        (cause) =>
-          new OrchestrationGetSnapshotError({
-            message: `Failed to load thread ${input.threadId}`,
-            cause,
+    const snapshot = snapshots
+      .getThreadDetailSnapshot(
+        input.threadId,
+        input.turnLimit === undefined ? undefined : { turnLimit: input.turnLimit },
+      )
+      .pipe(
+        Effect.mapError(
+          (cause) =>
+            new OrchestrationGetSnapshotError({
+              message: `Failed to load thread ${input.threadId}`,
+              cause,
+            }),
+        ),
+        Effect.flatMap(
+          Option.match({
+            onNone: () =>
+              Effect.fail(
+                new OrchestrationGetSnapshotError({
+                  message: `Thread ${input.threadId} was not found`,
+                  cause: input.threadId,
+                }),
+              ),
+            onSome: (value) => Effect.succeed(projectThreadDetailSnapshot(value)),
           }),
-      ),
-      Effect.flatMap(
-        Option.match({
-          onNone: () =>
-            Effect.fail(
-              new OrchestrationGetSnapshotError({
-                message: `Thread ${input.threadId} was not found`,
-                cause: input.threadId,
-              }),
-            ),
-          onSome: (value) => Effect.succeed(projectThreadDetailSnapshot(value)),
-        }),
-      ),
-    );
+        ),
+      );
     if (input.afterSequence !== undefined) {
       const head = yield* engine.latestSequence;
       const gap = head - input.afterSequence;
