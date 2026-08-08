@@ -61,7 +61,7 @@ it.effect("increments the highest immutable tag for a new main commit", () =>
   }),
 );
 
-it.effect("uses the workflow sequence as a collision-free exact revision", () =>
+it.effect("uses the baseline sequence as a collision-free minimum revision", () =>
   Effect.gen(function* () {
     const resolution = yield* resolveDownstreamReleaseVersion(recordedState, {
       existingTags: ["v0.0.29-fork.50"],
@@ -70,19 +70,45 @@ it.effect("uses the workflow sequence as a collision-free exact revision", () =>
 
     assert.deepStrictEqual(resolution, {
       status: "new",
-      version: "0.0.29-fork.41",
-      releaseTag: "v0.0.29-fork.41",
+      version: "0.0.29-fork.51",
+      releaseTag: "v0.0.29-fork.51",
     });
   }),
 );
 
-it.effect("rejects a workflow revision below the recorded version floor", () =>
+it.effect("keeps the recorded floor when the baseline sequence is lower", () =>
   Effect.gen(function* () {
-    const error = yield* resolveDownstreamReleaseVersion(recordedState, {
+    const resolution = yield* resolveDownstreamReleaseVersion(recordedState, {
       revision: 1,
-    }).pipe(Effect.flip);
+    });
 
-    assert.instanceOf(error, DownstreamReleaseVersionResolutionError);
+    assert.deepStrictEqual(resolution, {
+      status: "new",
+      version: "0.0.29-fork.2",
+      releaseTag: "v0.0.29-fork.2",
+    });
+  }),
+);
+
+it.effect("starts a new upstream baseline at fork revision one", () =>
+  Effect.gen(function* () {
+    const resolution = yield* resolveDownstreamReleaseVersion(
+      {
+        ...recordedState,
+        tag: "v0.0.30",
+        downstreamVersion: "0.0.30-fork.1",
+      },
+      {
+        existingTags: ["v0.0.29-fork.99"],
+        revision: 1,
+      },
+    );
+
+    assert.deepStrictEqual(resolution, {
+      status: "new",
+      version: "0.0.30-fork.1",
+      releaseTag: "v0.0.30-fork.1",
+    });
   }),
 );
 

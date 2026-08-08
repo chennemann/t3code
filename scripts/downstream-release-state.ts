@@ -299,11 +299,6 @@ export const resolveDownstreamReleaseVersion = Effect.fn("resolveDownstreamRelea
         detail: `revision '${revision}' must be a positive safe integer.`,
       });
     }
-    if (revision !== undefined && revision < downstreamRevision(state.downstreamVersion)) {
-      return yield* new DownstreamReleaseVersionResolutionError({
-        detail: `revision '${revision}' is below the recorded version floor '${state.downstreamVersion}'.`,
-      });
-    }
     const existingVersions = (options.existingTags ?? []).flatMap((tag) => {
       const version = downstreamVersionFromTag(tag, upstreamBase);
       return version === undefined ? [] : [version];
@@ -354,9 +349,11 @@ export const resolveDownstreamReleaseVersion = Effect.fn("resolveDownstreamRelea
       (highest, version) => Math.max(highest, downstreamRevision(version)),
       0,
     );
-    const nextRevision =
-      revision ??
-      Math.max(downstreamRevision(state.downstreamVersion), highestExistingRevision + 1);
+    const nextRevision = Math.max(
+      revision ?? 1,
+      downstreamRevision(state.downstreamVersion),
+      highestExistingRevision + 1,
+    );
     const nextVersion =
       `${upstreamBase}-fork.${nextRevision}` as typeof DownstreamReleaseVersion.Type;
 

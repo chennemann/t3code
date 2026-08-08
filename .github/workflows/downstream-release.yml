@@ -86,17 +86,56 @@ jobs:
         env:
           RELEASE_SHA: ${{ steps.commit.outputs.sha }}
           REQUESTED_VERSION: ${{ inputs.version }}
-          RELEASE_REVISION: ${{ github.run_number }}
         run: |
           set -euo pipefail
-          existing_tags="$(git tag --list 'v*-fork.*')"
           target_tags="$(git tag --points-at "$RELEASE_SHA" --list 'v*-fork.*')"
+          baseline_sha="$(
+            git log \
+              --first-parent \
+              --max-count=1 \
+              --format=%H \
+              "$RELEASE_SHA" \
+              -- .github/upstream-release.json .github/workflows/downstream-release.yml
+          )"
+          if [[ -z "$baseline_sha" ]]; then
+            echo "Could not find the upstream baseline commit for $RELEASE_SHA." >&2
+            exit 1
+          fi
+          baseline_position="$(
+            git rev-list \
+              --first-parent \
+              --count \
+              "${baseline_sha}^..${RELEASE_SHA}"
+          )"
+          upstream_tag="$(node -p "require('./.github/upstream-release.json').tag")"
+          upstream_base="${upstream_tag#v}"
+          existing_tags="$(
+            while IFS= read -r candidate_tag; do
+              candidate_sha="$(git rev-list -n 1 "$candidate_tag")"
+              if git merge-base --is-ancestor "$baseline_sha" "$candidate_sha"; then
+                printf '%s\n' "$candidate_tag"
+              fi
+            done < <(git tag --list "v${upstream_base}-fork.*")
+          )"
+          baseline_revision=1
+          while IFS= read -r baseline_tag; do
+            candidate_revision="${baseline_tag##*.}"
+            if [[ "$candidate_revision" =~ ^[1-9][0-9]*$ ]] &&
+              (( candidate_revision > baseline_revision )); then
+              baseline_revision="$candidate_revision"
+            fi
+          done < <(
+            git tag \
+              --points-at "$baseline_sha" \
+              --list "v${upstream_base}-fork.*"
+          )
+          release_revision="$((baseline_revision + baseline_position - 1))"
           args=(
             resolve-release
             --state .github/upstream-release.json
             --existing-tags "$existing_tags"
             --target-tags "$target_tags"
-            --revision "$RELEASE_REVISION"
+            --revision "$release_revision"
             --github-output
           )
           if [[ -n "$REQUESTED_VERSION" ]]; then
