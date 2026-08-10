@@ -195,6 +195,7 @@ const testEnvironmentDescriptor = {
   serverVersion: "0.0.0-test",
   capabilities: {
     repositoryIdentity: true,
+    portableClientProtocol: 1 as const,
   },
 };
 const makeDefaultOrchestrationReadModel = () => {
@@ -1552,6 +1553,123 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
       // Desktop, so port-scoped: instances scan for a free port and share
       // 127.0.0.1, and cookies are not scoped by port.
       assert.isTrue(body.auth.sessionCookieName.startsWith("t3_session_"));
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("serves bearer-authenticated portable client configuration", () =>
+    Effect.gen(function* () {
+      yield* buildAppUnderTest();
+      const { body: token } = yield* exchangeAccessToken();
+      const url = yield* getHttpServerUrl("/api/environment/client-config");
+      const response = yield* fetchEffect(url, {
+        headers: { authorization: `Bearer ${token.access_token ?? ""}` },
+      });
+      const body = yield* responseJsonEffect<{
+        readonly protocolVersion: number;
+        readonly shellResumeCompletionMarker: boolean;
+        readonly threadResumeCompletionMarker: boolean;
+      }>(response);
+      assert.equal(response.status, 200);
+      assert.equal(body.protocolVersion, 1);
+      assert.equal(body.shellResumeCompletionMarker, true);
+      assert.equal(body.threadResumeCompletionMarker, true);
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("rejects an unauthenticated portable shell stream", () =>
+    Effect.gen(function* () {
+      yield* buildAppUnderTest();
+      const url = yield* getHttpServerUrl("/api/orchestration/shell/stream");
+      const response = yield* fetchEffect(url);
+      assert.equal(response.status, 401);
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("requires a portable stream resume cursor", () =>
+    Effect.gen(function* () {
+      yield* buildAppUnderTest();
+      const { body: token } = yield* exchangeAccessToken();
+      const url = yield* getHttpServerUrl("/api/orchestration/shell/stream");
+      const response = yield* fetchEffect(url, {
+        headers: { authorization: `Bearer ${token.access_token ?? ""}` },
+      });
+      assert.equal(response.status, 400);
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("frames a portable shell snapshot as SSE", () =>
+    Effect.gen(function* () {
+      yield* buildAppUnderTest();
+      const { body: token } = yield* exchangeAccessToken();
+      const url = yield* getHttpServerUrl(
+        "/api/orchestration/shell/stream?afterSequence=10&requestCompletionMarker=true",
+      );
+      const response = yield* fetchEffect(url, {
+        headers: { authorization: `Bearer ${token.access_token ?? ""}` },
+      });
+      const firstChunk = yield* response.stream.pipe(
+        Stream.decodeText,
+        Stream.runHead,
+        Effect.map(Option.getOrThrow),
+      );
+      assert.equal(response.status, 200);
+      assert.equal(response.headers["content-type"], "text/event-stream; charset=utf-8");
+      assert.equal(response.headers["x-accel-buffering"], "no");
+      assert.include(firstChunk, "event: message\n");
+      assert.include(firstChunk, 'data: {"kind":"snapshot"');
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("frames a portable focused-thread snapshot as SSE", () =>
+    Effect.gen(function* () {
+      const thread = makeDefaultOrchestrationReadModel().threads[0]!;
+      yield* buildAppUnderTest({
+        layers: {
+          projectionSnapshotQuery: {
+            getThreadDetailSnapshot: () =>
+              Effect.succeed(Option.some({ snapshotSequence: 1, thread })),
+          },
+        },
+      });
+      const { body: token } = yield* exchangeAccessToken();
+      const url = yield* getHttpServerUrl(
+        `/api/orchestration/threads/${defaultThreadId}/stream?afterSequence=10`,
+      );
+      const response = yield* fetchEffect(url, {
+        headers: { authorization: `Bearer ${token.access_token ?? ""}` },
+      });
+      const firstChunk = yield* response.stream.pipe(
+        Stream.decodeText,
+        Stream.runHead,
+        Effect.map(Option.getOrThrow),
+      );
+      assert.equal(response.status, 200);
+      assert.include(firstChunk, "id: 1\n");
+      assert.include(firstChunk, 'data: {"kind":"snapshot"');
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("cancels a portable subscription when the HTTP client disconnects", () =>
+    Effect.gen(function* () {
+      const canceled = yield* Deferred.make<void>();
+      yield* buildAppUnderTest({
+        layers: {
+          orchestrationEngine: {
+            streamDomainEvents: Stream.never.pipe(
+              Stream.ensuring(Deferred.succeed(canceled, undefined)),
+            ),
+          },
+        },
+      });
+      const { body: token } = yield* exchangeAccessToken();
+      const url = yield* getHttpServerUrl(
+        "/api/orchestration/shell/stream?afterSequence=10&requestCompletionMarker=true",
+      );
+      const response = yield* fetchEffect(url, {
+        headers: { authorization: `Bearer ${token.access_token ?? ""}` },
+      });
+      yield* response.stream.pipe(Stream.runHead);
+      yield* Deferred.await(canceled);
     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
   );
 
