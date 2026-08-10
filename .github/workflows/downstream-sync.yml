@@ -1,0 +1,93 @@
+name: Rebase fork onto upstream
+
+on:
+  schedule:
+    - cron: "17 */3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: downstream-upstream-rebase
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_REPOSITORY: ${{ vars.UPSTREAM_REPOSITORY || 'pingdotgg/t3code' }}
+
+jobs:
+  rebase:
+    name: Mirror main and rebase fork
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Require downstream automation token
+        shell: bash
+        env:
+          DOWNSTREAM_AUTOMATION_TOKEN: ${{ secrets.DOWNSTREAM_AUTOMATION_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$DOWNSTREAM_AUTOMATION_TOKEN" || {
+            echo "DOWNSTREAM_AUTOMATION_TOKEN must contain a fine-grained personal access token." >&2
+            exit 1
+          }
+
+      - name: Refuse to run in the upstream repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" != "$UPSTREAM_REPOSITORY" || {
+            echo "This downstream-only workflow cannot run in $UPSTREAM_REPOSITORY." >&2
+            exit 1
+          }
+
+      - name: Checkout fork
+        uses: actions/checkout@v6
+        with:
+          ref: fork
+          fetch-depth: 0
+          token: ${{ secrets.DOWNSTREAM_AUTOMATION_TOKEN }}
+
+      - name: Mirror upstream main and rebase fork
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.DOWNSTREAM_AUTOMATION_TOKEN }}
+        run: |
+          set -euo pipefail
+          expected_origin="https://github.com/${GITHUB_REPOSITORY}.git"
+          origin_url="$(git remote get-url origin)"
+          if [[ "$origin_url" != "$expected_origin" && "$origin_url" != "${expected_origin%.git}" ]]; then
+            echo "Refusing to push: origin is '$origin_url', expected '$expected_origin'." >&2
+            exit 1
+          fi
+
+          upstream_url="https://github.com/${UPSTREAM_REPOSITORY}.git"
+          git remote add upstream "$upstream_url"
+          git fetch --no-tags upstream main
+          git fetch --no-tags origin main fork
+
+          old_main="$(git rev-parse origin/main)"
+          upstream_main="$(git rev-parse upstream/main)"
+          if [[ "$old_main" != "$upstream_main" ]]; then
+            git push origin \
+              --force-with-lease="refs/heads/main:${old_main}" \
+              "${upstream_main}:refs/heads/main"
+          fi
+
+          if git merge-base --is-ancestor upstream/main fork; then
+            echo "fork is already based on current upstream main."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          old_fork="$(git rev-parse origin/fork)"
+          git switch fork
+          if ! git rebase upstream/main; then
+            git rebase --abort
+            echo "fork conflicts with current upstream main; no fork changes were pushed." >&2
+            exit 1
+          fi
+          git push origin \
+            --force-with-lease="refs/heads/fork:${old_fork}" \
+            HEAD:refs/heads/fork
