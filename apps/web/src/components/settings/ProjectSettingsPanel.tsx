@@ -20,12 +20,20 @@ import type {
   T3ProjectFileScript,
   ThreadEnvMode,
 } from "@t3tools/contracts";
+import { WORKSPACE_PROJECT_ID } from "@t3tools/contracts";
 import { resolveEnvModeLabel } from "../BranchToolbar.logic";
 import { createModelSelection } from "@t3tools/shared/model";
 import { DEFAULT_RESOLVED_KEYBINDINGS } from "@t3tools/shared/keybindings";
 import { useCanGoBack, useNavigate } from "@tanstack/react-router";
 import * as Cause from "effect/Cause";
-import { ChevronDownIcon, CopyIcon, PlusIcon, SettingsIcon, Trash2Icon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  CopyIcon,
+  FolderOpenIcon,
+  PlusIcon,
+  SettingsIcon,
+  Trash2Icon,
+} from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -73,6 +81,11 @@ import { useAtomCommand } from "../../state/use-atom-command";
 import { ProviderModelPicker } from "../chat/ProviderModelPicker";
 import { TraitsPicker } from "../chat/TraitsPicker";
 import { ProjectFavicon } from "../ProjectFavicon";
+
+function localFileUrl(path: string): string {
+  const normalized = path.replace(/\\/g, "/");
+  return encodeURI(normalized.startsWith("/") ? `file://${normalized}` : `file:///${normalized}`);
+}
 import {
   EMPTY_PROJECT_SCRIPT_INPUT,
   editorRequestForScript,
@@ -953,6 +966,21 @@ function ProjectDetail({ group }: { group: SidebarProjectSnapshot }) {
                 </code>
                 <CopyIcon className="size-4 shrink-0 opacity-60 group-hover:opacity-100" />
               </button>
+              {isElectron && selectedCheckout.id === WORKSPACE_PROJECT_ID ? (
+                <button
+                  aria-label="Open Workspace directory"
+                  className="inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md border-l border-border/60 text-muted-foreground outline-none hover:bg-accent/60 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+                  title="Open Workspace directory"
+                  type="button"
+                  onClick={() => {
+                    void readLocalApi()?.shell.openExternal(
+                      localFileUrl(selectedCheckout.workspaceRoot),
+                    );
+                  }}
+                >
+                  <FolderOpenIcon className="size-4" />
+                </button>
+              ) : null}
               <div className="shrink-0 border-l border-border/60 px-2 tabular-nums">
                 {selectedCheckoutThreadCount === 1
                   ? "1 thread"
@@ -1001,7 +1029,7 @@ function ProjectDetail({ group }: { group: SidebarProjectSnapshot }) {
               </Select>
             }
           />
-          {group.memberProjects.length > 1 ? (
+          {group.memberProjects.length > 1 && selectedCheckout.id !== WORKSPACE_PROJECT_ID ? (
             <SettingsRow
               title="Remove checkout"
               description="Removes this checkout and its threads from the project group. Files on disk are not touched."
@@ -1141,6 +1169,7 @@ function ProjectDetail({ group }: { group: SidebarProjectSnapshot }) {
           ) : null}
         </SettingsSection>
 
+        {group.memberProjects.some((member) => member.id === WORKSPACE_PROJECT_ID) ? null : (
         <SettingsSection title="Danger">
           <SettingsRow
             title={
@@ -1162,6 +1191,7 @@ function ProjectDetail({ group }: { group: SidebarProjectSnapshot }) {
             }
           />
         </SettingsSection>
+        )}
       </SettingsPageContainer>
 
       <ProjectScriptEditorDialog
