@@ -16,6 +16,7 @@ import {
   type ThreadId,
   type TurnId,
   type KeybindingCommand,
+  WORKSPACE_PROJECT_ID,
   OrchestrationThreadActivity,
   ProviderInteractionMode,
   ProviderDriverKind,
@@ -363,6 +364,7 @@ import {
   shouldWriteThreadErrorToCurrentServerThread,
   startNewThreadForProject,
   waitForStartedServerThread,
+  workspaceThreadPath,
 } from "./ChatView.logic";
 import type { ThreadSyncPhase } from "../threadSync";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
@@ -405,6 +407,7 @@ const EMPTY_ACTIVITIES: OrchestrationThreadActivity[] = [];
 const EMPTY_PROVIDERS: ServerProvider[] = [];
 const EMPTY_PROVIDER_SKILLS: ServerProvider["skills"] = [];
 const EMPTY_PENDING_USER_INPUT_ANSWERS: Record<string, PendingUserInputDraftAnswer> = {};
+
 function useDraftHeroLayoutTransition(isDraftHeroState: boolean) {
   const transitionGroupRef = useRef<HTMLDivElement | null>(null);
   const composerAnchorRef = useRef<HTMLDivElement | null>(null);
@@ -5830,7 +5833,11 @@ function ChatViewContent(props: ChatViewProps) {
                       runtimeMode,
                       interactionMode,
                       branch: activeThreadBranch,
-                      worktreePath: activeThread.worktreePath,
+                      worktreePath:
+                        activeThread.worktreePath ??
+                        (activeProject.id === WORKSPACE_PROJECT_ID
+                          ? workspaceThreadPath(activeProject.workspaceRoot, threadIdForSend)
+                          : null),
                       createdAt: activeThread.createdAt,
                     },
                   }
@@ -6393,7 +6400,11 @@ function ChatViewContent(props: ChatViewProps) {
         runtimeMode,
         interactionMode: "default",
         branch: activeThreadBranch,
-        worktreePath: activeThread.worktreePath,
+        worktreePath:
+          activeThread.worktreePath ??
+          (activeProject.id === WORKSPACE_PROJECT_ID
+            ? workspaceThreadPath(activeProject.workspaceRoot, nextThreadId)
+            : null),
         createdAt,
       },
     });

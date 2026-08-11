@@ -1,4 +1,9 @@
-import { EnvironmentId, ProjectId, ProviderInstanceId } from "@t3tools/contracts";
+import {
+  EnvironmentId,
+  ProjectId,
+  ProviderInstanceId,
+  WORKSPACE_PROJECT_ID,
+} from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
@@ -51,6 +56,28 @@ function makeProject(overrides: Partial<Project> = {}): Project {
 }
 
 describe("environment grouping", () => {
+  it("keeps the managed Workspace separate from a containing repository", () => {
+    const project = makeProject({ repositoryIdentity });
+    const workspace = makeProject({
+      id: WORKSPACE_PROJECT_ID,
+      title: "Workspace",
+      workspaceRoot: "/tmp/shared-repo/.t3/workspace",
+      repositoryIdentity,
+    });
+
+    const snapshots = buildSidebarProjectSnapshots({
+      projects: [project, workspace],
+      settings: defaultGroupingSettings,
+      primaryEnvironmentId,
+      resolveEnvironmentLabel: () => null,
+    });
+
+    expect(snapshots.map((snapshot) => snapshot.displayName)).toEqual([
+      "Workspace",
+      "shared-repo",
+    ]);
+  });
+
   it("groups matching repository identities across environments", () => {
     const primary = makeProject({ repositoryIdentity });
     const remote = makeProject({

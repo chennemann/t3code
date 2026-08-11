@@ -27,6 +27,7 @@ import {
   type EnvironmentId,
   type FilesystemBrowseResult,
   type OrchestrationShellSnapshot,
+  WORKSPACE_PROJECT_ID,
   type ProjectId,
   type SourceControlDiscoveryResult,
   type SourceControlProviderKind,
@@ -1161,19 +1162,17 @@ function OpenCommandPaletteDialog(props: {
       (primarySnapshot?.todos ?? [])
         .filter((todo) => todo.completedAt === null)
         .map((todo) => {
-          const project = todo.projectId
-            ? projects.find(
+          const project = projects.find(
                 (candidate) =>
                   candidate.environmentId === primaryEnvironmentId &&
-                  candidate.id === todo.projectId,
-              )
-            : null;
+                  candidate.id === (todo.projectId ?? WORKSPACE_PROJECT_ID),
+              );
           return {
             kind: "action" as const,
             value: `new-thread-from-todo:${todo.id}`,
             searchTerms: [todo.title, todo.notes, project?.title ?? "Inbox"],
             title: todo.title,
-            description: project?.title ?? "Inbox · Assign a project first",
+            description: project?.title ?? "Inbox",
             icon: <ListTodoIcon className={ITEM_ICON_CLASS} />,
             disabled: project === null,
             run: async () => {
