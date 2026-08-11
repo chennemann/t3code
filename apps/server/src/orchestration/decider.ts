@@ -224,6 +224,85 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
   Crypto.Crypto
 > {
   switch (command.type) {
+    case "todo.create": {
+      if ((readModel.todos ?? []).some((todo) => todo.id === command.todoId)) {
+        return yield* new OrchestrationCommandInvariantError({
+          commandType: command.type,
+          detail: `Todo '${command.todoId}' already exists.`,
+        });
+      }
+      if (command.projectId != null) {
+        yield* requireProject({ readModel, command, projectId: command.projectId });
+      }
+      return {
+        ...(yield* withEventBase({
+          aggregateKind: "todo",
+          aggregateId: command.todoId,
+          occurredAt: command.createdAt,
+          commandId: command.commandId,
+        })),
+        type: "todo.created",
+        payload: {
+          todoId: command.todoId,
+          title: command.title,
+          notes: command.notes ?? "",
+          projectId: command.projectId ?? null,
+          createdAt: command.createdAt,
+          updatedAt: command.createdAt,
+        },
+      };
+    }
+    case "todo.update": {
+      const todo = (readModel.todos ?? []).find((candidate) => candidate.id === command.todoId);
+      if (todo === undefined) {
+        return yield* new OrchestrationCommandInvariantError({
+          commandType: command.type,
+          detail: `Todo '${command.todoId}' does not exist.`,
+        });
+      }
+      if (command.projectId != null) {
+        yield* requireProject({ readModel, command, projectId: command.projectId });
+      }
+      const occurredAt = yield* nowIso;
+      return {
+        ...(yield* withEventBase({
+          aggregateKind: "todo",
+          aggregateId: command.todoId,
+          occurredAt,
+          commandId: command.commandId,
+        })),
+        type: "todo.updated",
+        payload: {
+          todoId: command.todoId,
+          ...(command.title !== undefined ? { title: command.title } : {}),
+          ...(command.notes !== undefined ? { notes: command.notes } : {}),
+          ...(command.projectId !== undefined ? { projectId: command.projectId } : {}),
+          ...(command.completed !== undefined
+            ? { completedAt: command.completed ? occurredAt : null }
+            : {}),
+          updatedAt: occurredAt,
+        },
+      };
+    }
+    case "todo.delete": {
+      if (!(readModel.todos ?? []).some((todo) => todo.id === command.todoId)) {
+        return yield* new OrchestrationCommandInvariantError({
+          commandType: command.type,
+          detail: `Todo '${command.todoId}' does not exist.`,
+        });
+      }
+      const occurredAt = yield* nowIso;
+      return {
+        ...(yield* withEventBase({
+          aggregateKind: "todo",
+          aggregateId: command.todoId,
+          occurredAt,
+          commandId: command.commandId,
+        })),
+        type: "todo.deleted",
+        payload: { todoId: command.todoId },
+      };
+    }
     case "project.create": {
       yield* requireProjectAbsent({
         readModel,
@@ -307,13 +386,16 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
       const activeThreads = listThreadsByProjectId(readModel, command.projectId).filter(
         (thread) => thread.deletedAt === null,
       );
+      const assignedTodos = (readModel.todos ?? []).filter(
+        (todo) => todo.projectId === command.projectId,
+      );
       if (activeThreads.length > 0 && command.force !== true) {
         return yield* new OrchestrationCommandInvariantError({
           commandType: command.type,
           detail: `Project '${command.projectId}' is not empty and cannot be deleted without force=true.`,
         });
       }
-      if (activeThreads.length > 0) {
+      if (activeThreads.length > 0 || assignedTodos.length > 0) {
         return yield* decideCommandSequence({
           readModel,
           commands: [
@@ -322,6 +404,14 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
                 type: "thread.delete",
                 commandId: command.commandId,
                 threadId: thread.id,
+              }),
+            ),
+            ...assignedTodos.map(
+              (todo): Extract<OrchestrationCommand, { type: "todo.update" }> => ({
+                type: "todo.update",
+                commandId: command.commandId,
+                todoId: todo.id,
+                projectId: null,
               }),
             ),
             {

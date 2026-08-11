@@ -158,6 +158,7 @@ export const make = Effect.gen(function* () {
       threadPinReorder: true,
       threadTitleRegeneration: true,
       threadPullRequestLinking: true,
+      todos: true,
       portableClientProtocol: PORTABLE_CLIENT_PROTOCOL_VERSION,
       ...(serverSelfUpdate === null ? {} : { serverSelfUpdate }),
       ...(serverSelfUpdate === "boot-service" ? { serverSelfUpdateProgress: true } : {}),
