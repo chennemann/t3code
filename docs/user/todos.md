@@ -4,7 +4,7 @@ To-dos provide one place to capture work before it becomes a thread. Open **To-d
 
 New items start in the Inbox unless you choose a project. Assigning a project groups the item with that project without attaching it to an existing thread. Titles, notes, and project assignments can be changed at any time.
 
-Use **Start** to open a new draft thread in the assigned project. The title and notes become the draft prompt so they can still be refined before sending. Items can be completed, reopened, or deleted independently of the thread.
+Use **Start** to open a new draft thread in the assigned project. Inbox items start threads in T3 Code's managed Workspace. The title and notes become the draft prompt so they can still be refined before sending. Items can be completed, reopened, or deleted independently of the thread.
 
 To-dos are stored by the connected T3 environment and stay available across clients connected to that environment.
 

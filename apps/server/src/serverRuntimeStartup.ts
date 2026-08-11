@@ -2,6 +2,7 @@ import {
   CommandId,
   DEFAULT_MODEL,
   DEFAULT_PROVIDER_INTERACTION_MODE,
+  WORKSPACE_PROJECT_ID,
   type ModelSelection,
   ProjectId,
   ProviderInstanceId,
@@ -13,6 +14,7 @@ import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
 import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
@@ -251,6 +253,39 @@ export const resolveAutoBootstrapWelcomeTargets = Effect.gen(function* () {
   } as const;
 });
 
+export const ensureWorkspaceProject = Effect.gen(function* () {
+  const serverConfig = yield* ServerConfig.ServerConfig;
+  const projectionReadModelQuery = yield* ProjectionSnapshotQuery.ProjectionSnapshotQuery;
+  const orchestrationEngine = yield* OrchestrationEngine.OrchestrationEngineService;
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  const crypto = yield* Crypto.Crypto;
+  const existing = yield* projectionReadModelQuery.getProjectShellById(WORKSPACE_PROJECT_ID);
+  if (Option.isSome(existing)) {
+    if (existing.value.title !== "Workspace") {
+      yield* orchestrationEngine.dispatch({
+        type: "project.meta.update",
+        commandId: CommandId.make(yield* crypto.randomUUIDv4),
+        projectId: WORKSPACE_PROJECT_ID,
+        title: "Workspace",
+      });
+    }
+    return;
+  }
+
+  const workspaceRoot = path.join(serverConfig.baseDir, "workspace");
+  yield* fs.makeDirectory(workspaceRoot, { recursive: true });
+  yield* orchestrationEngine.dispatch({
+    type: "project.create",
+    commandId: CommandId.make(yield* crypto.randomUUIDv4),
+    projectId: WORKSPACE_PROJECT_ID,
+    title: "Workspace",
+    workspaceRoot,
+    defaultModelSelection: getAutoBootstrapDefaultModelSelection(),
+    createdAt: DateTime.formatIso(yield* DateTime.now),
+  });
+});
+
 const resolveStartupBrowserTarget = Effect.gen(function* () {
   const serverConfig = yield* ServerConfig.ServerConfig;
   const serverAuth = yield* EnvironmentAuth.EnvironmentAuth;
@@ -352,6 +387,11 @@ export const make = (options?: StartupOptions) =>
           yield* orchestrationReactor.start().pipe(Scope.provide(reactorScope));
           yield* providerSessionReaper.start().pipe(Scope.provide(reactorScope));
         }),
+      );
+
+      yield* runStartupPhase(
+        "workspace.ensure",
+        ensureWorkspaceProject.pipe(Effect.provideService(Crypto.Crypto, crypto)),
       );
 
       const welcomeBase = yield* resolveWelcomeBase;

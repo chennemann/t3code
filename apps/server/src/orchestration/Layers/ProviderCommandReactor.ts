@@ -11,6 +11,7 @@ import {
   type ProviderSession,
   type RuntimeMode,
   type TurnId,
+  WORKSPACE_PROJECT_ID,
 } from "@t3tools/contracts";
 import { isTemporaryWorktreeBranch, WORKTREE_BRANCH_PREFIX } from "@t3tools/shared/git";
 import * as Cache from "effect/Cache";
@@ -19,6 +20,7 @@ import * as Crypto from "effect/Crypto";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Equal from "effect/Equal";
+import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
@@ -312,6 +314,7 @@ function buildGeneratedWorktreeBranchName(raw: string): string {
 
 const make = Effect.gen(function* () {
   const crypto = yield* Crypto.Crypto;
+  const fs = yield* FileSystem.FileSystem;
   const orchestrationEngine = yield* OrchestrationEngineService;
   const projectionSnapshotQuery = yield* ProjectionSnapshotQuery;
   const providerService = yield* ProviderService;
@@ -616,6 +619,9 @@ const make = Effect.gen(function* () {
       thread,
       projects: project ? [project] : [],
     });
+    if (thread.projectId === WORKSPACE_PROJECT_ID && effectiveCwd) {
+      yield* fs.makeDirectory(effectiveCwd, { recursive: true });
+    }
 
     const startProviderSession = (input?: {
       readonly resumeCursor?: unknown;

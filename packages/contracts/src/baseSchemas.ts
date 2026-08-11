@@ -56,6 +56,8 @@ export const ThreadId = makeEntityId("ThreadId");
 export type ThreadId = typeof ThreadId.Type;
 export const ProjectId = makeEntityId("ProjectId");
 export type ProjectId = typeof ProjectId.Type;
+/** Reserved environment-local project backing Workspace threads and unassigned to-dos. */
+export const WORKSPACE_PROJECT_ID = ProjectId.make("t3-inbox");
 export const TodoId = makeEntityId("TodoId");
 export type TodoId = typeof TodoId.Type;
 export const EnvironmentId = makeEntityId("EnvironmentId");
