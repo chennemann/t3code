@@ -20,6 +20,10 @@ This is a living glossary for T3 Code. It explains what common terms mean in thi
 
 The top-level workspace record in the app. In [the orchestration contracts][1], a project has a `workspaceRoot` and a title. It does not contain threads: `OrchestrationProject` and `OrchestrationThread` are separate arrays on the read model, and a project can have zero threads. See [workspace-layout.md][2].
 
+#### To-do
+
+An environment-wide work idea that can optionally be assigned to a project. A to-do remains independent of threads until the user starts a draft from it.
+
 #### Workspace root
 
 The root filesystem path for a project. In [the orchestration model][1], it is the base directory for branches and optional worktrees. See [workspace-layout.md][2].

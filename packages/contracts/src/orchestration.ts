@@ -17,6 +17,7 @@ import {
   ProjectId,
   ProviderItemId,
   ThreadId,
+  TodoId,
   TrimmedNonEmptyString,
   TrimmedString,
   TurnId,
@@ -235,6 +236,17 @@ export const OrchestrationProject = Schema.Struct({
 });
 export type OrchestrationProject = typeof OrchestrationProject.Type;
 
+export const OrchestrationTodo = Schema.Struct({
+  id: TodoId,
+  title: TrimmedNonEmptyString,
+  notes: TrimmedString,
+  projectId: Schema.NullOr(ProjectId),
+  completedAt: Schema.NullOr(IsoDateTime),
+  createdAt: IsoDateTime,
+  updatedAt: IsoDateTime,
+});
+export type OrchestrationTodo = typeof OrchestrationTodo.Type;
+
 export const OrchestrationMessageRole = Schema.Literals(["user", "assistant", "system"]);
 export type OrchestrationMessageRole = typeof OrchestrationMessageRole.Type;
 
@@ -412,6 +424,7 @@ export const OrchestrationReadModel = Schema.Struct({
   snapshotSequence: NonNegativeInt,
   projects: Schema.Array(OrchestrationProject),
   threads: Schema.Array(OrchestrationThread),
+  todos: Schema.optional(Schema.Array(OrchestrationTodo)),
   updatedAt: IsoDateTime,
 });
 export type OrchestrationReadModel = typeof OrchestrationReadModel.Type;
@@ -487,6 +500,7 @@ export const OrchestrationShellSnapshot = Schema.Struct({
   snapshotSequence: NonNegativeInt,
   projects: Schema.Array(OrchestrationProjectShell),
   threads: Schema.Array(OrchestrationThreadShell),
+  todos: Schema.optional(Schema.Array(OrchestrationTodo)),
   updatedAt: IsoDateTime,
 });
 export type OrchestrationShellSnapshot = typeof OrchestrationShellSnapshot.Type;
@@ -511,6 +525,16 @@ export const OrchestrationShellStreamEvent = Schema.Union([
     kind: Schema.Literal("thread-removed"),
     sequence: NonNegativeInt,
     threadId: ThreadId,
+  }),
+  Schema.Struct({
+    kind: Schema.Literal("todo-upserted"),
+    sequence: NonNegativeInt,
+    todo: OrchestrationTodo,
+  }),
+  Schema.Struct({
+    kind: Schema.Literal("todo-removed"),
+    sequence: NonNegativeInt,
+    todoId: TodoId,
   }),
 ]);
 export type OrchestrationShellStreamEvent = typeof OrchestrationShellStreamEvent.Type;
@@ -648,6 +672,32 @@ const ProjectDeleteCommand = Schema.Struct({
   commandId: CommandId,
   projectId: ProjectId,
   force: Schema.optional(Schema.Boolean),
+});
+
+const TodoCreateCommand = Schema.Struct({
+  type: Schema.Literal("todo.create"),
+  commandId: CommandId,
+  todoId: TodoId,
+  title: TrimmedNonEmptyString,
+  notes: Schema.optional(TrimmedString),
+  projectId: Schema.optional(Schema.NullOr(ProjectId)),
+  createdAt: IsoDateTime,
+});
+
+const TodoUpdateCommand = Schema.Struct({
+  type: Schema.Literal("todo.update"),
+  commandId: CommandId,
+  todoId: TodoId,
+  title: Schema.optional(TrimmedNonEmptyString),
+  notes: Schema.optional(TrimmedString),
+  projectId: Schema.optional(Schema.NullOr(ProjectId)),
+  completed: Schema.optional(Schema.Boolean),
+});
+
+const TodoDeleteCommand = Schema.Struct({
+  type: Schema.Literal("todo.delete"),
+  commandId: CommandId,
+  todoId: TodoId,
 });
 
 const ThreadCreateCommand = Schema.Struct({
@@ -899,6 +949,9 @@ const DispatchableClientOrchestrationCommand = Schema.Union([
   ProjectCreateCommand,
   ProjectMetaUpdateCommand,
   ProjectDeleteCommand,
+  TodoCreateCommand,
+  TodoUpdateCommand,
+  TodoDeleteCommand,
   ThreadCreateCommand,
   ThreadDeleteCommand,
   ThreadArchiveCommand,
@@ -927,6 +980,9 @@ export const ClientOrchestrationCommand = Schema.Union([
   ProjectCreateCommand,
   ProjectMetaUpdateCommand,
   ProjectDeleteCommand,
+  TodoCreateCommand,
+  TodoUpdateCommand,
+  TodoDeleteCommand,
   ThreadCreateCommand,
   ThreadDeleteCommand,
   ThreadArchiveCommand,
@@ -1045,6 +1101,9 @@ export const OrchestrationEventType = Schema.Literals([
   "project.created",
   "project.meta-updated",
   "project.deleted",
+  "todo.created",
+  "todo.updated",
+  "todo.deleted",
   "thread.created",
   "thread.deleted",
   "thread.archived",
@@ -1074,7 +1133,7 @@ export const OrchestrationEventType = Schema.Literals([
 ]);
 export type OrchestrationEventType = typeof OrchestrationEventType.Type;
 
-export const OrchestrationAggregateKind = Schema.Literals(["project", "thread"]);
+export const OrchestrationAggregateKind = Schema.Literals(["project", "thread", "todo"]);
 export type OrchestrationAggregateKind = typeof OrchestrationAggregateKind.Type;
 export const OrchestrationActorKind = Schema.Literals(["client", "server", "provider"]);
 
@@ -1107,6 +1166,26 @@ export const ProjectDeletedPayload = Schema.Struct({
   projectId: ProjectId,
   deletedAt: IsoDateTime,
 });
+
+export const TodoCreatedPayload = Schema.Struct({
+  todoId: TodoId,
+  title: TrimmedNonEmptyString,
+  notes: TrimmedString,
+  projectId: Schema.NullOr(ProjectId),
+  createdAt: IsoDateTime,
+  updatedAt: IsoDateTime,
+});
+
+export const TodoUpdatedPayload = Schema.Struct({
+  todoId: TodoId,
+  title: Schema.optional(TrimmedNonEmptyString),
+  notes: Schema.optional(TrimmedString),
+  projectId: Schema.optional(Schema.NullOr(ProjectId)),
+  completedAt: Schema.optional(Schema.NullOr(IsoDateTime)),
+  updatedAt: IsoDateTime,
+});
+
+export const TodoDeletedPayload = Schema.Struct({ todoId: TodoId });
 
 export const ThreadCreatedPayload = Schema.Struct({
   threadId: ThreadId,
@@ -1318,7 +1397,7 @@ const EventBaseFields = {
   sequence: NonNegativeInt,
   eventId: EventId,
   aggregateKind: OrchestrationAggregateKind,
-  aggregateId: Schema.Union([ProjectId, ThreadId]),
+  aggregateId: Schema.Union([ProjectId, ThreadId, TodoId]),
   occurredAt: IsoDateTime,
   commandId: Schema.NullOr(CommandId),
   causationEventId: Schema.NullOr(EventId),
@@ -1341,6 +1420,21 @@ export const OrchestrationEvent = Schema.Union([
     ...EventBaseFields,
     type: Schema.Literal("project.deleted"),
     payload: ProjectDeletedPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("todo.created"),
+    payload: TodoCreatedPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("todo.updated"),
+    payload: TodoUpdatedPayload,
+  }),
+  Schema.Struct({
+    ...EventBaseFields,
+    type: Schema.Literal("todo.deleted"),
+    payload: TodoDeletedPayload,
   }),
   Schema.Struct({
     ...EventBaseFields,

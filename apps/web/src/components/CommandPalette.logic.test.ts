@@ -60,6 +60,11 @@ describe("reduceCommandPaletteUiState", () => {
       mode: "command",
       openIntent: { kind: "new-thread-in" },
     });
+    expect(reduceCommandPaletteUiState(filesOpen, { _tag: "OpenNewThreadInTodos" })).toEqual({
+      open: true,
+      mode: "command",
+      openIntent: { kind: "new-thread-in-todos" },
+    });
   });
 
   it("resets to command mode for dialog-driven opens and closes", () => {
@@ -201,6 +206,7 @@ describe("buildThreadActionItems", () => {
       query: "project",
       isInSubmenu: false,
       projectSearchItems: [],
+      todoSearchItems: [],
       threadSearchItems: threadItems,
     });
 
@@ -234,6 +240,7 @@ describe("buildThreadActionItems", () => {
       query: "project",
       isInSubmenu: false,
       projectSearchItems: [],
+      todoSearchItems: [],
       threadSearchItems: [],
     });
 

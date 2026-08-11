@@ -57,6 +57,7 @@ import {
 
 export const ORCHESTRATION_PROJECTOR_NAMES = {
   projects: "projection.projects",
+  todos: "projection.todos",
   threads: "projection.threads",
   threadMessages: "projection.thread-messages",
   threadProposedPlans: "projection.thread-proposed-plans",
@@ -551,6 +552,44 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
           return;
       }
     });
+
+    const applyTodosProjection: ProjectorDefinition["apply"] = Effect.fn(
+      "applyTodosProjection",
+    )(function* (event, _attachmentSideEffects) {
+      switch (event.type) {
+        case "todo.created":
+          yield* sql`
+            INSERT INTO projection_todos (
+              todo_id, title, notes, project_id, completed_at, created_at, updated_at
+            ) VALUES (
+              ${event.payload.todoId}, ${event.payload.title}, ${event.payload.notes},
+              ${event.payload.projectId}, NULL, ${event.payload.createdAt}, ${event.payload.updatedAt}
+            )
+            ON CONFLICT (todo_id) DO UPDATE SET
+              title = excluded.title, notes = excluded.notes, project_id = excluded.project_id,
+              created_at = excluded.created_at, updated_at = excluded.updated_at
+          `;
+          return;
+        case "todo.updated":
+          yield* sql`
+            UPDATE projection_todos SET
+              title = COALESCE(${event.payload.title ?? null}, title),
+              notes = COALESCE(${event.payload.notes ?? null}, notes),
+              project_id = CASE WHEN ${event.payload.projectId !== undefined ? 1 : 0} = 1
+                THEN ${event.payload.projectId ?? null} ELSE project_id END,
+              completed_at = CASE WHEN ${event.payload.completedAt !== undefined ? 1 : 0} = 1
+                THEN ${event.payload.completedAt ?? null} ELSE completed_at END,
+              updated_at = ${event.payload.updatedAt}
+            WHERE todo_id = ${event.payload.todoId}
+          `;
+          return;
+        case "todo.deleted":
+          yield* sql`DELETE FROM projection_todos WHERE todo_id = ${event.payload.todoId}`;
+          return;
+        default:
+          return;
+      }
+    }, Effect.mapError(toPersistenceSqlError("ProjectionPipeline.todos:query")));
 
     const refreshThreadShellSummary = Effect.fn("refreshThreadShellSummary")(function* (
       threadId: ThreadId,
@@ -1607,6 +1646,10 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
     });
 
     const projectors: ReadonlyArray<ProjectorDefinition> = [
+      {
+        name: ORCHESTRATION_PROJECTOR_NAMES.todos,
+        apply: applyTodosProjection,
+      },
       {
         name: ORCHESTRATION_PROJECTOR_NAMES.projects,
         apply: applyProjectsProjection,
