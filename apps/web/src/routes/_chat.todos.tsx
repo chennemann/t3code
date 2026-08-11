@@ -4,6 +4,7 @@ import {
   type OrchestrationShellSnapshot,
   type OrchestrationTodo,
   type ProjectId,
+  WORKSPACE_PROJECT_ID,
 } from "@t3tools/contracts";
 import { createFileRoute } from "@tanstack/react-router";
 import { Atom } from "effect/unstable/reactivity";
@@ -29,7 +30,9 @@ function TodosRoute() {
   const snapshot = useAtomValue(
     environmentId === null ? EMPTY_SNAPSHOT_ATOM : environmentSnapshotAtom(environmentId),
   );
-  const projects = useProjects().filter((project) => project.environmentId === environmentId);
+  const projects = useProjects().filter(
+    (project) => project.environmentId === environmentId && project.id !== WORKSPACE_PROJECT_ID,
+  );
   const todos = snapshot?.todos ?? [];
   const create = useAtomCommand(todoCommands.create);
   const update = useAtomCommand(todoCommands.update);
@@ -68,8 +71,10 @@ function TodosRoute() {
   };
 
   const startTodo = async (todo: OrchestrationTodo) => {
-    if (environmentId === null || todo.projectId === null) return;
-    const created = await handleNewThread(scopeProjectRef(environmentId, todo.projectId));
+    if (environmentId === null) return;
+    const created = await handleNewThread(
+      scopeProjectRef(environmentId, todo.projectId ?? WORKSPACE_PROJECT_ID),
+    );
     if (created !== null) {
       useComposerDraftStore.getState().setPrompt(
         created.draftId,
@@ -158,7 +163,7 @@ function TodosRoute() {
                         {projects.map((project) => <option key={project.id} value={project.id}>{project.title}</option>)}
                       </select>
                     </div>
-                    <Button size="sm" variant="ghost" disabled={todo.projectId === null} onClick={() => void startTodo(todo)} title={todo.projectId === null ? "Assign a project first" : "Start thread"}>
+                    <Button size="sm" variant="ghost" onClick={() => void startTodo(todo)} title="Start thread">
                       <PlayIcon className="size-4" /> Start
                     </Button>
                     <Button size="icon-sm" variant="ghost" aria-label="Delete to-do" onClick={() => environmentId && void remove({ environmentId, input: { todoId: todo.id } })}>
