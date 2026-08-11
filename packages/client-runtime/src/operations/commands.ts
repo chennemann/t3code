@@ -1,5 +1,6 @@
 import {
   CommandId,
+  TodoId,
   ORCHESTRATION_WS_METHODS,
   type ClientOrchestrationCommand,
 } from "@t3tools/contracts";
@@ -31,6 +32,11 @@ type CommandInput<T extends CommandType> = Omit<
 export type CreateProjectInput = CommandInput<"project.create">;
 export type UpdateProjectInput = CommandInput<"project.meta.update">;
 export type DeleteProjectInput = CommandInput<"project.delete">;
+export type CreateTodoInput = Omit<CommandInput<"todo.create">, "todoId"> & {
+  readonly todoId?: TodoId;
+};
+export type UpdateTodoInput = CommandInput<"todo.update">;
+export type DeleteTodoInput = CommandInput<"todo.delete">;
 export type CreateThreadInput = CommandInput<"thread.create">;
 export type DeleteThreadInput = CommandInput<"thread.delete">;
 export type ArchiveThreadInput = CommandInput<"thread.archive">;
@@ -116,6 +122,34 @@ export const deleteProject: (input: DeleteProjectInput) => CommandEffect = Effec
     type: "project.delete",
     commandId: yield* commandId(input),
   });
+});
+
+export const createTodo: (input: CreateTodoInput) => CommandEffect = Effect.fn(
+  "EnvironmentCommands.createTodo",
+)(function* (input) {
+  const metadata = yield* timestampedCommandMetadata(input);
+  const crypto = yield* Crypto.Crypto;
+  const todoId = input.todoId ??
+    (yield* crypto.randomUUIDv4.pipe(Effect.orDie, Effect.map(TodoId.make)));
+  return yield* dispatch({
+    ...input,
+    todoId,
+    type: "todo.create",
+    commandId: metadata.commandId,
+    createdAt: metadata.createdAt,
+  });
+});
+
+export const updateTodo: (input: UpdateTodoInput) => CommandEffect = Effect.fn(
+  "EnvironmentCommands.updateTodo",
+)(function* (input) {
+  return yield* dispatch({ ...input, type: "todo.update", commandId: yield* commandId(input) });
+});
+
+export const deleteTodo: (input: DeleteTodoInput) => CommandEffect = Effect.fn(
+  "EnvironmentCommands.deleteTodo",
+)(function* (input) {
+  return yield* dispatch({ ...input, type: "todo.delete", commandId: yield* commandId(input) });
 });
 
 export const createThread: (input: CreateThreadInput) => CommandEffect = Effect.fn(

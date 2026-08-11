@@ -14,6 +14,9 @@ import {
   ProjectCreatedPayload,
   ProjectDeletedPayload,
   ProjectMetaUpdatedPayload,
+  TodoCreatedPayload,
+  TodoUpdatedPayload,
+  TodoDeletedPayload,
   ThreadActivityAppendedPayload,
   ThreadArchivedPayload,
   ThreadCreatedPayload,
@@ -190,6 +193,7 @@ export function createEmptyReadModel(nowIso: string): OrchestrationReadModel {
     snapshotSequence: 0,
     projects: [],
     threads: [],
+    todos: [],
     updatedAt: nowIso,
   };
 }
@@ -205,6 +209,51 @@ export function projectEvent(
   };
 
   switch (event.type) {
+    case "todo.created":
+      return decodeForEvent(TodoCreatedPayload, event.payload, event.type, "payload").pipe(
+        Effect.map((payload) => ({
+          ...nextBase,
+          todos: [
+            ...(nextBase.todos ?? []).filter((todo) => todo.id !== payload.todoId),
+            {
+              id: payload.todoId,
+              title: payload.title,
+              notes: payload.notes,
+              projectId: payload.projectId,
+              completedAt: null,
+              createdAt: payload.createdAt,
+              updatedAt: payload.updatedAt,
+            },
+          ],
+        })),
+      );
+    case "todo.updated":
+      return decodeForEvent(TodoUpdatedPayload, event.payload, event.type, "payload").pipe(
+        Effect.map((payload) => ({
+          ...nextBase,
+          todos: (nextBase.todos ?? []).map((todo) =>
+            todo.id === payload.todoId
+              ? {
+                  ...todo,
+                  ...(payload.title !== undefined ? { title: payload.title } : {}),
+                  ...(payload.notes !== undefined ? { notes: payload.notes } : {}),
+                  ...(payload.projectId !== undefined ? { projectId: payload.projectId } : {}),
+                  ...(payload.completedAt !== undefined
+                    ? { completedAt: payload.completedAt }
+                    : {}),
+                  updatedAt: payload.updatedAt,
+                }
+              : todo,
+          ),
+        })),
+      );
+    case "todo.deleted":
+      return decodeForEvent(TodoDeletedPayload, event.payload, event.type, "payload").pipe(
+        Effect.map((payload) => ({
+          ...nextBase,
+          todos: (nextBase.todos ?? []).filter((todo) => todo.id !== payload.todoId),
+        })),
+      );
     case "project.created":
       return decodeForEvent(ProjectCreatedPayload, event.payload, event.type, "payload").pipe(
         Effect.map((payload) => {
