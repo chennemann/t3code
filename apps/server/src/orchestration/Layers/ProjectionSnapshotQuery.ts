@@ -22,10 +22,12 @@ import {
   type OrchestrationSession,
   type OrchestrationThreadActivity,
   type OrchestrationThreadShell,
+  type OrchestrationTodo,
   ModelSelection,
   ProjectId,
   ThreadLinkedPullRequest,
   ThreadId,
+  TodoId,
 } from "@t3tools/contracts";
 import * as Arr from "effect/Array";
 import * as Effect from "effect/Effect";
@@ -117,6 +119,15 @@ const ProjectionLatestTurnDbRowSchema = Schema.Struct({
   sourceProposedPlanId: Schema.NullOr(OrchestrationProposedPlanId),
 });
 const ProjectionStateDbRowSchema = ProjectionState;
+const ProjectionTodoRowSchema = Schema.Struct({
+  id: TodoId,
+  title: Schema.String,
+  notes: Schema.String,
+  projectId: Schema.NullOr(ProjectId),
+  completedAt: Schema.NullOr(IsoDateTime),
+  createdAt: IsoDateTime,
+  updatedAt: IsoDateTime,
+});
 const ProjectionCountsRowSchema = Schema.Struct({
   projectCount: Schema.Number,
   threadCount: Schema.Number,
@@ -408,6 +419,17 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
         FROM projection_projects
         ORDER BY created_at ASC, project_id ASC
       `,
+  });
+
+  const listTodoRows = SqlSchema.findAll({
+    Request: Schema.Void,
+    Result: ProjectionTodoRowSchema,
+    execute: () => sql`
+      SELECT todo_id AS id, title, notes, project_id AS "projectId",
+        completed_at AS "completedAt", created_at AS "createdAt", updated_at AS "updatedAt"
+      FROM projection_todos
+      ORDER BY created_at ASC, todo_id ASC
+    `,
   });
 
   const listThreadRows = SqlSchema.findAll({
@@ -1463,6 +1485,14 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
               ),
             ),
           ),
+          listTodoRows(undefined).pipe(
+            Effect.mapError(
+              toPersistenceSqlOrDecodeError(
+                "ProjectionSnapshotQuery.getCommandReadModel:listTodos:query",
+                "ProjectionSnapshotQuery.getCommandReadModel:listTodos:decodeRows",
+              ),
+            ),
+          ),
           listThreadRows(undefined).pipe(
             Effect.mapError(
               toPersistenceSqlOrDecodeError(
@@ -1533,6 +1563,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
         Effect.flatMap(
           ([
             projectRows,
+            todoRows,
             threadRows,
             messageRows,
             proposedPlanRows,
@@ -1694,6 +1725,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
                 updatedAt: row.updatedAt,
                 deletedAt: row.deletedAt,
               }));
+              for (const row of todoRows) updatedAt = maxIso(updatedAt, row.updatedAt);
 
               const threads: ReadonlyArray<OrchestrationThread> = threadRows.map((row) => ({
                 id: row.threadId,
@@ -1731,6 +1763,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
                 snapshotSequence: computeSnapshotSequence(stateRows),
                 projects,
                 threads,
+                todos: todoRows,
                 updatedAt: updatedAt ?? "1970-01-01T00:00:00.000Z",
               };
 
@@ -1758,6 +1791,14 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
               toPersistenceSqlOrDecodeError(
                 "ProjectionSnapshotQuery.getCommandReadModel:listProjects:query",
                 "ProjectionSnapshotQuery.getCommandReadModel:listProjects:decodeRows",
+              ),
+            ),
+          ),
+          listTodoRows(undefined).pipe(
+            Effect.mapError(
+              toPersistenceSqlOrDecodeError(
+                "ProjectionSnapshotQuery.getCommandReadModel:listTodos:query",
+                "ProjectionSnapshotQuery.getCommandReadModel:listTodos:decodeRows",
               ),
             ),
           ),
@@ -1805,7 +1846,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
       )
       .pipe(
         Effect.flatMap(
-          ([projectRows, threadRows, proposedPlanRows, sessionRows, latestTurnRows, stateRows]) =>
+          ([projectRows, todoRows, threadRows, proposedPlanRows, sessionRows, latestTurnRows, stateRows]) =>
             Effect.sync(() => {
               let updatedAt: string | null = null;
               const projects: OrchestrationProject[] = [];
@@ -1943,6 +1984,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
                 snapshotSequence: computeSnapshotSequence(stateRows),
                 projects,
                 threads,
+                todos: todoRows,
                 updatedAt: updatedAt ?? "1970-01-01T00:00:00.000Z",
               } satisfies OrchestrationReadModel;
             }),
@@ -1964,6 +2006,14 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
               toPersistenceSqlOrDecodeError(
                 "ProjectionSnapshotQuery.getShellSnapshot:listProjects:query",
                 "ProjectionSnapshotQuery.getShellSnapshot:listProjects:decodeRows",
+              ),
+            ),
+          ),
+          listTodoRows(undefined).pipe(
+            Effect.mapError(
+              toPersistenceSqlOrDecodeError(
+                "ProjectionSnapshotQuery.getShellSnapshot:listTodos:query",
+                "ProjectionSnapshotQuery.getShellSnapshot:listTodos:decodeRows",
               ),
             ),
           ),
@@ -2002,12 +2052,13 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
         ]),
       )
       .pipe(
-        Effect.flatMap(([projectRows, threadRows, sessionRows, latestTurnRows, stateRows]) =>
+        Effect.flatMap(([projectRows, todoRows, threadRows, sessionRows, latestTurnRows, stateRows]) =>
           Effect.gen(function* () {
             let updatedAt: string | null = null;
             for (const row of projectRows) {
               updatedAt = maxIso(updatedAt, row.updatedAt);
             }
+            for (const row of todoRows) updatedAt = maxIso(updatedAt, row.updatedAt);
             for (const row of threadRows) {
               updatedAt = maxIso(updatedAt, row.updatedAt);
             }
@@ -2082,6 +2133,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
                     } satisfies OrchestrationThreadShell)
                   : Result.failVoid,
               ),
+              todos: todoRows satisfies ReadonlyArray<OrchestrationTodo>,
               updatedAt: updatedAt ?? "1970-01-01T00:00:00.000Z",
             };
 

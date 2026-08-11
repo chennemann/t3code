@@ -61,8 +61,8 @@ interface CommandEnvelope {
 }
 
 function commandToAggregateRef(command: OrchestrationCommand): {
-  readonly aggregateKind: "project" | "thread";
-  readonly aggregateId: ProjectId | ThreadId;
+  readonly aggregateKind: "project" | "thread" | "todo";
+  readonly aggregateId: ProjectId | ThreadId | import("@t3tools/contracts").TodoId;
 } {
   switch (command.type) {
     case "project.create":
@@ -72,6 +72,10 @@ function commandToAggregateRef(command: OrchestrationCommand): {
         aggregateKind: "project",
         aggregateId: command.projectId,
       };
+    case "todo.create":
+    case "todo.update":
+    case "todo.delete":
+      return { aggregateKind: "todo", aggregateId: command.todoId };
     default:
       return {
         aggregateKind: "thread",

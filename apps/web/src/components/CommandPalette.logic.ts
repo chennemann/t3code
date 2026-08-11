@@ -38,7 +38,7 @@ export function browseInputEndPaddingClass(input: {
 export type SearchOverlayMode = "command" | "files" | "content";
 
 export interface CommandPaletteOpenIntent {
-  readonly kind: "add-project" | "new-thread-in";
+  readonly kind: "add-project" | "new-thread-in" | "new-thread-in-todos";
 }
 
 export interface CommandPaletteUiState {
@@ -52,6 +52,7 @@ export type CommandPaletteUiAction =
   | { readonly _tag: "ToggleMode"; readonly mode: SearchOverlayMode }
   | { readonly _tag: "OpenAddProject" }
   | { readonly _tag: "OpenNewThreadIn" }
+  | { readonly _tag: "OpenNewThreadInTodos" }
   | { readonly _tag: "ClearOpenIntent" };
 
 export function reduceCommandPaletteUiState(
@@ -71,6 +72,8 @@ export function reduceCommandPaletteUiState(
       return { open: true, mode: "command", openIntent: { kind: "add-project" } };
     case "OpenNewThreadIn":
       return { open: true, mode: "command", openIntent: { kind: "new-thread-in" } };
+    case "OpenNewThreadInTodos":
+      return { open: true, mode: "command", openIntent: { kind: "new-thread-in-todos" } };
     case "ClearOpenIntent":
       return state.openIntent ? { ...state, openIntent: null } : state;
   }
@@ -293,6 +296,7 @@ export function filterCommandPaletteGroups(input: {
   query: string;
   isInSubmenu: boolean;
   projectSearchItems: ReadonlyArray<CommandPaletteActionItem>;
+  todoSearchItems: ReadonlyArray<CommandPaletteActionItem>;
   threadSearchItems: ReadonlyArray<CommandPaletteActionItem>;
 }): CommandPaletteGroup[] {
   const isActionsFilter = input.query.startsWith(">");
@@ -320,6 +324,13 @@ export function filterCommandPaletteGroups(input: {
         value: "projects-search",
         label: "Projects",
         items: input.projectSearchItems,
+      });
+    }
+    if (input.todoSearchItems.length > 0) {
+      searchableGroups.push({
+        value: "todos-search",
+        label: "To-dos",
+        items: input.todoSearchItems,
       });
     }
     if (input.threadSearchItems.length > 0) {

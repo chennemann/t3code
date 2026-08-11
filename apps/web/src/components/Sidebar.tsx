@@ -45,6 +45,7 @@ import {
   FolderPlusIcon,
   GitBranchIcon,
   MessageSquareIcon,
+  ListTodoIcon,
   PinIcon,
   PlusIcon,
   SearchIcon,
@@ -3488,6 +3489,17 @@ export default function Sidebar() {
                 </Tooltip>
               </div>
             </div>
+            <SidebarMenuButton
+              type="button"
+              className="focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar"
+              onClick={() => {
+                if (isMobile) setOpenMobile(false);
+                void router.navigate({ to: "/todos" });
+              }}
+            >
+              <ListTodoIcon className="size-4" />
+              <span>To-dos</span>
+            </SidebarMenuButton>
             {projectGroups.length > 0 ? (
               <div className="flex items-center gap-1">
                 <Menu open={projectScopeMenuOpen} onOpenChange={setProjectScopeMenuOpen}>

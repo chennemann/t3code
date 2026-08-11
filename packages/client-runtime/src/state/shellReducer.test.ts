@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { ProjectId, ProviderInstanceId, ThreadId } from "@t3tools/contracts";
+import { ProjectId, ProviderInstanceId, ThreadId, TodoId } from "@t3tools/contracts";
 import type { OrchestrationShellSnapshot, OrchestrationShellStreamEvent } from "@t3tools/contracts";
 
 import { applyShellStreamEvent } from "./shellReducer.ts";
@@ -11,6 +11,40 @@ const baseSnapshot: OrchestrationShellSnapshot = {
   threads: [],
   updatedAt: "2026-04-01T00:00:00.000Z",
 };
+
+describe("todo shell events", () => {
+  it("upserts and removes todos", () => {
+    const todo = {
+      id: TodoId.make("todo-1"),
+      title: "Idea",
+      summary: "",
+      specificationSummary: "",
+      contextSummary: "",
+      glossarySummary: "",
+      planSummary: "",
+      specification: "",
+      context: "",
+      glossary: "",
+      plan: "",
+      notes: "",
+      projectId: null,
+      parentTodoId: null,
+      planningThreadId: null,
+      plannedAt: null,
+      completedAt: null,
+      createdAt: "2026-04-01T00:00:00.000Z",
+      updatedAt: "2026-04-01T00:00:00.000Z",
+    } as const;
+    const added = applyShellStreamEvent(baseSnapshot, {
+      kind: "todo-upserted", sequence: 1, todo,
+    });
+    expect(added.todos).toEqual([todo]);
+    const removed = applyShellStreamEvent(added, {
+      kind: "todo-removed", sequence: 2, todoId: todo.id,
+    });
+    expect(removed.todos).toEqual([]);
+  });
+});
 
 const stubProject = {
   id: ProjectId.make("project-1"),

@@ -660,6 +660,30 @@ const makeWsRpcLayer = (
                 projectId: event.payload.projectId,
               }),
             );
+          case "todo.deleted":
+            return Effect.succeed(
+              Option.some({
+                kind: "todo-removed" as const,
+                sequence: event.sequence,
+                todoId: event.payload.todoId,
+              }),
+            );
+          case "todo.created":
+          case "todo.updated":
+            return projectionSnapshotQuery.getShellSnapshot().pipe(
+              Effect.retry({ times: 1 }),
+              Effect.map((snapshot) => {
+                const todo = snapshot.todos?.find((candidate) => candidate.id === event.payload.todoId);
+                return todo === undefined
+                  ? Option.none<OrchestrationShellStreamEvent>()
+                  : Option.some<OrchestrationShellStreamEvent>({
+                      kind: "todo-upserted",
+                      sequence: event.sequence,
+                      todo,
+                    });
+              }),
+              Effect.orElseSucceed(() => Option.none()),
+            );
           case "thread.deleted":
           case "thread.archived":
             return Effect.succeed(
