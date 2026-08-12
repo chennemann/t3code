@@ -29,6 +29,8 @@ import { Route as ChatTodosRouteImport } from './routes/_chat.todos'
 import { Route as ChatPullRequestsRouteImport } from './routes/_chat.pull-requests'
 import { Route as ChatDraftDraftIdRouteImport } from './routes/_chat.draft.$draftId'
 import { Route as ChatEnvironmentIdThreadIdRouteImport } from './routes/_chat.$environmentId.$threadId'
+import { Route as ChatEnvironmentIdTodosTodoIdRouteImport } from './routes/_chat.$environmentId.todos.$todoId'
+import { Route as ChatEnvironmentIdTodoPlanTodoIdDraftIdRouteImport } from './routes/_chat.$environmentId.todo-plan.$todoId.$draftId'
 
 const UsageRoute = UsageRouteImport.update({
   id: '/usage',
@@ -130,6 +132,18 @@ const ChatEnvironmentIdThreadIdRoute =
     path: '/$environmentId/$threadId',
     getParentRoute: () => ChatRoute,
   } as any)
+const ChatEnvironmentIdTodosTodoIdRoute =
+  ChatEnvironmentIdTodosTodoIdRouteImport.update({
+    id: '/$environmentId/todos/$todoId',
+    path: '/$environmentId/todos/$todoId',
+    getParentRoute: () => ChatRoute,
+  } as any)
+const ChatEnvironmentIdTodoPlanTodoIdDraftIdRoute =
+  ChatEnvironmentIdTodoPlanTodoIdDraftIdRouteImport.update({
+    id: '/$environmentId/todo-plan/$todoId/$draftId',
+    path: '/$environmentId/todo-plan/$todoId/$draftId',
+    getParentRoute: () => ChatRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof ChatIndexRoute
@@ -151,6 +165,8 @@ export interface FileRoutesByFullPath {
   '/settings/source-control': typeof SettingsSourceControlRoute
   '/$environmentId/$threadId': typeof ChatEnvironmentIdThreadIdRoute
   '/draft/$draftId': typeof ChatDraftDraftIdRoute
+  '/$environmentId/todos/$todoId': typeof ChatEnvironmentIdTodosTodoIdRoute
+  '/$environmentId/todo-plan/$todoId/$draftId': typeof ChatEnvironmentIdTodoPlanTodoIdDraftIdRoute
 }
 export interface FileRoutesByTo {
   '/connect': typeof ConnectRoute
@@ -172,6 +188,8 @@ export interface FileRoutesByTo {
   '/': typeof ChatIndexRoute
   '/$environmentId/$threadId': typeof ChatEnvironmentIdThreadIdRoute
   '/draft/$draftId': typeof ChatDraftDraftIdRoute
+  '/$environmentId/todos/$todoId': typeof ChatEnvironmentIdTodosTodoIdRoute
+  '/$environmentId/todo-plan/$todoId/$draftId': typeof ChatEnvironmentIdTodoPlanTodoIdDraftIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -195,6 +213,8 @@ export interface FileRoutesById {
   '/_chat/': typeof ChatIndexRoute
   '/_chat/$environmentId/$threadId': typeof ChatEnvironmentIdThreadIdRoute
   '/_chat/draft/$draftId': typeof ChatDraftDraftIdRoute
+  '/_chat/$environmentId/todos/$todoId': typeof ChatEnvironmentIdTodosTodoIdRoute
+  '/_chat/$environmentId/todo-plan/$todoId/$draftId': typeof ChatEnvironmentIdTodoPlanTodoIdDraftIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -218,6 +238,8 @@ export interface FileRouteTypes {
     | '/settings/source-control'
     | '/$environmentId/$threadId'
     | '/draft/$draftId'
+    | '/$environmentId/todos/$todoId'
+    | '/$environmentId/todo-plan/$todoId/$draftId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/connect'
@@ -239,6 +261,8 @@ export interface FileRouteTypes {
     | '/'
     | '/$environmentId/$threadId'
     | '/draft/$draftId'
+    | '/$environmentId/todos/$todoId'
+    | '/$environmentId/todo-plan/$todoId/$draftId'
   id:
     | '__root__'
     | '/_chat'
@@ -261,6 +285,8 @@ export interface FileRouteTypes {
     | '/_chat/'
     | '/_chat/$environmentId/$threadId'
     | '/_chat/draft/$draftId'
+    | '/_chat/$environmentId/todos/$todoId'
+    | '/_chat/$environmentId/todo-plan/$todoId/$draftId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -415,6 +441,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatEnvironmentIdThreadIdRouteImport
       parentRoute: typeof ChatRoute
     }
+    '/_chat/$environmentId/todos/$todoId': {
+      id: '/_chat/$environmentId/todos/$todoId'
+      path: '/$environmentId/todos/$todoId'
+      fullPath: '/$environmentId/todos/$todoId'
+      preLoaderRoute: typeof ChatEnvironmentIdTodosTodoIdRouteImport
+      parentRoute: typeof ChatRoute
+    }
+    '/_chat/$environmentId/todo-plan/$todoId/$draftId': {
+      id: '/_chat/$environmentId/todo-plan/$todoId/$draftId'
+      path: '/$environmentId/todo-plan/$todoId/$draftId'
+      fullPath: '/$environmentId/todo-plan/$todoId/$draftId'
+      preLoaderRoute: typeof ChatEnvironmentIdTodoPlanTodoIdDraftIdRouteImport
+      parentRoute: typeof ChatRoute
+    }
   }
 }
 
@@ -424,6 +464,8 @@ interface ChatRouteChildren {
   ChatIndexRoute: typeof ChatIndexRoute
   ChatEnvironmentIdThreadIdRoute: typeof ChatEnvironmentIdThreadIdRoute
   ChatDraftDraftIdRoute: typeof ChatDraftDraftIdRoute
+  ChatEnvironmentIdTodosTodoIdRoute: typeof ChatEnvironmentIdTodosTodoIdRoute
+  ChatEnvironmentIdTodoPlanTodoIdDraftIdRoute: typeof ChatEnvironmentIdTodoPlanTodoIdDraftIdRoute
 }
 
 const ChatRouteChildren: ChatRouteChildren = {
@@ -432,6 +474,9 @@ const ChatRouteChildren: ChatRouteChildren = {
   ChatIndexRoute: ChatIndexRoute,
   ChatEnvironmentIdThreadIdRoute: ChatEnvironmentIdThreadIdRoute,
   ChatDraftDraftIdRoute: ChatDraftDraftIdRoute,
+  ChatEnvironmentIdTodosTodoIdRoute: ChatEnvironmentIdTodosTodoIdRoute,
+  ChatEnvironmentIdTodoPlanTodoIdDraftIdRoute:
+    ChatEnvironmentIdTodoPlanTodoIdDraftIdRoute,
 }
 
 const ChatRouteWithChildren = ChatRoute._addFileChildren(ChatRouteChildren)

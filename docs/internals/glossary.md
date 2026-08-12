@@ -144,6 +144,22 @@ The patch difference between two checkpoints. Query logic lives in [CheckpointDi
 
 The file patch and changed-file summary for one turn. It is usually computed in [CheckpointDiffQuery.ts][20], represented in [the contracts][1], and recorded into thread state by [projector.ts][4].
 
+### To-do
+
+A durable description of desired work that can be refined before it becomes an implementation thread. A to-do has a compact outcome summary and separate structured planning sections.
+
+#### Outcome summary
+
+A short description of the benefit or observable result a to-do will bring. It is the only descriptive content shown in the to-do overview.
+
+#### Child to-do
+
+A full to-do linked to a parent to-do as one independently actionable part of its plan. Avoid treating child to-dos as checklist rows or embedded text.
+
+#### Planning session
+
+A dedicated conversation that clarifies a to-do with the user and ends only when the agent successfully submits a structured planning proposal.
+
 ## Practical Shortcuts
 
 - If you see `requested`, think "intent recorded".

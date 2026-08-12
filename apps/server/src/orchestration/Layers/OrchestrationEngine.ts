@@ -71,6 +71,7 @@ function commandToAggregateRef(command: OrchestrationCommand): {
     case "todo.create":
     case "todo.update":
     case "todo.delete":
+    case "todo.plan.apply":
       return { aggregateKind: "todo", aggregateId: command.todoId };
     default:
       return {

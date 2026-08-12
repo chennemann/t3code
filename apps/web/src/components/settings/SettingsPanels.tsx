@@ -18,6 +18,7 @@ import {
 } from "@t3tools/client-runtime/state/runtime";
 import {
   DEFAULT_ENVIRONMENT_IDENTIFICATION_MODE,
+  DEFAULT_TODO_PLANNING_INSTRUCTIONS,
   DEFAULT_UNIFIED_SETTINGS,
   type EnvironmentIdentificationMode,
   MAX_CODE_FONT_SIZE,
@@ -98,6 +99,7 @@ import {
 } from "../ui/dialog";
 import { DraftInput } from "../ui/draft-input";
 import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
 import {
   DEFAULT_CODE_FONT_STACK,
   DEFAULT_SANS_FONT_STACK,
@@ -1810,6 +1812,12 @@ export function GeneralSettingsPanel() {
   return (
     <SettingsPageContainer>
       <SettingsSection title="General">
+        <SettingsRow
+          title="To-do planning instructions"
+          description="Hidden instructions injected into planning sessions. They are not shown as user messages."
+          resetAction={settings.todoPlanningInstructions !== DEFAULT_TODO_PLANNING_INSTRUCTIONS ? <SettingResetButton label="to-do planning instructions" onClick={() => updateSettings({ todoPlanningInstructions: DEFAULT_TODO_PLANNING_INSTRUCTIONS })} /> : null}
+          control={<Textarea className="min-h-28 w-[min(32rem,60vw)]" value={settings.todoPlanningInstructions} onChange={(event) => updateSettings({ todoPlanningInstructions: event.currentTarget.value })} aria-label="To-do planning instructions" />}
+        />
         <SettingsRow
           {...searchableSetting("project-grouping")}
           description="Combine matching repositories across environments."
