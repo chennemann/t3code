@@ -265,8 +265,20 @@ export type OrchestrationProject = typeof OrchestrationProject.Type;
 export const OrchestrationTodo = Schema.Struct({
   id: TodoId,
   title: TrimmedNonEmptyString,
+  summary: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
+  specificationSummary: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
+  contextSummary: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
+  glossarySummary: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
+  planSummary: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
+  specification: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
+  context: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
+  glossary: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
+  plan: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
   notes: TrimmedString,
   projectId: Schema.NullOr(ProjectId),
+  parentTodoId: Schema.NullOr(TodoId).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  planningThreadId: Schema.NullOr(ThreadId).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  plannedAt: Schema.NullOr(IsoDateTime).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
   completedAt: Schema.NullOr(IsoDateTime),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
@@ -722,8 +734,19 @@ const TodoCreateCommand = Schema.Struct({
   commandId: CommandId,
   todoId: TodoId,
   title: TrimmedNonEmptyString,
+  summary: Schema.optional(TrimmedString),
+  specificationSummary: Schema.optional(TrimmedString),
+  contextSummary: Schema.optional(TrimmedString),
+  glossarySummary: Schema.optional(TrimmedString),
+  planSummary: Schema.optional(TrimmedString),
+  specification: Schema.optional(TrimmedString),
+  context: Schema.optional(TrimmedString),
+  glossary: Schema.optional(TrimmedString),
+  plan: Schema.optional(TrimmedString),
   notes: Schema.optional(TrimmedString),
   projectId: Schema.optional(Schema.NullOr(ProjectId)),
+  parentTodoId: Schema.optional(Schema.NullOr(TodoId)),
+  planningThreadId: Schema.optional(Schema.NullOr(ThreadId)),
   createdAt: IsoDateTime,
 });
 
@@ -732,8 +755,20 @@ const TodoUpdateCommand = Schema.Struct({
   commandId: CommandId,
   todoId: TodoId,
   title: Schema.optional(TrimmedNonEmptyString),
+  summary: Schema.optional(TrimmedString),
+  specificationSummary: Schema.optional(TrimmedString),
+  contextSummary: Schema.optional(TrimmedString),
+  glossarySummary: Schema.optional(TrimmedString),
+  planSummary: Schema.optional(TrimmedString),
+  specification: Schema.optional(TrimmedString),
+  context: Schema.optional(TrimmedString),
+  glossary: Schema.optional(TrimmedString),
+  plan: Schema.optional(TrimmedString),
   notes: Schema.optional(TrimmedString),
   projectId: Schema.optional(Schema.NullOr(ProjectId)),
+  parentTodoId: Schema.optional(Schema.NullOr(TodoId)),
+  planningThreadId: Schema.optional(Schema.NullOr(ThreadId)),
+  plannedAt: Schema.optional(Schema.NullOr(IsoDateTime)),
   completed: Schema.optional(Schema.Boolean),
 });
 
@@ -912,6 +947,7 @@ export const ThreadTurnStartCommand = Schema.Struct({
     text: Schema.String,
     attachments: Schema.Array(ChatAttachment),
   }),
+  agentInstructions: Schema.optional(TrimmedNonEmptyString),
   modelSelection: Schema.optional(ModelSelection),
   titleSeed: Schema.optional(TrimmedNonEmptyString),
   runtimeMode: RuntimeMode.pipe(Schema.withDecodingDefault(Effect.succeed(DEFAULT_RUNTIME_MODE))),
@@ -933,6 +969,7 @@ const ClientThreadTurnStartCommand = Schema.Struct({
     text: Schema.String,
     attachments: Schema.Array(Schema.Union([UploadChatAttachment, ChatAttachment])),
   }),
+  agentInstructions: Schema.optional(TrimmedNonEmptyString),
   modelSelection: Schema.optional(ModelSelection),
   titleSeed: Schema.optional(TrimmedNonEmptyString),
   runtimeMode: RuntimeMode,
@@ -987,6 +1024,40 @@ const ThreadSessionStopCommand = Schema.Struct({
   // closes the race a post-settle snapshot read cannot: commands are decided
   // serially against the authoritative read model.
   onlyIfSettled: Schema.optional(Schema.Boolean),
+});
+
+export const TodoPlanningSubtask = Schema.Struct({
+  title: TrimmedNonEmptyString,
+  summary: TrimmedNonEmptyString,
+  specificationSummary: TrimmedNonEmptyString,
+  contextSummary: TrimmedString,
+  specification: TrimmedString,
+  context: TrimmedString,
+});
+export type TodoPlanningSubtask = typeof TodoPlanningSubtask.Type;
+
+export const TodoPlanningProposal = Schema.Struct({
+  summary: TrimmedNonEmptyString,
+  specificationSummary: TrimmedNonEmptyString,
+  contextSummary: TrimmedNonEmptyString,
+  glossarySummary: TrimmedNonEmptyString,
+  planSummary: TrimmedNonEmptyString,
+  specification: TrimmedNonEmptyString,
+  context: TrimmedString,
+  glossary: TrimmedString,
+  plan: TrimmedNonEmptyString,
+  subtasks: Schema.Array(TodoPlanningSubtask),
+});
+export type TodoPlanningProposal = typeof TodoPlanningProposal.Type;
+
+const TodoPlanApplyCommand = Schema.Struct({
+  type: Schema.Literal("todo.plan.apply"),
+  commandId: CommandId,
+  todoId: TodoId,
+  planningThreadId: ThreadId,
+  proposal: TodoPlanningProposal,
+  subtasks: Schema.Array(Schema.Struct({ todoId: TodoId, ...TodoPlanningSubtask.fields })),
+  createdAt: IsoDateTime,
 });
 
 const DispatchableClientOrchestrationCommand = Schema.Union([
@@ -1124,6 +1195,7 @@ const ThreadTitleRegenerationCompleteCommand = Schema.Struct({
 });
 
 const InternalOrchestrationCommand = Schema.Union([
+  TodoPlanApplyCommand,
   ThreadSessionSetCommand,
   ThreadMessageAssistantDeltaCommand,
   ThreadMessageAssistantCompleteCommand,
@@ -1214,8 +1286,20 @@ export const ProjectDeletedPayload = Schema.Struct({
 export const TodoCreatedPayload = Schema.Struct({
   todoId: TodoId,
   title: TrimmedNonEmptyString,
+  summary: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
+  specificationSummary: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
+  contextSummary: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
+  glossarySummary: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
+  planSummary: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
+  specification: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
+  context: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
+  glossary: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
+  plan: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
   notes: TrimmedString,
   projectId: Schema.NullOr(ProjectId),
+  parentTodoId: Schema.NullOr(TodoId).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  planningThreadId: Schema.NullOr(ThreadId).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
+  plannedAt: Schema.NullOr(IsoDateTime).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
 });
@@ -1223,8 +1307,20 @@ export const TodoCreatedPayload = Schema.Struct({
 export const TodoUpdatedPayload = Schema.Struct({
   todoId: TodoId,
   title: Schema.optional(TrimmedNonEmptyString),
+  summary: Schema.optional(TrimmedString),
+  specificationSummary: Schema.optional(TrimmedString),
+  contextSummary: Schema.optional(TrimmedString),
+  glossarySummary: Schema.optional(TrimmedString),
+  planSummary: Schema.optional(TrimmedString),
+  specification: Schema.optional(TrimmedString),
+  context: Schema.optional(TrimmedString),
+  glossary: Schema.optional(TrimmedString),
+  plan: Schema.optional(TrimmedString),
   notes: Schema.optional(TrimmedString),
   projectId: Schema.optional(Schema.NullOr(ProjectId)),
+  parentTodoId: Schema.optional(Schema.NullOr(TodoId)),
+  planningThreadId: Schema.optional(Schema.NullOr(ThreadId)),
+  plannedAt: Schema.optional(Schema.NullOr(IsoDateTime)),
   completedAt: Schema.optional(Schema.NullOr(IsoDateTime)),
   updatedAt: IsoDateTime,
 });
@@ -1357,6 +1453,7 @@ export const ThreadMessageSentPayload = Schema.Struct({
 export const ThreadTurnStartRequestedPayload = Schema.Struct({
   threadId: ThreadId,
   messageId: MessageId,
+  agentInstructions: Schema.optional(TrimmedNonEmptyString),
   modelSelection: Schema.optional(ModelSelection),
   titleSeed: Schema.optional(TrimmedNonEmptyString),
   runtimeMode: RuntimeMode.pipe(Schema.withDecodingDefault(Effect.succeed(DEFAULT_RUNTIME_MODE))),

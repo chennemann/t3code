@@ -123,6 +123,7 @@ export const DEFAULT_TERMINAL_FONT_SIZE: TerminalFontSize = 12;
 export const EnvironmentIdentificationMode = Schema.Literals(["artwork", "pill", "none"]);
 export type EnvironmentIdentificationMode = typeof EnvironmentIdentificationMode.Type;
 export const DEFAULT_ENVIRONMENT_IDENTIFICATION_MODE: EnvironmentIdentificationMode = "artwork";
+export const DEFAULT_TODO_PLANNING_INSTRUCTIONS = "Start by asking a small, focused set of questions about the desired outcome, users, scope, constraints, and acceptance criteria. Do not guess material requirements. Reflect what you heard and resolve ambiguities before proposing a final plan. Only after the user confirms the proposal is ready, finish with exactly one call to finalize_todo_plan. The planning session is not complete unless that tool succeeds.";
 
 /**
  * A user-chosen font family (a single name or a comma-separated list). Empty
@@ -226,6 +227,9 @@ export const ClientSettingsSchema = Schema.Struct({
   // commands) for users who still rely on the old workflow.
   planModeEnabled: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   showSkillsInSlashMenu: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
+  todoPlanningInstructions: TrimmedString.pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_TODO_PLANNING_INSTRUCTIONS)),
+  ),
   // Legacy sidebar (the original per-project tree). Deliberately a fresh key
   // (was `sidebarV2Enabled` + `sidebarV2ConfiguredByUser`): decoding drops the
   // old keys, so everyone, including prior beta opt-outs, resets to the new
@@ -907,6 +911,7 @@ export const ClientSettingsPatch = Schema.Struct({
   confirmQuit: Schema.optionalKey(Schema.Boolean),
   confirmThreadArchive: Schema.optionalKey(Schema.Boolean),
   confirmThreadDelete: Schema.optionalKey(Schema.Boolean),
+  todoPlanningInstructions: Schema.optionalKey(TrimmedString),
   diffIgnoreWhitespace: Schema.optionalKey(Schema.Boolean),
   environmentIdentificationMode: Schema.optionalKey(EnvironmentIdentificationMode),
   glassOpacity: Schema.optionalKey(GlassOpacity),

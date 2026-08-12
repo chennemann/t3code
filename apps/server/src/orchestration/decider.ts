@@ -245,8 +245,20 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
         payload: {
           todoId: command.todoId,
           title: command.title,
+          summary: command.summary ?? "",
+          specificationSummary: command.specificationSummary ?? "",
+          contextSummary: command.contextSummary ?? "",
+          glossarySummary: command.glossarySummary ?? "",
+          planSummary: command.planSummary ?? "",
+          specification: command.specification ?? "",
+          context: command.context ?? "",
+          glossary: command.glossary ?? "",
+          plan: command.plan ?? "",
           notes: command.notes ?? "",
           projectId: command.projectId ?? null,
+          parentTodoId: command.parentTodoId ?? null,
+          planningThreadId: command.planningThreadId ?? null,
+          plannedAt: null,
           createdAt: command.createdAt,
           updatedAt: command.createdAt,
         },
@@ -275,14 +287,75 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
         payload: {
           todoId: command.todoId,
           ...(command.title !== undefined ? { title: command.title } : {}),
+          ...(command.summary !== undefined ? { summary: command.summary } : {}),
+          ...(command.specificationSummary !== undefined ? { specificationSummary: command.specificationSummary } : {}),
+          ...(command.contextSummary !== undefined ? { contextSummary: command.contextSummary } : {}),
+          ...(command.glossarySummary !== undefined ? { glossarySummary: command.glossarySummary } : {}),
+          ...(command.planSummary !== undefined ? { planSummary: command.planSummary } : {}),
+          ...(command.specification !== undefined ? { specification: command.specification } : {}),
+          ...(command.context !== undefined ? { context: command.context } : {}),
+          ...(command.glossary !== undefined ? { glossary: command.glossary } : {}),
+          ...(command.plan !== undefined ? { plan: command.plan } : {}),
           ...(command.notes !== undefined ? { notes: command.notes } : {}),
           ...(command.projectId !== undefined ? { projectId: command.projectId } : {}),
+          ...(command.parentTodoId !== undefined ? { parentTodoId: command.parentTodoId } : {}),
+          ...(command.planningThreadId !== undefined ? { planningThreadId: command.planningThreadId } : {}),
+          ...(command.plannedAt !== undefined ? { plannedAt: command.plannedAt } : {}),
           ...(command.completed !== undefined
             ? { completedAt: command.completed ? occurredAt : null }
             : {}),
           updatedAt: occurredAt,
         },
       };
+    }
+    case "todo.plan.apply": {
+      const todo = (readModel.todos ?? []).find((candidate) => candidate.id === command.todoId);
+      if (todo === undefined || todo.planningThreadId !== command.planningThreadId) {
+        return yield* new OrchestrationCommandInvariantError({
+          commandType: command.type,
+          detail: `Thread '${command.planningThreadId}' is not the active planner for todo '${command.todoId}'.`,
+        });
+      }
+      if (command.subtasks.length !== command.proposal.subtasks.length) {
+        return yield* new OrchestrationCommandInvariantError({
+          commandType: command.type,
+          detail: "Planning proposal and persisted subtask counts must match.",
+        });
+      }
+      return yield* decideCommandSequence({
+        readModel,
+        commands: [
+          {
+            type: "todo.update",
+            commandId: command.commandId,
+            todoId: command.todoId,
+            summary: command.proposal.summary,
+            specificationSummary: command.proposal.specificationSummary,
+            contextSummary: command.proposal.contextSummary,
+            glossarySummary: command.proposal.glossarySummary,
+            planSummary: command.proposal.planSummary,
+            specification: command.proposal.specification,
+            context: command.proposal.context,
+            glossary: command.proposal.glossary,
+            plan: command.proposal.plan,
+            plannedAt: command.createdAt,
+          },
+          ...command.subtasks.map((subtask) => ({
+            type: "todo.create" as const,
+            commandId: command.commandId,
+            todoId: subtask.todoId,
+            title: subtask.title,
+            summary: subtask.summary,
+            specificationSummary: subtask.specificationSummary,
+            contextSummary: subtask.contextSummary,
+            specification: subtask.specification,
+            context: subtask.context,
+            projectId: todo.projectId,
+            parentTodoId: todo.id,
+            createdAt: command.createdAt,
+          })),
+        ],
+      });
     }
     case "todo.delete": {
       if (!(readModel.todos ?? []).some((todo) => todo.id === command.todoId)) {
@@ -1078,6 +1151,9 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
         payload: {
           threadId: command.threadId,
           messageId: command.message.messageId,
+          ...(command.agentInstructions !== undefined
+            ? { agentInstructions: command.agentInstructions }
+            : {}),
           ...(command.modelSelection !== undefined
             ? { modelSelection: command.modelSelection }
             : {}),

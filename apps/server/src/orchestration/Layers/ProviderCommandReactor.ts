@@ -777,6 +777,7 @@ const make = Effect.gen(function* () {
   const buildSendTurnRequestForThread = Effect.fnUntraced(function* (input: {
     readonly threadId: ThreadId;
     readonly messageText: string;
+    readonly agentInstructions?: string;
     readonly attachments?: ReadonlyArray<ChatAttachment>;
     readonly modelSelection?: ModelSelection;
     readonly interactionMode?: "default" | "plan";
@@ -795,7 +796,10 @@ const make = Effect.gen(function* () {
     if (input.modelSelection !== undefined) {
       threadModelSelections.set(input.threadId, input.modelSelection);
     }
-    const normalizedInput = toNonEmptyProviderInput(input.messageText);
+    const providerInput = input.agentInstructions
+      ? `<agent_instructions>\n${input.agentInstructions}\n</agent_instructions>\n\n<user_message>\n${input.messageText}\n</user_message>`
+      : input.messageText;
+    const normalizedInput = toNonEmptyProviderInput(providerInput);
     const normalizedAttachments = input.attachments ?? [];
     const activeSession = yield* providerService
       .listSessions()
@@ -1208,6 +1212,9 @@ const make = Effect.gen(function* () {
     const sendTurnRequest = yield* buildSendTurnRequestForThread({
       threadId: event.payload.threadId,
       messageText: message.text,
+      ...(event.payload.agentInstructions !== undefined
+        ? { agentInstructions: event.payload.agentInstructions }
+        : {}),
       ...(message.attachments !== undefined ? { attachments: message.attachments } : {}),
       ...(event.payload.modelSelection !== undefined
         ? { modelSelection: event.payload.modelSelection }

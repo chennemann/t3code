@@ -122,8 +122,20 @@ const ProjectionStateDbRowSchema = ProjectionState;
 const ProjectionTodoRowSchema = Schema.Struct({
   id: TodoId,
   title: Schema.String,
+  summary: Schema.String,
+  specificationSummary: Schema.String,
+  contextSummary: Schema.String,
+  glossarySummary: Schema.String,
+  planSummary: Schema.String,
+  specification: Schema.String,
+  context: Schema.String,
+  glossary: Schema.String,
+  plan: Schema.String,
   notes: Schema.String,
   projectId: Schema.NullOr(ProjectId),
+  parentTodoId: Schema.NullOr(TodoId),
+  planningThreadId: Schema.NullOr(ThreadId),
+  plannedAt: Schema.NullOr(IsoDateTime),
   completedAt: Schema.NullOr(IsoDateTime),
   createdAt: IsoDateTime,
   updatedAt: IsoDateTime,
@@ -425,7 +437,10 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
     Request: Schema.Void,
     Result: ProjectionTodoRowSchema,
     execute: () => sql`
-      SELECT todo_id AS id, title, notes, project_id AS "projectId",
+      SELECT todo_id AS id, title, summary, specification_summary AS "specificationSummary", context_summary AS "contextSummary",
+        glossary_summary AS "glossarySummary", plan_summary AS "planSummary", specification, context, glossary, plan, notes, project_id AS "projectId",
+        parent_todo_id AS "parentTodoId", planning_thread_id AS "planningThreadId",
+        planned_at AS "plannedAt",
         completed_at AS "completedAt", created_at AS "createdAt", updated_at AS "updatedAt"
       FROM projection_todos
       ORDER BY created_at ASC, todo_id ASC
