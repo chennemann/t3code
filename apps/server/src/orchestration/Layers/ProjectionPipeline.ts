@@ -583,13 +583,18 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
         case "todo.created":
           yield* sql`
             INSERT INTO projection_todos (
-              todo_id, title, notes, project_id, completed_at, created_at, updated_at
+              todo_id, title, summary, specification_summary, context_summary, glossary_summary, plan_summary, specification, context, glossary, plan, notes, project_id, parent_todo_id, planning_thread_id, planned_at, completed_at, created_at, updated_at
             ) VALUES (
-              ${event.payload.todoId}, ${event.payload.title}, ${event.payload.notes},
-              ${event.payload.projectId}, NULL, ${event.payload.createdAt}, ${event.payload.updatedAt}
+              ${event.payload.todoId}, ${event.payload.title}, ${event.payload.summary}, ${event.payload.specificationSummary}, ${event.payload.contextSummary}, ${event.payload.glossarySummary}, ${event.payload.planSummary}, ${event.payload.specification}, ${event.payload.context}, ${event.payload.glossary}, ${event.payload.plan}, ${event.payload.notes},
+              ${event.payload.projectId}, ${event.payload.parentTodoId}, ${event.payload.planningThreadId}, ${event.payload.plannedAt}, NULL, ${event.payload.createdAt}, ${event.payload.updatedAt}
             )
             ON CONFLICT (todo_id) DO UPDATE SET
-              title = excluded.title, notes = excluded.notes, project_id = excluded.project_id,
+              title = excluded.title, summary = excluded.summary, specification_summary = excluded.specification_summary,
+              context_summary = excluded.context_summary, glossary_summary = excluded.glossary_summary, plan_summary = excluded.plan_summary,
+              specification = excluded.specification, context = excluded.context,
+              glossary = excluded.glossary, plan = excluded.plan, notes = excluded.notes, project_id = excluded.project_id,
+              parent_todo_id = excluded.parent_todo_id, planning_thread_id = excluded.planning_thread_id,
+              planned_at = excluded.planned_at,
               created_at = excluded.created_at, updated_at = excluded.updated_at
           `;
           return;
@@ -597,9 +602,24 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
           yield* sql`
             UPDATE projection_todos SET
               title = COALESCE(${event.payload.title ?? null}, title),
+              summary = COALESCE(${event.payload.summary ?? null}, summary),
+              specification_summary = COALESCE(${event.payload.specificationSummary ?? null}, specification_summary),
+              context_summary = COALESCE(${event.payload.contextSummary ?? null}, context_summary),
+              glossary_summary = COALESCE(${event.payload.glossarySummary ?? null}, glossary_summary),
+              plan_summary = COALESCE(${event.payload.planSummary ?? null}, plan_summary),
+              specification = COALESCE(${event.payload.specification ?? null}, specification),
+              context = COALESCE(${event.payload.context ?? null}, context),
+              glossary = COALESCE(${event.payload.glossary ?? null}, glossary),
+              plan = COALESCE(${event.payload.plan ?? null}, plan),
               notes = COALESCE(${event.payload.notes ?? null}, notes),
               project_id = CASE WHEN ${event.payload.projectId !== undefined ? 1 : 0} = 1
                 THEN ${event.payload.projectId ?? null} ELSE project_id END,
+              parent_todo_id = CASE WHEN ${event.payload.parentTodoId !== undefined ? 1 : 0} = 1
+                THEN ${event.payload.parentTodoId ?? null} ELSE parent_todo_id END,
+              planning_thread_id = CASE WHEN ${event.payload.planningThreadId !== undefined ? 1 : 0} = 1
+                THEN ${event.payload.planningThreadId ?? null} ELSE planning_thread_id END,
+              planned_at = CASE WHEN ${event.payload.plannedAt !== undefined ? 1 : 0} = 1
+                THEN ${event.payload.plannedAt ?? null} ELSE planned_at END,
               completed_at = CASE WHEN ${event.payload.completedAt !== undefined ? 1 : 0} = 1
                 THEN ${event.payload.completedAt ?? null} ELSE completed_at END,
               updated_at = ${event.payload.updatedAt}

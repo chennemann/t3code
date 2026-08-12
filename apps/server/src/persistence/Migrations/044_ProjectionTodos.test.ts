@@ -20,4 +20,36 @@ layer("044_ProjectionTodos", (it) => {
       );
     }),
   );
+
+  it.effect("applies the planning extensions after the todo projection", () =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      yield* runMigrations({ toMigrationInclusive: 48 });
+      const columns = yield* sql<{ readonly name: string }>`PRAGMA table_info(projection_todos)`;
+      assert.deepEqual(
+        columns.map((column) => column.name),
+        [
+          "todo_id",
+          "title",
+          "notes",
+          "project_id",
+          "completed_at",
+          "created_at",
+          "updated_at",
+          "specification",
+          "parent_todo_id",
+          "planning_thread_id",
+          "context",
+          "glossary",
+          "plan",
+          "planned_at",
+          "summary",
+          "specification_summary",
+          "context_summary",
+          "glossary_summary",
+          "plan_summary",
+        ],
+      );
+    }),
+  );
 });

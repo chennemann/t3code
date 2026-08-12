@@ -84,6 +84,7 @@ import { useProjects, useThreadShells } from "../state/entities";
 import { environmentSnapshotAtom } from "../state/shell";
 import { useThreadSearch } from "../state/queries";
 import { resolveThreadActionProjectRef, startNewThreadFromContext } from "../lib/chatThreadActions";
+import { buildTodoDraftPrompt } from "../lib/todos";
 import {
   appendBrowsePathSegment,
   ensureBrowseDirectoryPath,
@@ -1089,8 +1090,12 @@ function OpenCommandPaletteDialog(props: {
             description: projectTitle ?? "Inbox",
             icon: <ListTodoIcon className={ITEM_ICON_CLASS} />,
             run: async () => {
+              if (primaryEnvironmentId === null) return;
               setOpen(false);
-              await navigate({ to: "/todos" });
+              await navigate({
+                to: "/$environmentId/todos/$todoId",
+                params: { environmentId: primaryEnvironmentId, todoId: todo.id },
+              });
             },
           };
         }),
@@ -1181,7 +1186,7 @@ function OpenCommandPaletteDialog(props: {
               if (created !== null) {
                 useComposerDraftStore.getState().setPrompt(
                   created.draftId,
-                  todo.notes.length > 0 ? `${todo.title}\n\n${todo.notes}` : todo.title,
+                  buildTodoDraftPrompt(todo),
                 );
               }
             },
