@@ -155,6 +155,7 @@ export const make = Effect.gen(function* () {
       threadSettlement: true,
       threadSnooze: true,
       threadWorktrees: true,
+      workspaceFiles: true,
       threadPinning: true,
       threadPinReorder: true,
       threadTitleRegeneration: true,

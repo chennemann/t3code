@@ -62,6 +62,8 @@ export const ExecutionEnvironmentCapabilities = Schema.Struct({
   threadSnooze: Schema.optionalKey(Schema.Boolean),
   /** Portable clients may list refs and atomically bootstrap a thread in a new or existing worktree. */
   threadWorktrees: Schema.optionalKey(Schema.Boolean),
+  /** Portable clients may list entries in the active thread workspace. */
+  workspaceFiles: Schema.optionalKey(Schema.Boolean),
   /** Server understands thread.pin / thread.unpin commands. Same
       version-skew contract as threadSettlement. */
   threadPinning: Schema.optionalKey(Schema.Boolean),
