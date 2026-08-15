@@ -39,4 +39,14 @@ describe("ExecutionEnvironmentDescriptor", () => {
       }).capabilities.attachmentUploads,
     ).toBe(true);
   });
+
+  it("treats missing workspace files as unsupported and preserves advertisement", () => {
+    expect(decodeDescriptor(descriptor).capabilities.workspaceFiles).toBeUndefined();
+    expect(
+      decodeDescriptor({
+        ...descriptor,
+        capabilities: { ...descriptor.capabilities, workspaceFiles: true },
+      }).capabilities.workspaceFiles,
+    ).toBe(true);
+  });
 });

@@ -1,6 +1,6 @@
 {
     "algorithm": "sha256",
-    "checksum": "54043870563ea2269e7c41b4042f513ca71eeed476cdccd6eda52fcc05f915f4",
+    "checksum": "a6914ced9f2a47543659a6f87b68f51034f9d7deac34866d7d295b4f807a067e",
     "files": [
         {
             "path": "fixture-manifest.json",
@@ -24,7 +24,7 @@
         },
         {
             "path": "openapi.json",
-            "sha256": "efd4162079b4217c8e5b72a5230fc63ddb489efa60bbd8c03c43072374d78aaa"
+            "sha256": "4ca2925dd64c5d164458871e39b9c513bcaef74d7eb9499d6ba7d4b3363c4a03"
         },
         {
             "path": "protocol-version.json",
@@ -32,7 +32,7 @@
         },
         {
             "path": "schemas/client-config.schema.json",
-            "sha256": "7549cde45a4cb23f6a329a42572ed37566f6be8ca9cd6dcde6a5b7aae963dc25"
+            "sha256": "afe66408d3d89b24fb9827d8fda4a4e0d885aa3c14777f307feb4f1dad411ffe"
         },
         {
             "path": "schemas/orchestration-command.schema.json",

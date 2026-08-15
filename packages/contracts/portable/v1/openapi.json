@@ -54,6 +54,9 @@
                             },
                             "todos": {
                                 "type": "boolean"
+                            },
+                            "workspaceFiles": {
+                                "type": "boolean"
                             }
                         },
                         "type": "object"
