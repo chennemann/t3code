@@ -1,59 +1,59 @@
 {
-  "algorithm": "sha256",
-  "checksum": "c594f7fe3fc3c93cbcaed5931fe4791de1233073a9a0a79941c802a3ae323f44",
-  "files": [
-    {
-      "path": "fixture-manifest.json",
-      "sha256": "31d9bbb387df0b4f17246f14f75eb606740df128156a72e6bf2ea2cb79cbe1d9"
-    },
-    {
-      "path": "fixtures/client-config.json",
-      "sha256": "5b0ff09c09081e4d5f931491e0041ac32c3386f7eaa3fc7f2cd952bcf5971d74"
-    },
-    {
-      "path": "fixtures/commands.json",
-      "sha256": "01893f23bc650c3cf73e5d90414084e9d0799f641a6ea16bd777c07261b4cf96"
-    },
-    {
-      "path": "fixtures/shell-stream-items.json",
-      "sha256": "11e507a5021375ced735f4c889f12ade7af6c584bc0372228cf020602982b215"
-    },
-    {
-      "path": "fixtures/thread-stream-items.json",
-      "sha256": "d48213256097d0fa54673d1942516fffa2c474a1a4d3f73d5f255e6a7ecb0982"
-    },
-    {
-      "path": "openapi.json",
-      "sha256": "0ab9541a808d9597a98fdedf6a4766a4a0df6f2a1a9056f9428e34da55c2b240"
-    },
-    {
-      "path": "protocol-version.json",
-      "sha256": "de334ee97609f889faa63e68c72fce3cb362ed34ec1d9a41d309b6859552d41f"
-    },
-    {
-      "path": "schemas/client-config.schema.json",
-      "sha256": "8d7419d7091b0ceb7042913ed5dd3e401962eac954188d2a22a7af9e3901a0fa"
-    },
-    {
-      "path": "schemas/orchestration-command.schema.json",
-      "sha256": "2cef2b969522cfbe7b06e41ccfc8f195ca72f383f9780c97473ce6a6ad0e6693"
-    },
-    {
-      "path": "schemas/shell-snapshot.schema.json",
-      "sha256": "7733e577306185ae73fe2e1d3b2ac7e0b1e705ffb075452b4c22ada656ee1a85"
-    },
-    {
-      "path": "schemas/shell-stream-item.schema.json",
-      "sha256": "8873e96f19aa717646fc52d12ad8e22948562da8672f000eb80d72a74693d24d"
-    },
-    {
-      "path": "schemas/thread-snapshot.schema.json",
-      "sha256": "0a9059e171b4d1888fb497f391cd2bd64e7545dd0a9c974fb36d9209a81776ae"
-    },
-    {
-      "path": "schemas/thread-stream-item.schema.json",
-      "sha256": "82f241977d4375d2d9f4d6126bcd1123f36b3385f429df6b1630bb3688df4129"
-    }
-  ],
-  "protocolVersion": 1
+    "algorithm": "sha256",
+    "checksum": "54043870563ea2269e7c41b4042f513ca71eeed476cdccd6eda52fcc05f915f4",
+    "files": [
+        {
+            "path": "fixture-manifest.json",
+            "sha256": "8484d75b5e9b3e348845e6ed5e293c6870c9e5bdd364791ab6e5c7cba5bcaf43"
+        },
+        {
+            "path": "fixtures/client-config.json",
+            "sha256": "964a7e9217b31a15ada7a1aa6b54f8c9ffe71356a683c91283a159b52d7bc8b9"
+        },
+        {
+            "path": "fixtures/commands.json",
+            "sha256": "9a9a7f5b18a997ada9d63208a75246b3aade9f0c15964b995dcdae5b269f9e77"
+        },
+        {
+            "path": "fixtures/shell-stream-items.json",
+            "sha256": "60377b2e70ba219068326c6c726a7069b665aeeb79dc54321af13b4f72e5e81e"
+        },
+        {
+            "path": "fixtures/thread-stream-items.json",
+            "sha256": "cc0bf1d9c35b5cc46ef1ccac56d734dec24ff429b1990e7b93640a4909df1edd"
+        },
+        {
+            "path": "openapi.json",
+            "sha256": "efd4162079b4217c8e5b72a5230fc63ddb489efa60bbd8c03c43072374d78aaa"
+        },
+        {
+            "path": "protocol-version.json",
+            "sha256": "c32a7317b687dca026b4a413bcf5219d04742342bd7793c878b64614a2e98003"
+        },
+        {
+            "path": "schemas/client-config.schema.json",
+            "sha256": "7549cde45a4cb23f6a329a42572ed37566f6be8ca9cd6dcde6a5b7aae963dc25"
+        },
+        {
+            "path": "schemas/orchestration-command.schema.json",
+            "sha256": "c75185329699e73ac81bedf2cd8a9ba474a0beb0a3942a3fc2138d3f538f1a33"
+        },
+        {
+            "path": "schemas/shell-snapshot.schema.json",
+            "sha256": "d90135f88cba65e378d405df1f1348604bf5b5d994d07fc2948d1ae340ec5785"
+        },
+        {
+            "path": "schemas/shell-stream-item.schema.json",
+            "sha256": "d314be551468070071d7514082d99ade104ec74ff26beb0b9f899cf6e47fc434"
+        },
+        {
+            "path": "schemas/thread-snapshot.schema.json",
+            "sha256": "a6a1527c06677a3a3eb7cb36da7435bf955f48d60cf6f6b78977f6fd79b0f37f"
+        },
+        {
+            "path": "schemas/thread-stream-item.schema.json",
+            "sha256": "f695a47b4dbe801aa29c9e16b03499d712d28c09bb45d89967f01534780ffe46"
+        }
+    ],
+    "protocolVersion": 1
 }
