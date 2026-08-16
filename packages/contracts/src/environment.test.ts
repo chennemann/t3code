@@ -49,4 +49,14 @@ describe("ExecutionEnvironmentDescriptor", () => {
       }).capabilities.workspaceFiles,
     ).toBe(true);
   });
+
+  it("treats missing background activity as unsupported and preserves advertisement", () => {
+    expect(decodeDescriptor(descriptor).capabilities.backgroundActivity).toBeUndefined();
+    expect(
+      decodeDescriptor({
+        ...descriptor,
+        capabilities: { ...descriptor.capabilities, backgroundActivity: true },
+      }).capabilities.backgroundActivity,
+    ).toBe(true);
+  });
 });
