@@ -1,6 +1,6 @@
 {
     "algorithm": "sha256",
-    "checksum": "78c576c055bebfd7e1914600904c46d3247542184086e7bed18e53d07dd40318",
+    "checksum": "c66ba88f66b1bbc709e9b42263496f25b27facb1a1a8e93126f4f04fc9fc30c7",
     "files": [
         {
             "path": "fixtures/client-config.json",
@@ -13,6 +13,10 @@
         {
             "path": "fixtures/shell-stream-items.json",
             "sha256": "60377b2e70ba219068326c6c726a7069b665aeeb79dc54321af13b4f72e5e81e"
+        },
+        {
+            "path": "fixtures/stream-evolution-cases.json",
+            "sha256": "f864bf88212531ee590b6cc9c271e26fa8f5ec563c0aa5d5555a08ccf48ea69a"
         },
         {
             "path": "fixtures/thread-stream-items.json",

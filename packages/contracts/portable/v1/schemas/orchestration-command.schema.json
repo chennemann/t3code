@@ -963,6 +963,44 @@
                             }
                         ]
                     },
+                    "linkedPullRequest": {
+                        "anyOf": [
+                            {
+                                "anyOf": [
+                                    {
+                                        "additionalProperties": false,
+                                        "properties": {
+                                            "number": {
+                                                "allOf": [
+                                                    {
+                                                        "minimum": 1
+                                                    }
+                                                ],
+                                                "type": "integer"
+                                            },
+                                            "projectId": {
+                                                "type": "string"
+                                            },
+                                            "repository": {
+                                                "type": "string"
+                                            },
+                                            "url": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": ["projectId", "repository", "number", "url"],
+                                        "type": "object"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
                     "modelSelection": {
                         "anyOf": [
                             {
@@ -1231,35 +1269,74 @@
                                 "items": {
                                     "anyOf": [
                                         {
-                                            "additionalProperties": false,
-                                            "properties": {
-                                                "dataUrl": {
-                                                    "type": "string"
-                                                },
-                                                "mimeType": {
-                                                    "type": "string"
-                                                },
-                                                "name": {
-                                                    "type": "string"
-                                                },
-                                                "sizeBytes": {
-                                                    "allOf": [
-                                                        {
-                                                            "minimum": 0
+                                            "anyOf": [
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "dataUrl": {
+                                                            "type": "string"
                                                         },
-                                                        {
-                                                            "maximum": 10485760
+                                                        "mimeType": {
+                                                            "type": "string"
+                                                        },
+                                                        "name": {
+                                                            "type": "string"
+                                                        },
+                                                        "sizeBytes": {
+                                                            "allOf": [
+                                                                {
+                                                                    "minimum": 0
+                                                                },
+                                                                {
+                                                                    "maximum": 10485760
+                                                                }
+                                                            ],
+                                                            "type": "integer"
+                                                        },
+                                                        "type": {
+                                                            "enum": ["image"],
+                                                            "type": "string"
                                                         }
-                                                    ],
-                                                    "type": "integer"
-                                                },
-                                                "type": {
-                                                    "enum": ["image"],
-                                                    "type": "string"
+                                                    },
+                                                    "required": ["type", "name", "mimeType", "sizeBytes", "dataUrl"],
+                                                    "type": "object"
                                                 }
-                                            },
-                                            "required": ["type", "name", "mimeType", "sizeBytes", "dataUrl"],
-                                            "type": "object"
+                                            ]
+                                        },
+                                        {
+                                            "anyOf": [
+                                                {
+                                                    "additionalProperties": false,
+                                                    "properties": {
+                                                        "id": {
+                                                            "type": "string"
+                                                        },
+                                                        "mimeType": {
+                                                            "type": "string"
+                                                        },
+                                                        "name": {
+                                                            "type": "string"
+                                                        },
+                                                        "sizeBytes": {
+                                                            "allOf": [
+                                                                {
+                                                                    "minimum": 0
+                                                                },
+                                                                {
+                                                                    "maximum": 10485760
+                                                                }
+                                                            ],
+                                                            "type": "integer"
+                                                        },
+                                                        "type": {
+                                                            "enum": ["image"],
+                                                            "type": "string"
+                                                        }
+                                                    },
+                                                    "required": ["type", "id", "name", "mimeType", "sizeBytes"],
+                                                    "type": "object"
+                                                }
+                                            ]
                                         }
                                     ]
                                 },
@@ -1374,7 +1451,7 @@
                         "type": "string"
                     },
                     "decision": {
-                        "enum": ["accept", "acceptForSession", "decline", "cancel"],
+                        "enum": ["accept", "acceptForSession", "acceptAlways", "decline", "cancel"],
                         "type": "string"
                     },
                     "requestId": {
