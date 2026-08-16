@@ -35,6 +35,30 @@
         "Objects_1": {
             "additionalProperties": false,
             "properties": {
+                "number": {
+                    "allOf": [
+                        {
+                            "minimum": 1
+                        }
+                    ],
+                    "type": "integer"
+                },
+                "projectId": {
+                    "type": "string"
+                },
+                "repository": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            },
+            "required": ["projectId", "repository", "number", "url"],
+            "type": "object"
+        },
+        "Objects_2": {
+            "additionalProperties": false,
+            "properties": {
                 "planId": {
                     "type": "string"
                 },
@@ -45,7 +69,7 @@
             "required": ["threadId", "planId"],
             "type": "object"
         },
-        "Objects_2": {
+        "Objects_3": {
             "additionalProperties": false,
             "properties": {
                 "requestId": {
@@ -58,7 +82,7 @@
             "required": ["requestId", "startedAt"],
             "type": "object"
         },
-        "Objects_3": {
+        "Objects_4": {
             "additionalProperties": false,
             "properties": {
                 "createdAt": {
@@ -107,7 +131,7 @@
             "required": ["id", "tone", "kind", "summary", "payload", "turnId", "createdAt"],
             "type": "object"
         },
-        "Objects_4": {
+        "Objects_5": {
             "additionalProperties": false,
             "properties": {
                 "additions": {
@@ -136,7 +160,7 @@
             "required": ["path", "kind", "additions", "deletions"],
             "type": "object"
         },
-        "Objects_5": {
+        "Objects_6": {
             "additionalProperties": false,
             "properties": {
                 "activeTurnId": {
@@ -204,7 +228,7 @@
             "required": ["threadId", "status", "providerName", "activeTurnId", "lastError", "updatedAt"],
             "type": "object"
         },
-        "Objects_6": {
+        "Objects_7": {
             "additionalProperties": false,
             "properties": {
                 "adapterKey": {
@@ -221,6 +245,40 @@
                     "anyOf": [
                         {
                             "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "origin": {
+                    "anyOf": [
+                        {
+                            "additionalProperties": false,
+                            "properties": {
+                                "appVersion": {
+                                    "anyOf": [
+                                        {
+                                            "type": "string"
+                                        },
+                                        {
+                                            "type": "null"
+                                        }
+                                    ]
+                                },
+                                "surface": {
+                                    "anyOf": [
+                                        {
+                                            "enum": ["web", "desktop", "mobile"],
+                                            "type": "string"
+                                        },
+                                        {
+                                            "type": "null"
+                                        }
+                                    ]
+                                }
+                            },
+                            "type": "object"
                         },
                         {
                             "type": "null"
@@ -260,7 +318,7 @@
             },
             "type": "object"
         },
-        "Objects_7": {
+        "Objects_8": {
             "additionalProperties": false,
             "properties": {
                 "canonicalKey": {
@@ -302,7 +360,7 @@
             "required": ["canonicalKey", "locator"],
             "type": "object"
         },
-        "Objects_8": {
+        "Objects_9": {
             "additionalProperties": false,
             "properties": {
                 "autoOpenPreview": {
@@ -461,7 +519,7 @@
                                 "properties": {
                                     "activities": {
                                         "items": {
-                                            "$ref": "#/$defs/Objects_3"
+                                            "$ref": "#/$defs/Objects_4"
                                         },
                                         "type": "array"
                                     },
@@ -522,7 +580,7 @@
                                                 },
                                                 "files": {
                                                     "items": {
-                                                        "$ref": "#/$defs/Objects_4"
+                                                        "$ref": "#/$defs/Objects_5"
                                                     },
                                                     "type": "array"
                                                 },
@@ -605,7 +663,7 @@
                                                     "sourceProposedPlan": {
                                                         "anyOf": [
                                                             {
-                                                                "$ref": "#/$defs/Objects_1"
+                                                                "$ref": "#/$defs/Objects_2"
                                                             },
                                                             {
                                                                 "type": "null"
@@ -639,6 +697,23 @@
                                                     "assistantMessageId"
                                                 ],
                                                 "type": "object"
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "linkedPullRequest": {
+                                        "anyOf": [
+                                            {
+                                                "anyOf": [
+                                                    {
+                                                        "$ref": "#/$defs/Objects_1"
+                                                    },
+                                                    {
+                                                        "type": "null"
+                                                    }
+                                                ]
                                             },
                                             {
                                                 "type": "null"
@@ -831,7 +906,7 @@
                                     "session": {
                                         "anyOf": [
                                             {
-                                                "$ref": "#/$defs/Objects_5"
+                                                "$ref": "#/$defs/Objects_6"
                                             },
                                             {
                                                 "type": "null"
@@ -915,7 +990,24 @@
                                             {
                                                 "anyOf": [
                                                     {
-                                                        "$ref": "#/$defs/Objects_2"
+                                                        "$ref": "#/$defs/Objects_3"
+                                                    },
+                                                    {
+                                                        "type": "null"
+                                                    }
+                                                ]
+                                            },
+                                            {
+                                                "type": "null"
+                                            }
+                                        ]
+                                    },
+                                    "unsettledAt": {
+                                        "anyOf": [
+                                            {
+                                                "anyOf": [
+                                                    {
+                                                        "type": "string"
                                                     },
                                                     {
                                                         "type": "null"
@@ -1027,7 +1119,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -1073,7 +1165,7 @@
                                                     {
                                                         "anyOf": [
                                                             {
-                                                                "$ref": "#/$defs/Objects_7"
+                                                                "$ref": "#/$defs/Objects_8"
                                                             },
                                                             {
                                                                 "type": "null"
@@ -1087,7 +1179,7 @@
                                             },
                                             "scripts": {
                                                 "items": {
-                                                    "$ref": "#/$defs/Objects_8"
+                                                    "$ref": "#/$defs/Objects_9"
                                                 },
                                                 "type": "array"
                                             },
@@ -1194,7 +1286,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -1262,7 +1354,7 @@
                                                     {
                                                         "anyOf": [
                                                             {
-                                                                "$ref": "#/$defs/Objects_7"
+                                                                "$ref": "#/$defs/Objects_8"
                                                             },
                                                             {
                                                                 "type": "null"
@@ -1278,7 +1370,7 @@
                                                 "anyOf": [
                                                     {
                                                         "items": {
-                                                            "$ref": "#/$defs/Objects_8"
+                                                            "$ref": "#/$defs/Objects_9"
                                                         },
                                                         "type": "array"
                                                     },
@@ -1396,7 +1488,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -1496,7 +1588,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -1756,7 +1848,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -2051,7 +2143,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -2148,7 +2240,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -2316,7 +2408,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -2416,7 +2508,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -2519,7 +2611,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -2619,7 +2711,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -2722,7 +2814,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -2826,7 +2918,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -2932,7 +3024,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -3036,7 +3128,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -3149,7 +3241,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -3249,7 +3341,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -3352,7 +3444,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -3366,6 +3458,23 @@
                                                         "anyOf": [
                                                             {
                                                                 "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "null"
+                                                    }
+                                                ]
+                                            },
+                                            "linkedPullRequest": {
+                                                "anyOf": [
+                                                    {
+                                                        "anyOf": [
+                                                            {
+                                                                "$ref": "#/$defs/Objects_1"
                                                             },
                                                             {
                                                                 "type": "null"
@@ -3426,7 +3535,7 @@
                                                     {
                                                         "anyOf": [
                                                             {
-                                                                "$ref": "#/$defs/Objects_2"
+                                                                "$ref": "#/$defs/Objects_3"
                                                             },
                                                             {
                                                                 "type": "null"
@@ -3544,7 +3653,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -3653,7 +3762,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -3764,7 +3873,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -3912,7 +4021,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -3976,7 +4085,7 @@
                                             "sourceProposedPlan": {
                                                 "anyOf": [
                                                     {
-                                                        "$ref": "#/$defs/Objects_1"
+                                                        "$ref": "#/$defs/Objects_2"
                                                     },
                                                     {
                                                         "type": "null"
@@ -4082,7 +4191,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -4192,7 +4301,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -4204,7 +4313,13 @@
                                                 "type": "string"
                                             },
                                             "decision": {
-                                                "enum": ["accept", "acceptForSession", "decline", "cancel"],
+                                                "enum": [
+                                                    "accept",
+                                                    "acceptForSession",
+                                                    "acceptAlways",
+                                                    "decline",
+                                                    "cancel"
+                                                ],
                                                 "type": "string"
                                             },
                                             "requestId": {
@@ -4299,7 +4414,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -4405,7 +4520,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -4513,7 +4628,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -4618,7 +4733,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -4718,7 +4833,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -4727,7 +4842,7 @@
                                         "additionalProperties": false,
                                         "properties": {
                                             "session": {
-                                                "$ref": "#/$defs/Objects_5"
+                                                "$ref": "#/$defs/Objects_6"
                                             },
                                             "threadId": {
                                                 "type": "string"
@@ -4818,7 +4933,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -4978,7 +5093,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -5012,7 +5127,7 @@
                                             },
                                             "files": {
                                                 "items": {
-                                                    "$ref": "#/$defs/Objects_4"
+                                                    "$ref": "#/$defs/Objects_5"
                                                 },
                                                 "type": "array"
                                             },
@@ -5121,7 +5236,7 @@
                                         "type": "string"
                                     },
                                     "metadata": {
-                                        "$ref": "#/$defs/Objects_6"
+                                        "$ref": "#/$defs/Objects_7"
                                     },
                                     "occurredAt": {
                                         "type": "string"
@@ -5130,7 +5245,7 @@
                                         "additionalProperties": false,
                                         "properties": {
                                             "activity": {
-                                                "$ref": "#/$defs/Objects_3"
+                                                "$ref": "#/$defs/Objects_4"
                                             },
                                             "threadId": {
                                                 "type": "string"

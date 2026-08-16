@@ -391,6 +391,44 @@
                                 }
                             ]
                         },
+                        "linkedPullRequest": {
+                            "anyOf": [
+                                {
+                                    "anyOf": [
+                                        {
+                                            "additionalProperties": false,
+                                            "properties": {
+                                                "number": {
+                                                    "allOf": [
+                                                        {
+                                                            "minimum": 1
+                                                        }
+                                                    ],
+                                                    "type": "integer"
+                                                },
+                                                "projectId": {
+                                                    "type": "string"
+                                                },
+                                                "repository": {
+                                                    "type": "string"
+                                                },
+                                                "url": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": ["projectId", "repository", "number", "url"],
+                                            "type": "object"
+                                        },
+                                        {
+                                            "type": "null"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ]
+                        },
                         "modelSelection": {
                             "$ref": "#/$defs/Objects_"
                         },
@@ -658,6 +696,23 @@
                                             },
                                             "required": ["requestId", "startedAt"],
                                             "type": "object"
+                                        },
+                                        {
+                                            "type": "null"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ]
+                        },
+                        "unsettledAt": {
+                            "anyOf": [
+                                {
+                                    "anyOf": [
+                                        {
+                                            "type": "string"
                                         },
                                         {
                                             "type": "null"

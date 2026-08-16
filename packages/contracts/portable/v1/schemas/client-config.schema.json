@@ -38,7 +38,19 @@
                     "capabilities": {
                         "additionalProperties": false,
                         "properties": {
+                            "agentActivityPublishing": {
+                                "type": "boolean"
+                            },
+                            "attachmentUploads": {
+                                "type": "boolean"
+                            },
+                            "backgroundActivity": {
+                                "type": "boolean"
+                            },
                             "connectionProbe": {
+                                "type": "boolean"
+                            },
+                            "executionSessions": {
                                 "type": "boolean"
                             },
                             "portableClientProtocol": {
@@ -69,6 +81,9 @@
                                 "type": "boolean"
                             },
                             "threadPinReorder": {
+                                "type": "boolean"
+                            },
+                            "threadPullRequestLinking": {
                                 "type": "boolean"
                             },
                             "threadSettlement": {

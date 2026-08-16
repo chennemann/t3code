@@ -1,0 +1,30 @@
+{
+    "knownShellItemWithAdditiveFields": {
+        "futureMetadata": {
+            "source": "future-server"
+        },
+        "kind": "project-removed",
+        "projectId": "project-golden",
+        "sequence": 45
+    },
+    "knownThreadItemWithAdditiveFields": {
+        "futureMetadata": {
+            "source": "future-server"
+        },
+        "kind": "synchronized"
+    },
+    "unknownShellItem": {
+        "kind": "future-shell-item",
+        "payload": {
+            "projectId": "project-golden"
+        },
+        "sequence": 46
+    },
+    "unknownThreadItem": {
+        "kind": "future-thread-item",
+        "payload": {
+            "threadId": "thread-golden"
+        },
+        "sequence": 47
+    }
+}

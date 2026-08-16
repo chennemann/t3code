@@ -7,7 +7,19 @@
                     "capabilities": {
                         "additionalProperties": false,
                         "properties": {
+                            "agentActivityPublishing": {
+                                "type": "boolean"
+                            },
+                            "attachmentUploads": {
+                                "type": "boolean"
+                            },
+                            "backgroundActivity": {
+                                "type": "boolean"
+                            },
                             "connectionProbe": {
+                                "type": "boolean"
+                            },
+                            "executionSessions": {
                                 "type": "boolean"
                             },
                             "portableClientProtocol": {
@@ -38,6 +50,9 @@
                                 "type": "boolean"
                             },
                             "threadPinReorder": {
+                                "type": "boolean"
+                            },
+                            "threadPullRequestLinking": {
                                 "type": "boolean"
                             },
                             "threadSettlement": {
@@ -195,6 +210,30 @@
             "Objects_4": {
                 "additionalProperties": false,
                 "properties": {
+                    "number": {
+                        "allOf": [
+                            {
+                                "minimum": 1
+                            }
+                        ],
+                        "type": "integer"
+                    },
+                    "projectId": {
+                        "type": "string"
+                    },
+                    "repository": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string"
+                    }
+                },
+                "required": ["projectId", "repository", "number", "url"],
+                "type": "object"
+            },
+            "Objects_5": {
+                "additionalProperties": false,
+                "properties": {
                     "assistantMessageId": {
                         "anyOf": [
                             {
@@ -221,7 +260,7 @@
                     "sourceProposedPlan": {
                         "anyOf": [
                             {
-                                "$ref": "#/components/schemas/Objects_5"
+                                "$ref": "#/components/schemas/Objects_6"
                             },
                             {
                                 "type": "null"
@@ -249,7 +288,7 @@
                 "required": ["turnId", "state", "requestedAt", "startedAt", "completedAt", "assistantMessageId"],
                 "type": "object"
             },
-            "Objects_5": {
+            "Objects_6": {
                 "additionalProperties": false,
                 "properties": {
                     "planId": {
@@ -262,7 +301,7 @@
                 "required": ["threadId", "planId"],
                 "type": "object"
             },
-            "Objects_6": {
+            "Objects_7": {
                 "additionalProperties": false,
                 "properties": {
                     "requestId": {
@@ -275,7 +314,7 @@
                 "required": ["requestId", "startedAt"],
                 "type": "object"
             },
-            "Objects_7": {
+            "Objects_8": {
                 "additionalProperties": false,
                 "properties": {
                     "activeTurnId": {
@@ -342,6 +381,41 @@
                 },
                 "required": ["threadId", "status", "providerName", "activeTurnId", "lastError", "updatedAt"],
                 "type": "object"
+            },
+            "Union_": {
+                "anyOf": [
+                    {
+                        "additionalProperties": false,
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "mimeType": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "sizeBytes": {
+                                "allOf": [
+                                    {
+                                        "minimum": 0
+                                    },
+                                    {
+                                        "maximum": 10485760
+                                    }
+                                ],
+                                "type": "integer"
+                            },
+                            "type": {
+                                "enum": ["image"],
+                                "type": "string"
+                            }
+                        },
+                        "required": ["type", "id", "name", "mimeType", "sizeBytes"],
+                        "type": "object"
+                    }
+                ]
             }
         },
         "securitySchemes": {
@@ -1407,6 +1481,23 @@
                                                     }
                                                 ]
                                             },
+                                            "linkedPullRequest": {
+                                                "anyOf": [
+                                                    {
+                                                        "anyOf": [
+                                                            {
+                                                                "$ref": "#/components/schemas/Objects_4"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    {
+                                                        "type": "null"
+                                                    }
+                                                ]
+                                            },
                                             "modelSelection": {
                                                 "anyOf": [
                                                     {
@@ -1680,41 +1771,48 @@
                                                         "items": {
                                                             "anyOf": [
                                                                 {
-                                                                    "additionalProperties": false,
-                                                                    "properties": {
-                                                                        "dataUrl": {
-                                                                            "type": "string"
-                                                                        },
-                                                                        "mimeType": {
-                                                                            "type": "string"
-                                                                        },
-                                                                        "name": {
-                                                                            "type": "string"
-                                                                        },
-                                                                        "sizeBytes": {
-                                                                            "allOf": [
-                                                                                {
-                                                                                    "minimum": 0
+                                                                    "anyOf": [
+                                                                        {
+                                                                            "additionalProperties": false,
+                                                                            "properties": {
+                                                                                "dataUrl": {
+                                                                                    "type": "string"
                                                                                 },
-                                                                                {
-                                                                                    "maximum": 10485760
+                                                                                "mimeType": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "name": {
+                                                                                    "type": "string"
+                                                                                },
+                                                                                "sizeBytes": {
+                                                                                    "allOf": [
+                                                                                        {
+                                                                                            "minimum": 0
+                                                                                        },
+                                                                                        {
+                                                                                            "maximum": 10485760
+                                                                                        }
+                                                                                    ],
+                                                                                    "type": "integer"
+                                                                                },
+                                                                                "type": {
+                                                                                    "enum": ["image"],
+                                                                                    "type": "string"
                                                                                 }
+                                                                            },
+                                                                            "required": [
+                                                                                "type",
+                                                                                "name",
+                                                                                "mimeType",
+                                                                                "sizeBytes",
+                                                                                "dataUrl"
                                                                             ],
-                                                                            "type": "integer"
-                                                                        },
-                                                                        "type": {
-                                                                            "enum": ["image"],
-                                                                            "type": "string"
+                                                                            "type": "object"
                                                                         }
-                                                                    },
-                                                                    "required": [
-                                                                        "type",
-                                                                        "name",
-                                                                        "mimeType",
-                                                                        "sizeBytes",
-                                                                        "dataUrl"
-                                                                    ],
-                                                                    "type": "object"
+                                                                    ]
+                                                                },
+                                                                {
+                                                                    "$ref": "#/components/schemas/Union_"
                                                                 }
                                                             ]
                                                         },
@@ -1756,7 +1854,7 @@
                                             "sourceProposedPlan": {
                                                 "anyOf": [
                                                     {
-                                                        "$ref": "#/components/schemas/Objects_5"
+                                                        "$ref": "#/components/schemas/Objects_6"
                                                     },
                                                     {
                                                         "type": "null"
@@ -1832,7 +1930,13 @@
                                                 "type": "string"
                                             },
                                             "decision": {
-                                                "enum": ["accept", "acceptForSession", "decline", "cancel"],
+                                                "enum": [
+                                                    "accept",
+                                                    "acceptForSession",
+                                                    "acceptAlways",
+                                                    "decline",
+                                                    "cancel"
+                                                ],
                                                 "type": "string"
                                             },
                                             "requestId": {
@@ -2226,7 +2330,7 @@
                                                     "latestTurn": {
                                                         "anyOf": [
                                                             {
-                                                                "$ref": "#/components/schemas/Objects_4"
+                                                                "$ref": "#/components/schemas/Objects_5"
                                                             },
                                                             {
                                                                 "type": "null"
@@ -2237,6 +2341,23 @@
                                                         "anyOf": [
                                                             {
                                                                 "type": "string"
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "linkedPullRequest": {
+                                                        "anyOf": [
+                                                            {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "$ref": "#/components/schemas/Objects_4"
+                                                                    },
+                                                                    {
+                                                                        "type": "null"
+                                                                    }
+                                                                ]
                                                             },
                                                             {
                                                                 "type": "null"
@@ -2339,7 +2460,7 @@
                                                     "session": {
                                                         "anyOf": [
                                                             {
-                                                                "$ref": "#/components/schemas/Objects_7"
+                                                                "$ref": "#/components/schemas/Objects_8"
                                                             },
                                                             {
                                                                 "type": "null"
@@ -2423,7 +2544,24 @@
                                                             {
                                                                 "anyOf": [
                                                                     {
-                                                                        "$ref": "#/components/schemas/Objects_6"
+                                                                        "$ref": "#/components/schemas/Objects_7"
+                                                                    },
+                                                                    {
+                                                                        "type": "null"
+                                                                    }
+                                                                ]
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
+                                                    "unsettledAt": {
+                                                        "anyOf": [
+                                                            {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string"
                                                                     },
                                                                     {
                                                                         "type": "null"
@@ -3098,7 +3236,24 @@
                                                 "latestTurn": {
                                                     "anyOf": [
                                                         {
-                                                            "$ref": "#/components/schemas/Objects_4"
+                                                            "$ref": "#/components/schemas/Objects_5"
+                                                        },
+                                                        {
+                                                            "type": "null"
+                                                        }
+                                                    ]
+                                                },
+                                                "linkedPullRequest": {
+                                                    "anyOf": [
+                                                        {
+                                                            "anyOf": [
+                                                                {
+                                                                    "$ref": "#/components/schemas/Objects_4"
+                                                                },
+                                                                {
+                                                                    "type": "null"
+                                                                }
+                                                            ]
                                                         },
                                                         {
                                                             "type": "null"
@@ -3113,45 +3268,7 @@
                                                                 "anyOf": [
                                                                     {
                                                                         "items": {
-                                                                            "anyOf": [
-                                                                                {
-                                                                                    "additionalProperties": false,
-                                                                                    "properties": {
-                                                                                        "id": {
-                                                                                            "type": "string"
-                                                                                        },
-                                                                                        "mimeType": {
-                                                                                            "type": "string"
-                                                                                        },
-                                                                                        "name": {
-                                                                                            "type": "string"
-                                                                                        },
-                                                                                        "sizeBytes": {
-                                                                                            "allOf": [
-                                                                                                {
-                                                                                                    "minimum": 0
-                                                                                                },
-                                                                                                {
-                                                                                                    "maximum": 10485760
-                                                                                                }
-                                                                                            ],
-                                                                                            "type": "integer"
-                                                                                        },
-                                                                                        "type": {
-                                                                                            "enum": ["image"],
-                                                                                            "type": "string"
-                                                                                        }
-                                                                                    },
-                                                                                    "required": [
-                                                                                        "type",
-                                                                                        "id",
-                                                                                        "name",
-                                                                                        "mimeType",
-                                                                                        "sizeBytes"
-                                                                                    ],
-                                                                                    "type": "object"
-                                                                                }
-                                                                            ]
+                                                                            "$ref": "#/components/schemas/Union_"
                                                                         },
                                                                         "type": "array"
                                                                     },
@@ -3334,7 +3451,7 @@
                                                 "session": {
                                                     "anyOf": [
                                                         {
-                                                            "$ref": "#/components/schemas/Objects_7"
+                                                            "$ref": "#/components/schemas/Objects_8"
                                                         },
                                                         {
                                                             "type": "null"
@@ -3418,7 +3535,24 @@
                                                         {
                                                             "anyOf": [
                                                                 {
-                                                                    "$ref": "#/components/schemas/Objects_6"
+                                                                    "$ref": "#/components/schemas/Objects_7"
+                                                                },
+                                                                {
+                                                                    "type": "null"
+                                                                }
+                                                            ]
+                                                        },
+                                                        {
+                                                            "type": "null"
+                                                        }
+                                                    ]
+                                                },
+                                                "unsettledAt": {
+                                                    "anyOf": [
+                                                        {
+                                                            "anyOf": [
+                                                                {
+                                                                    "type": "string"
                                                                 },
                                                                 {
                                                                     "type": "null"

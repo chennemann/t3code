@@ -5,6 +5,9 @@ import { describe, expect, it } from "vite-plus/test";
 import clientConfig from "../portable/v1/fixtures/client-config.json" with { type: "json" };
 import commands from "../portable/v1/fixtures/commands.json" with { type: "json" };
 import shellItems from "../portable/v1/fixtures/shell-stream-items.json" with { type: "json" };
+import streamEvolutionCases from "../portable/v1/fixtures/stream-evolution-cases.json" with {
+  type: "json",
+};
 import threadItems from "../portable/v1/fixtures/thread-stream-items.json" with { type: "json" };
 import {
   EnvironmentClientConfig,
@@ -73,5 +76,17 @@ describe("portable client protocol v1", () => {
     );
     expect(unknownActivity).toBeDefined();
     expect(JSON.stringify(threadItems)).not.toContain("orchestration.subscribeThread");
+  });
+
+  it("matches React Native stream evolution behavior", () => {
+    expect(() =>
+      decodeShellItems([streamEvolutionCases.knownShellItemWithAdditiveFields]),
+    ).not.toThrow();
+    expect(() =>
+      decodeThreadItems([streamEvolutionCases.knownThreadItemWithAdditiveFields]),
+    ).not.toThrow();
+
+    expect(() => decodeShellItems([streamEvolutionCases.unknownShellItem])).toThrow();
+    expect(() => decodeThreadItems([streamEvolutionCases.unknownThreadItem])).toThrow();
   });
 });

@@ -277,6 +277,29 @@ const shellStreamItems = [
     { kind: "synchronized" },
 ];
 
+const streamEvolutionCases = {
+    knownShellItemWithAdditiveFields: {
+        kind: "project-removed",
+        sequence: 45,
+        projectId,
+        futureMetadata: { source: "future-server" },
+    },
+    unknownShellItem: {
+        kind: "future-shell-item",
+        sequence: 46,
+        payload: { projectId },
+    },
+    knownThreadItemWithAdditiveFields: {
+        kind: "synchronized",
+        futureMetadata: { source: "future-server" },
+    },
+    unknownThreadItem: {
+        kind: "future-thread-item",
+        sequence: 47,
+        payload: { threadId },
+    },
+};
+
 const threadStreamItems = [
     { kind: "snapshot", snapshot: threadSnapshot },
     {
@@ -554,6 +577,7 @@ for (const [name, schema] of [
 add("fixtures/client-config.json", clientConfig);
 add("fixtures/commands.json", commands);
 add("fixtures/shell-stream-items.json", shellStreamItems);
+add("fixtures/stream-evolution-cases.json", streamEvolutionCases);
 add("fixtures/thread-stream-items.json", threadStreamItems);
 
 const fixtureEntries = Array.from(files.entries())

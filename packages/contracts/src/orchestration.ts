@@ -594,6 +594,11 @@ export const OrchestrationShellStreamEvent = Schema.Union([
 ]);
 export type OrchestrationShellStreamEvent = typeof OrchestrationShellStreamEvent.Type;
 
+/**
+ * Stream kinds are a closed union for React Native compatibility. Additive fields on a known
+ * kind are compatible, while an unknown kind fails decoding so the subscription can recover
+ * from its last trusted projection instead of silently advancing past unknown semantics.
+ */
 export const OrchestrationShellStreamItem = Schema.Union([
   Schema.Struct({
     kind: Schema.Literal("synchronized"),
@@ -1724,6 +1729,7 @@ export const OrchestrationEvent = Schema.Union([
 ]);
 export type OrchestrationEvent = typeof OrchestrationEvent.Type;
 
+/** See {@link OrchestrationShellStreamItem} for the portable stream-evolution policy. */
 export const OrchestrationThreadStreamItem = Schema.Union([
   Schema.Struct({
     kind: Schema.Literal("synchronized"),
