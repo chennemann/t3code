@@ -18,12 +18,12 @@ import {
   ProjectId,
   ProviderItemId,
   ThreadId,
-  TodoId,
   TrimmedNonEmptyString,
   TrimmedString,
   TurnId,
 } from "./baseSchemas.ts";
 import { ProviderInstanceId } from "./providerInstance.ts";
+import * as Downstream from "./downstream/orchestration.ts";
 
 export const ORCHESTRATION_WS_METHODS = {
   dispatchCommand: "orchestration.dispatchCommand",
@@ -262,28 +262,6 @@ export const OrchestrationProject = Schema.Struct({
 });
 export type OrchestrationProject = typeof OrchestrationProject.Type;
 
-export const OrchestrationTodo = Schema.Struct({
-  id: TodoId,
-  title: TrimmedNonEmptyString,
-  summary: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
-  specificationSummary: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
-  contextSummary: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
-  glossarySummary: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
-  planSummary: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
-  specification: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
-  context: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
-  glossary: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
-  plan: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
-  notes: TrimmedString,
-  projectId: Schema.NullOr(ProjectId),
-  parentTodoId: Schema.NullOr(TodoId).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
-  planningThreadId: Schema.NullOr(ThreadId).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
-  plannedAt: Schema.NullOr(IsoDateTime).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
-  completedAt: Schema.NullOr(IsoDateTime),
-  createdAt: IsoDateTime,
-  updatedAt: IsoDateTime,
-});
-export type OrchestrationTodo = typeof OrchestrationTodo.Type;
 
 export const OrchestrationMessageRole = Schema.Literals(["user", "assistant", "system"]);
 export type OrchestrationMessageRole = typeof OrchestrationMessageRole.Type;
@@ -476,7 +454,7 @@ export const OrchestrationReadModel = Schema.Struct({
   snapshotSequence: NonNegativeInt,
   projects: Schema.Array(OrchestrationProject),
   threads: Schema.Array(OrchestrationThread),
-  todos: Schema.optional(Schema.Array(OrchestrationTodo)),
+  ...Downstream.readModelFields,
   updatedAt: IsoDateTime,
 });
 export type OrchestrationReadModel = typeof OrchestrationReadModel.Type;
@@ -555,7 +533,7 @@ export const OrchestrationShellSnapshot = Schema.Struct({
   snapshotSequence: NonNegativeInt,
   projects: Schema.Array(OrchestrationProjectShell),
   threads: Schema.Array(OrchestrationThreadShell),
-  todos: Schema.optional(Schema.Array(OrchestrationTodo)),
+  ...Downstream.readModelFields,
   updatedAt: IsoDateTime,
 });
 export type OrchestrationShellSnapshot = typeof OrchestrationShellSnapshot.Type;
@@ -581,16 +559,7 @@ export const OrchestrationShellStreamEvent = Schema.Union([
     sequence: NonNegativeInt,
     threadId: ThreadId,
   }),
-  Schema.Struct({
-    kind: Schema.Literal("todo-upserted"),
-    sequence: NonNegativeInt,
-    todo: OrchestrationTodo,
-  }),
-  Schema.Struct({
-    kind: Schema.Literal("todo-removed"),
-    sequence: NonNegativeInt,
-    todoId: TodoId,
-  }),
+  ...Downstream.shellStreamEventSchemas,
 ]);
 export type OrchestrationShellStreamEvent = typeof OrchestrationShellStreamEvent.Type;
 
@@ -732,55 +701,6 @@ const ProjectDeleteCommand = Schema.Struct({
   commandId: CommandId,
   projectId: ProjectId,
   force: Schema.optional(Schema.Boolean),
-});
-
-const TodoCreateCommand = Schema.Struct({
-  type: Schema.Literal("todo.create"),
-  commandId: CommandId,
-  todoId: TodoId,
-  title: TrimmedNonEmptyString,
-  summary: Schema.optional(TrimmedString),
-  specificationSummary: Schema.optional(TrimmedString),
-  contextSummary: Schema.optional(TrimmedString),
-  glossarySummary: Schema.optional(TrimmedString),
-  planSummary: Schema.optional(TrimmedString),
-  specification: Schema.optional(TrimmedString),
-  context: Schema.optional(TrimmedString),
-  glossary: Schema.optional(TrimmedString),
-  plan: Schema.optional(TrimmedString),
-  notes: Schema.optional(TrimmedString),
-  projectId: Schema.optional(Schema.NullOr(ProjectId)),
-  parentTodoId: Schema.optional(Schema.NullOr(TodoId)),
-  planningThreadId: Schema.optional(Schema.NullOr(ThreadId)),
-  createdAt: IsoDateTime,
-});
-
-const TodoUpdateCommand = Schema.Struct({
-  type: Schema.Literal("todo.update"),
-  commandId: CommandId,
-  todoId: TodoId,
-  title: Schema.optional(TrimmedNonEmptyString),
-  summary: Schema.optional(TrimmedString),
-  specificationSummary: Schema.optional(TrimmedString),
-  contextSummary: Schema.optional(TrimmedString),
-  glossarySummary: Schema.optional(TrimmedString),
-  planSummary: Schema.optional(TrimmedString),
-  specification: Schema.optional(TrimmedString),
-  context: Schema.optional(TrimmedString),
-  glossary: Schema.optional(TrimmedString),
-  plan: Schema.optional(TrimmedString),
-  notes: Schema.optional(TrimmedString),
-  projectId: Schema.optional(Schema.NullOr(ProjectId)),
-  parentTodoId: Schema.optional(Schema.NullOr(TodoId)),
-  planningThreadId: Schema.optional(Schema.NullOr(ThreadId)),
-  plannedAt: Schema.optional(Schema.NullOr(IsoDateTime)),
-  completed: Schema.optional(Schema.Boolean),
-});
-
-const TodoDeleteCommand = Schema.Struct({
-  type: Schema.Literal("todo.delete"),
-  commandId: CommandId,
-  todoId: TodoId,
 });
 
 const ThreadCreateCommand = Schema.Struct({
@@ -952,7 +872,7 @@ export const ThreadTurnStartCommand = Schema.Struct({
     text: Schema.String,
     attachments: Schema.Array(ChatAttachment),
   }),
-  agentInstructions: Schema.optional(TrimmedNonEmptyString),
+  ...Downstream.commandFields,
   modelSelection: Schema.optional(ModelSelection),
   titleSeed: Schema.optional(TrimmedNonEmptyString),
   runtimeMode: RuntimeMode.pipe(Schema.withDecodingDefault(Effect.succeed(DEFAULT_RUNTIME_MODE))),
@@ -974,7 +894,7 @@ const ClientThreadTurnStartCommand = Schema.Struct({
     text: Schema.String,
     attachments: Schema.Array(Schema.Union([UploadChatAttachment, ChatAttachment])),
   }),
-  agentInstructions: Schema.optional(TrimmedNonEmptyString),
+  ...Downstream.commandFields,
   modelSelection: Schema.optional(ModelSelection),
   titleSeed: Schema.optional(TrimmedNonEmptyString),
   runtimeMode: RuntimeMode,
@@ -1031,47 +951,12 @@ const ThreadSessionStopCommand = Schema.Struct({
   onlyIfSettled: Schema.optional(Schema.Boolean),
 });
 
-export const TodoPlanningSubtask = Schema.Struct({
-  title: TrimmedNonEmptyString,
-  summary: TrimmedNonEmptyString,
-  specificationSummary: TrimmedNonEmptyString,
-  contextSummary: TrimmedString,
-  specification: TrimmedString,
-  context: TrimmedString,
-});
-export type TodoPlanningSubtask = typeof TodoPlanningSubtask.Type;
-
-export const TodoPlanningProposal = Schema.Struct({
-  summary: TrimmedNonEmptyString,
-  specificationSummary: TrimmedNonEmptyString,
-  contextSummary: TrimmedNonEmptyString,
-  glossarySummary: TrimmedNonEmptyString,
-  planSummary: TrimmedNonEmptyString,
-  specification: TrimmedNonEmptyString,
-  context: TrimmedString,
-  glossary: TrimmedString,
-  plan: TrimmedNonEmptyString,
-  subtasks: Schema.Array(TodoPlanningSubtask),
-});
-export type TodoPlanningProposal = typeof TodoPlanningProposal.Type;
-
-const TodoPlanApplyCommand = Schema.Struct({
-  type: Schema.Literal("todo.plan.apply"),
-  commandId: CommandId,
-  todoId: TodoId,
-  planningThreadId: ThreadId,
-  proposal: TodoPlanningProposal,
-  subtasks: Schema.Array(Schema.Struct({ todoId: TodoId, ...TodoPlanningSubtask.fields })),
-  createdAt: IsoDateTime,
-});
 
 const DispatchableClientOrchestrationCommand = Schema.Union([
   ProjectCreateCommand,
   ProjectMetaUpdateCommand,
   ProjectDeleteCommand,
-  TodoCreateCommand,
-  TodoUpdateCommand,
-  TodoDeleteCommand,
+  ...Downstream.clientCommandSchemas,
   ThreadCreateCommand,
   ThreadDeleteCommand,
   ThreadArchiveCommand,
@@ -1100,9 +985,7 @@ export const ClientOrchestrationCommand = Schema.Union([
   ProjectCreateCommand,
   ProjectMetaUpdateCommand,
   ProjectDeleteCommand,
-  TodoCreateCommand,
-  TodoUpdateCommand,
-  TodoDeleteCommand,
+  ...Downstream.clientCommandSchemas,
   ThreadCreateCommand,
   ThreadDeleteCommand,
   ThreadArchiveCommand,
@@ -1200,7 +1083,7 @@ const ThreadTitleRegenerationCompleteCommand = Schema.Struct({
 });
 
 const InternalOrchestrationCommand = Schema.Union([
-  TodoPlanApplyCommand,
+  ...Downstream.internalCommandSchemas,
   ThreadSessionSetCommand,
   ThreadMessageAssistantDeltaCommand,
   ThreadMessageAssistantCompleteCommand,
@@ -1222,9 +1105,7 @@ export const OrchestrationEventType = Schema.Literals([
   "project.created",
   "project.meta-updated",
   "project.deleted",
-  "todo.created",
-  "todo.updated",
-  "todo.deleted",
+  ...Downstream.eventTypes,
   "thread.created",
   "thread.deleted",
   "thread.archived",
@@ -1254,7 +1135,11 @@ export const OrchestrationEventType = Schema.Literals([
 ]);
 export type OrchestrationEventType = typeof OrchestrationEventType.Type;
 
-export const OrchestrationAggregateKind = Schema.Literals(["project", "thread", "todo"]);
+export const OrchestrationAggregateKind = Schema.Literals([
+  "project",
+  "thread",
+  ...Downstream.aggregateKinds,
+]);
 export type OrchestrationAggregateKind = typeof OrchestrationAggregateKind.Type;
 export const OrchestrationActorKind = Schema.Literals(["client", "server", "provider"]);
 
@@ -1288,49 +1173,6 @@ export const ProjectDeletedPayload = Schema.Struct({
   deletedAt: IsoDateTime,
 });
 
-export const TodoCreatedPayload = Schema.Struct({
-  todoId: TodoId,
-  title: TrimmedNonEmptyString,
-  summary: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
-  specificationSummary: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
-  contextSummary: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
-  glossarySummary: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
-  planSummary: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
-  specification: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
-  context: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
-  glossary: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
-  plan: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
-  notes: TrimmedString,
-  projectId: Schema.NullOr(ProjectId),
-  parentTodoId: Schema.NullOr(TodoId).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
-  planningThreadId: Schema.NullOr(ThreadId).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
-  plannedAt: Schema.NullOr(IsoDateTime).pipe(Schema.withDecodingDefault(Effect.succeed(null))),
-  createdAt: IsoDateTime,
-  updatedAt: IsoDateTime,
-});
-
-export const TodoUpdatedPayload = Schema.Struct({
-  todoId: TodoId,
-  title: Schema.optional(TrimmedNonEmptyString),
-  summary: Schema.optional(TrimmedString),
-  specificationSummary: Schema.optional(TrimmedString),
-  contextSummary: Schema.optional(TrimmedString),
-  glossarySummary: Schema.optional(TrimmedString),
-  planSummary: Schema.optional(TrimmedString),
-  specification: Schema.optional(TrimmedString),
-  context: Schema.optional(TrimmedString),
-  glossary: Schema.optional(TrimmedString),
-  plan: Schema.optional(TrimmedString),
-  notes: Schema.optional(TrimmedString),
-  projectId: Schema.optional(Schema.NullOr(ProjectId)),
-  parentTodoId: Schema.optional(Schema.NullOr(TodoId)),
-  planningThreadId: Schema.optional(Schema.NullOr(ThreadId)),
-  plannedAt: Schema.optional(Schema.NullOr(IsoDateTime)),
-  completedAt: Schema.optional(Schema.NullOr(IsoDateTime)),
-  updatedAt: IsoDateTime,
-});
-
-export const TodoDeletedPayload = Schema.Struct({ todoId: TodoId });
 
 export const ThreadCreatedPayload = Schema.Struct({
   threadId: ThreadId,
@@ -1458,7 +1300,7 @@ export const ThreadMessageSentPayload = Schema.Struct({
 export const ThreadTurnStartRequestedPayload = Schema.Struct({
   threadId: ThreadId,
   messageId: MessageId,
-  agentInstructions: Schema.optional(TrimmedNonEmptyString),
+  ...Downstream.commandFields,
   modelSelection: Schema.optional(ModelSelection),
   titleSeed: Schema.optional(TrimmedNonEmptyString),
   runtimeMode: RuntimeMode.pipe(Schema.withDecodingDefault(Effect.succeed(DEFAULT_RUNTIME_MODE))),
@@ -1557,7 +1399,7 @@ const EventBaseFields = {
   sequence: NonNegativeInt,
   eventId: EventId,
   aggregateKind: OrchestrationAggregateKind,
-  aggregateId: Schema.Union([ProjectId, ThreadId, TodoId]),
+  aggregateId: Schema.Union([ProjectId, ThreadId, ...Downstream.aggregateIdSchemas]),
   occurredAt: IsoDateTime,
   commandId: Schema.NullOr(CommandId),
   causationEventId: Schema.NullOr(EventId),
@@ -1581,21 +1423,7 @@ export const OrchestrationEvent = Schema.Union([
     type: Schema.Literal("project.deleted"),
     payload: ProjectDeletedPayload,
   }),
-  Schema.Struct({
-    ...EventBaseFields,
-    type: Schema.Literal("todo.created"),
-    payload: TodoCreatedPayload,
-  }),
-  Schema.Struct({
-    ...EventBaseFields,
-    type: Schema.Literal("todo.updated"),
-    payload: TodoUpdatedPayload,
-  }),
-  Schema.Struct({
-    ...EventBaseFields,
-    type: Schema.Literal("todo.deleted"),
-    payload: TodoDeletedPayload,
-  }),
+  ...Downstream.eventSchemas(EventBaseFields),
   Schema.Struct({
     ...EventBaseFields,
     type: Schema.Literal("thread.created"),

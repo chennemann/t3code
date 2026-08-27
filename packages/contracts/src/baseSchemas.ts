@@ -48,7 +48,7 @@ export const ForwardCompatibleArray = <Element extends Schema.Top>(element: Elem
 /**
  * Construct a branded identifier. Enforces non-empty trimmed strings
  */
-const makeEntityId = <Brand extends string>(brand: Brand) => {
+export const makeEntityId = <Brand extends string>(brand: Brand) => {
   return TrimmedNonEmptyString.pipe(Schema.brand(brand));
 };
 
@@ -56,10 +56,6 @@ export const ThreadId = makeEntityId("ThreadId");
 export type ThreadId = typeof ThreadId.Type;
 export const ProjectId = makeEntityId("ProjectId");
 export type ProjectId = typeof ProjectId.Type;
-/** Reserved environment-local project backing Workspace threads and unassigned to-dos. */
-export const WORKSPACE_PROJECT_ID = ProjectId.make("t3-inbox");
-export const TodoId = makeEntityId("TodoId");
-export type TodoId = typeof TodoId.Type;
 export const EnvironmentId = makeEntityId("EnvironmentId");
 export type EnvironmentId = typeof EnvironmentId.Type;
 export const CommandId = makeEntityId("CommandId");

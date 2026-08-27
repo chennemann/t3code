@@ -11,7 +11,6 @@ import {
   type ProviderSession,
   type RuntimeMode,
   type TurnId,
-  WORKSPACE_PROJECT_ID,
 } from "@t3tools/contracts";
 import { isTemporaryWorktreeBranch, WORKTREE_BRANCH_PREFIX } from "@t3tools/shared/git";
 import * as Cache from "effect/Cache";
@@ -27,6 +26,10 @@ import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 import { makeDrainableWorker } from "@t3tools/shared/DrainableWorker";
 
+import {
+  decorateUserMessage as decorateDownstreamUserMessage,
+  prepareWorkingDirectory as prepareDownstreamWorkingDirectory,
+} from "../../downstream/Provider.ts";
 import { resolveThreadWorkspaceCwd } from "../../checkpointing/Utils.ts";
 import { increment, orchestrationEventsProcessedTotal } from "../../observability/Metrics.ts";
 import { ProviderAdapterRequestError } from "../../provider/Errors.ts";
@@ -302,7 +305,6 @@ function buildGeneratedWorktreeBranchName(raw: string): string {
 
 const make = Effect.gen(function* () {
   const crypto = yield* Crypto.Crypto;
-  const fs = yield* FileSystem.FileSystem;
   const orchestrationEngine = yield* OrchestrationEngineService;
   const projectionSnapshotQuery = yield* ProjectionSnapshotQuery;
   const providerService = yield* ProviderService;
@@ -654,9 +656,12 @@ const make = Effect.gen(function* () {
       thread,
       projects: project ? [project] : [],
     });
-    if (thread.projectId === WORKSPACE_PROJECT_ID && effectiveCwd) {
-      yield* fs.makeDirectory(effectiveCwd, { recursive: true });
-    }
+    const downstreamPreparation = prepareDownstreamWorkingDirectory({
+      projectId: thread.projectId,
+      cwd: effectiveCwd,
+      fileSystem,
+    });
+    if (downstreamPreparation !== null) yield* downstreamPreparation;
 
     const startProviderSession = (input?: {
       readonly resumeCursor?: unknown;
@@ -796,9 +801,12 @@ const make = Effect.gen(function* () {
     if (input.modelSelection !== undefined) {
       threadModelSelections.set(input.threadId, input.modelSelection);
     }
-    const providerInput = input.agentInstructions
-      ? `<agent_instructions>\n${input.agentInstructions}\n</agent_instructions>\n\n<user_message>\n${input.messageText}\n</user_message>`
-      : input.messageText;
+    const providerInput = decorateDownstreamUserMessage({
+      message: input.messageText,
+      ...(input.agentInstructions === undefined
+        ? {}
+        : { agentInstructions: input.agentInstructions }),
+    });
     const normalizedInput = toNonEmptyProviderInput(providerInput);
     const normalizedAttachments = input.attachments ?? [];
     const activeSession = yield* providerService

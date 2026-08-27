@@ -22,8 +22,7 @@ import {
   PreviewSnapshotToolkit,
   PreviewStandardToolkit,
 } from "./toolkits/preview/tools.ts";
-import { TodoPlanningToolkitHandlersLive } from "./toolkits/todoPlanning/handlers.ts";
-import { TodoPlanningToolkit } from "./toolkits/todoPlanning/tools.ts";
+import { mcpRegistrationLayer as DownstreamMcpRegistrationLayer } from "../downstream/index.ts";
 
 const unauthorized = HttpServerResponse.jsonUnsafe(
   {
@@ -218,10 +217,6 @@ export const PreviewToolkitRegistrationLive = Layer.mergeAll(
   PreviewSnapshotRegistrationLive,
 );
 
-const TodoPlanningToolkitRegistrationLive = McpServer.toolkit(TodoPlanningToolkit).pipe(
-  Layer.provide(TodoPlanningToolkitHandlersLive),
-);
-
 const McpTransportLive = McpServer.layerHttp({
   name: "T3 Code",
   version: packageJson.version,
@@ -231,5 +226,5 @@ const McpTransportLive = McpServer.layerHttp({
 
 export const layer = Layer.mergeAll(
   PreviewToolkitRegistrationLive,
-  TodoPlanningToolkitRegistrationLive,
+  DownstreamMcpRegistrationLayer,
 ).pipe(Layer.provideMerge(McpTransportLive));

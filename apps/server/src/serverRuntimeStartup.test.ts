@@ -23,6 +23,7 @@ import * as OrchestrationEngine from "./orchestration/Services/OrchestrationEngi
 import * as ProjectionSnapshotQuery from "./orchestration/Services/ProjectionSnapshotQuery.ts";
 import * as AnalyticsService from "./telemetry/AnalyticsService.ts";
 import * as ServerRuntimeStartup from "./serverRuntimeStartup.ts";
+import * as DownstreamRuntime from "./downstream/Runtime.ts";
 
 it("uses the canonical Codex default for auto-bootstrapped model selection", () => {
   assert.deepStrictEqual(ServerRuntimeStartup.getAutoBootstrapDefaultModelSelection(), {
@@ -139,7 +140,7 @@ it.effect("ensureWorkspaceProject creates the managed workspace project", () =>
       const baseDir = yield* fs.makeTempDirectoryScoped({ prefix: "t3-workspace-project-" });
       const createdProject = yield* Ref.make<{ id: string; workspaceRoot: string } | null>(null);
 
-      yield* ServerRuntimeStartup.ensureWorkspaceProject.pipe(
+      yield* DownstreamRuntime.ensureManagedWorkspace().pipe(
         Effect.provideService(ServerConfig.ServerConfig, { baseDir } as never),
         Effect.provideService(ProjectionSnapshotQuery.ProjectionSnapshotQuery, {
           getCommandReadModel: () => Effect.die("unused"),
@@ -179,7 +180,7 @@ it.effect("ensureWorkspaceProject creates the managed workspace project", () =>
       assert.isTrue(yield* fs.exists(path.join(baseDir, "workspace")));
 
       const renamed = yield* Ref.make(false);
-      yield* ServerRuntimeStartup.ensureWorkspaceProject.pipe(
+      yield* DownstreamRuntime.ensureManagedWorkspace().pipe(
         Effect.provideService(ServerConfig.ServerConfig, { baseDir } as never),
         Effect.provideService(ProjectionSnapshotQuery.ProjectionSnapshotQuery, {
           getCommandReadModel: () => Effect.die("unused"),

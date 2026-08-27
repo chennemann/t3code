@@ -71,6 +71,7 @@ import * as CheckpointDiffQuery from "./checkpointing/CheckpointDiffQuery.ts";
 import * as ServerConfig from "./config.ts";
 import * as Keybindings from "./keybindings.ts";
 import * as ExternalLauncher from "./process/externalLauncher.ts";
+import { projectShellStreamEvent as projectDownstreamShellStreamEvent } from "./downstream/Orchestration.ts";
 import {
   projectActivityEvent,
   projectThreadDetailSnapshot,
@@ -648,6 +649,12 @@ const makeWsRpcLayer = (
       const toShellStreamEvent = (
         event: OrchestrationEvent,
       ): Effect.Effect<Option.Option<OrchestrationShellStreamEvent>, never, never> => {
+        const downstreamEvent = projectDownstreamShellStreamEvent(
+          event,
+          projectionSnapshotQuery.getShellSnapshot(),
+        );
+        if (downstreamEvent !== null) return downstreamEvent;
+
         switch (event.type) {
           case "project.created":
           case "project.meta-updated":
@@ -659,30 +666,6 @@ const makeWsRpcLayer = (
                 sequence: event.sequence,
                 projectId: event.payload.projectId,
               }),
-            );
-          case "todo.deleted":
-            return Effect.succeed(
-              Option.some({
-                kind: "todo-removed" as const,
-                sequence: event.sequence,
-                todoId: event.payload.todoId,
-              }),
-            );
-          case "todo.created":
-          case "todo.updated":
-            return projectionSnapshotQuery.getShellSnapshot().pipe(
-              Effect.retry({ times: 1 }),
-              Effect.map((snapshot) => {
-                const todo = snapshot.todos?.find((candidate) => candidate.id === event.payload.todoId);
-                return todo === undefined
-                  ? Option.none<OrchestrationShellStreamEvent>()
-                  : Option.some<OrchestrationShellStreamEvent>({
-                      kind: "todo-upserted",
-                      sequence: event.sequence,
-                      todo,
-                    });
-              }),
-              Effect.orElseSucceed(() => Option.none()),
             );
           case "thread.deleted":
           case "thread.archived":

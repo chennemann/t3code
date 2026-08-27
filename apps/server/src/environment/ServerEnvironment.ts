@@ -1,8 +1,4 @@
-import {
-  EnvironmentId,
-  type ExecutionEnvironmentDescriptor,
-  PORTABLE_CLIENT_PROTOCOL_VERSION,
-} from "@t3tools/contracts";
+import { EnvironmentId, type ExecutionEnvironmentDescriptor } from "@t3tools/contracts";
 import { HostProcessArchitecture, HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
@@ -18,6 +14,7 @@ import { readAgentActivityPublishingActive } from "../cloud/config.ts";
 import { resolveServerSelfUpdateCapability } from "../cloud/selfUpdate.ts";
 import { resolveServiceLauncherMode } from "../cloud/serviceLauncherClient.ts";
 import * as ServerConfig from "../config.ts";
+import { capabilities as downstreamCapabilities } from "../downstream/Environment.ts";
 import * as ProcessRunner from "../processRunner.ts";
 import { resolveServerEnvironmentLabel } from "./ServerEnvironmentLabel.ts";
 
@@ -154,16 +151,11 @@ export const make = Effect.gen(function* () {
       pullRequests: true,
       threadSettlement: true,
       threadSnooze: true,
-      threadWorktrees: true,
-      workspaceFiles: true,
-      backgroundActivity: true,
-      executionSessions: true,
+      ...downstreamCapabilities,
       threadPinning: true,
       threadPinReorder: true,
       threadTitleRegeneration: true,
       threadPullRequestLinking: true,
-      todos: true,
-      portableClientProtocol: PORTABLE_CLIENT_PROTOCOL_VERSION,
       ...(serverSelfUpdate === null ? {} : { serverSelfUpdate }),
       ...(serverSelfUpdate === "boot-service" ? { serverSelfUpdateProgress: true } : {}),
     },

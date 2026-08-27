@@ -15,9 +15,12 @@ import * as Option from "effect/Option";
 import * as Queue from "effect/Queue";
 import type * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
-import { projectActivityEvent, projectThreadDetailSnapshot } from "../ActivityPayloadProjection.ts";
-import { OrchestrationEngineService } from "./OrchestrationEngine.ts";
-import { ProjectionSnapshotQuery } from "./ProjectionSnapshotQuery.ts";
+import {
+  projectActivityEvent,
+  projectThreadDetailSnapshot,
+} from "../../orchestration/ActivityPayloadProjection.ts";
+import { OrchestrationEngineService } from "../../orchestration/Services/OrchestrationEngine.ts";
+import { ProjectionSnapshotQuery } from "../../orchestration/Services/ProjectionSnapshotQuery.ts";
 
 const RESUME_MAX_GAP = 1_000;
 const LIVE_BUFFER_CAPACITY = 1_024;

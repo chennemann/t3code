@@ -12,9 +12,9 @@ import {
   AuthSessionState,
   AuthTokenExchangeRequest,
   ServerAuthDescriptor,
-} from "./auth.ts";
-import { NonNegativeInt, ThreadId } from "./baseSchemas.ts";
-import { ExecutionEnvironmentDescriptor } from "./environment.ts";
+} from "../auth.ts";
+import { NonNegativeInt, ThreadId } from "../baseSchemas.ts";
+import { ExecutionEnvironmentDescriptor } from "../environment.ts";
 import {
   ClientOrchestrationCommand,
   DispatchResult,
@@ -22,8 +22,8 @@ import {
   OrchestrationShellStreamItem,
   OrchestrationThreadDetailSnapshot,
   OrchestrationThreadStreamItem,
-} from "./orchestration.ts";
-import { ServerProviders } from "./server.ts";
+} from "../orchestration.ts";
+import { ServerProviders } from "../server.ts";
 
 export const PORTABLE_CLIENT_PROTOCOL_VERSION = 1 as const;
 export const PortableClientProtocolVersion = Schema.Literal(PORTABLE_CLIENT_PROTOCOL_VERSION);

@@ -3,9 +3,9 @@ import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 
-import * as McpInvocationContext from "../../McpInvocationContext.ts";
-import { OrchestrationEngineService } from "../../../orchestration/Services/OrchestrationEngine.ts";
-import { ProjectionSnapshotQuery } from "../../../orchestration/Services/ProjectionSnapshotQuery.ts";
+import * as McpInvocationContext from "../../../../mcp/McpInvocationContext.ts";
+import { OrchestrationEngineService } from "../../../../orchestration/Services/OrchestrationEngine.ts";
+import { ProjectionSnapshotQuery } from "../../../../orchestration/Services/ProjectionSnapshotQuery.ts";
 import { TodoPlanningToolkit } from "./tools.ts";
 
 const handlers = {

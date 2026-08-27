@@ -14,19 +14,20 @@ import {
   OrchestrationCommandReceiptStatus,
   ProjectId,
   ThreadId,
-  TodoId,
 } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
 
+import { aggregateIdSchema as DownstreamAggregateId } from "../../downstream/Orchestration.ts";
+
 import type { OrchestrationCommandReceiptRepositoryError } from "../Errors.ts";
 
 export const OrchestrationCommandReceipt = Schema.Struct({
   commandId: CommandId,
   aggregateKind: OrchestrationAggregateKind,
-  aggregateId: Schema.Union([ProjectId, ThreadId, TodoId]),
+  aggregateId: Schema.Union([ProjectId, ThreadId, DownstreamAggregateId]),
   acceptedAt: IsoDateTime,
   resultSequence: NonNegativeInt,
   status: OrchestrationCommandReceiptStatus,

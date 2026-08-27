@@ -1,7 +1,6 @@
 import * as Context from "effect/Context";
 import type * as DateTime from "effect/DateTime";
 import * as Schema from "effect/Schema";
-import * as HttpApi from "effect/unstable/httpapi/HttpApi";
 import * as HttpApiEndpoint from "effect/unstable/httpapi/HttpApiEndpoint";
 import * as HttpApiGroup from "effect/unstable/httpapi/HttpApiGroup";
 import * as HttpApiMiddleware from "effect/unstable/httpapi/HttpApiMiddleware";
@@ -26,7 +25,6 @@ import {
 } from "./auth.ts";
 import { AuthSessionId, ThreadId, TrimmedNonEmptyString } from "./baseSchemas.ts";
 import { ExecutionEnvironmentDescriptor } from "./environment.ts";
-import { EnvironmentClientConfig } from "./portableClient.ts";
 import {
   ClientOrchestrationCommand,
   DispatchResult,
@@ -50,7 +48,7 @@ import {
   RelayLinkProofRequest,
 } from "./relay.ts";
 
-const OptionalBearerHeaders = Schema.Struct({
+export const OptionalBearerHeaders = Schema.Struct({
   authorization: Schema.optionalKey(Schema.String),
   dpop: Schema.optionalKey(Schema.String),
 });
@@ -333,10 +331,6 @@ const EnvironmentOrchestrationDispatchErrors = [
   EnvironmentScopeRequiredError,
   EnvironmentInternalError,
 ] as const;
-const EnvironmentClientConfigErrors = [
-  EnvironmentScopeRequiredError,
-  EnvironmentInternalError,
-] as const;
 
 export interface EnvironmentSessionPrincipalShape {
   readonly sessionId: AuthSessionId;
@@ -553,14 +547,6 @@ export class EnvironmentPullRequestsHttpApi extends HttpApiGroup.make("pullReque
   }).middleware(EnvironmentAuthenticatedAuth),
 ) {}
 
-export class EnvironmentClientHttpApi extends HttpApiGroup.make("environmentClient").add(
-  HttpApiEndpoint.get("clientConfig", "/api/environment/client-config", {
-    headers: OptionalBearerHeaders,
-    success: EnvironmentClientConfig,
-    error: EnvironmentClientConfigErrors,
-  }).middleware(EnvironmentAuthenticatedAuth),
-) {}
-
 export class EnvironmentConnectHttpApi extends HttpApiGroup.make("connect")
   .add(
     HttpApiEndpoint.post("linkProof", "/api/connect/link-proof", {
@@ -621,11 +607,3 @@ export class EnvironmentConnectHttpApi extends HttpApiGroup.make("connect")
       error: EnvironmentHttpCloudErrors,
     }),
   ) {}
-
-export class EnvironmentHttpApi extends HttpApi.make("environment")
-  .add(EnvironmentMetadataHttpApi)
-  .add(EnvironmentAuthHttpApi)
-  .add(EnvironmentClientHttpApi)
-  .add(EnvironmentOrchestrationHttpApi)
-  .add(EnvironmentPullRequestsHttpApi)
-  .add(EnvironmentConnectHttpApi) {}

@@ -1,4 +1,5 @@
 import * as Schema from "effect/Schema";
+import { commands as downstreamCommands } from "./downstream/keybindings.ts";
 import { ForwardCompatibleArray, TrimmedString } from "./baseSchemas.ts";
 
 export const MAX_KEYBINDING_VALUE_LENGTH = 64;
@@ -67,7 +68,7 @@ export const STATIC_KEYBINDING_COMMANDS = [
   "commandPalette.toggle",
   "filePicker.toggle",
   "projectSearch.toggle",
-  "todoSearch.toggle",
+  ...downstreamCommands,
   "themeEditor.toggle",
   "composer.stash",
   "chat.new",

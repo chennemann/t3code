@@ -2,13 +2,13 @@ import * as Schema from "effect/Schema";
 import * as OpenApi from "effect/unstable/httpapi/OpenApi";
 import { describe, expect, it } from "vite-plus/test";
 
-import clientConfig from "../portable/v1/fixtures/client-config.json" with { type: "json" };
-import commands from "../portable/v1/fixtures/commands.json" with { type: "json" };
-import shellItems from "../portable/v1/fixtures/shell-stream-items.json" with { type: "json" };
-import streamEvolutionCases from "../portable/v1/fixtures/stream-evolution-cases.json" with {
+import clientConfig from "../../portable/v1/fixtures/client-config.json" with { type: "json" };
+import commands from "../../portable/v1/fixtures/commands.json" with { type: "json" };
+import shellItems from "../../portable/v1/fixtures/shell-stream-items.json" with { type: "json" };
+import streamEvolutionCases from "../../portable/v1/fixtures/stream-evolution-cases.json" with {
   type: "json",
 };
-import threadItems from "../portable/v1/fixtures/thread-stream-items.json" with { type: "json" };
+import threadItems from "../../portable/v1/fixtures/thread-stream-items.json" with { type: "json" };
 import {
   EnvironmentClientConfig,
   PORTABLE_CLIENT_PROTOCOL_VERSION,
@@ -19,7 +19,7 @@ import {
   ClientOrchestrationCommand,
   OrchestrationShellStreamItem,
   OrchestrationThreadStreamItem,
-} from "./orchestration.ts";
+} from "../orchestration.ts";
 
 const decodePortableStreamQuery = Schema.decodeUnknownSync(PortableOrchestrationStreamQuery);
 const decodeClientConfig = Schema.decodeUnknownSync(EnvironmentClientConfig);

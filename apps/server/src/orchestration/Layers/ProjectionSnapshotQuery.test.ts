@@ -21,6 +21,7 @@ import * as ThreadBackgroundLiveness from "../ThreadBackgroundLiveness.ts";
 import * as ThreadPlanProgress from "../ThreadPlanProgress.ts";
 import { ProjectionSnapshotQuery } from "../Services/ProjectionSnapshotQuery.ts";
 import { encodeThreadDetailPageCursor } from "../threadDetailCursor.ts";
+import * as ServerConfig from "../../config.ts";
 
 const asProjectId = (value: string): ProjectId => ProjectId.make(value);
 const asTurnId = (value: string): TurnId => TurnId.make(value);
@@ -34,6 +35,7 @@ const projectionSnapshotLayer = it.layer(
     Layer.provide(ThreadPlanProgress.layer),
     Layer.provideMerge(RepositoryIdentityResolver.layer),
     Layer.provideMerge(SqlitePersistenceMemory),
+    Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "t3-snapshot-query-" })),
     Layer.provideMerge(NodeServices.layer),
   ),
 );
@@ -1878,6 +1880,8 @@ it.effect(
         }),
       ),
       Layer.provideMerge(SqlitePersistenceMemory),
+      Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "t3-snapshot-dedupe-" })),
+      Layer.provideMerge(NodeServices.layer),
     );
 
     return Effect.gen(function* () {

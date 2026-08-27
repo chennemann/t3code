@@ -59,7 +59,7 @@ import {
 } from "../observability/Metrics.ts";
 import * as ProcessRunner from "../processRunner.ts";
 import * as PortScanner from "../preview/PortScanner.ts";
-import * as ServerSettings from "../serverSettings.ts";
+import { makeShellResolver as makeDownstreamShellResolver } from "../downstream/Terminal.ts";
 import * as PtyAdapter from "./PtyAdapter.ts";
 
 export {
@@ -1134,19 +1134,11 @@ export const make = Effect.fn("TerminalManager.make")(function* () {
   const { terminalLogsDir } = yield* ServerConfig.ServerConfig;
   const ptyAdapter = yield* PtyAdapter.PtyAdapter;
   const portDiscovery = yield* PortScanner.PortDiscovery;
-  const serverSettings = yield* ServerSettings.ServerSettingsService;
+  const downstreamShell = yield* makeDownstreamShellResolver;
   return yield* makeWithOptions({
     logsDir: terminalLogsDir,
     ptyAdapter,
-    shellResolver: serverSettings.getSettings.pipe(
-      Effect.map((settings) => settings.terminalShellPath),
-      Effect.catch((error) =>
-        Effect.logWarning("failed to read terminal shell setting; using platform default", {
-          operation: error.operation,
-          cause: error.cause,
-        }).pipe(Effect.as("")),
-      ),
-    ),
+    shellResolver: downstreamShell.resolve,
     registerTerminalProcesses: portDiscovery.registerTerminalProcesses,
     unregisterTerminal: portDiscovery.unregisterTerminal,
   });
