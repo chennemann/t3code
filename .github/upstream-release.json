@@ -1,6 +1,6 @@
 {
-  "repository": "pingdotgg/t3code",
-  "tag": "v0.0.34",
-  "commit": "badae6a5cc8325dcd5a145bea6f7b8ac692818a1",
-  "downstreamVersion": "0.0.34-fork.1"
+    "repository": "pingdotgg/t3code",
+    "tag": "v0.0.35",
+    "commit": "f925d639421844f02b3166d29281905dbba6d529",
+    "downstreamVersion": "0.0.35-fork.1"
 }
