@@ -1,6 +1,6 @@
 {
   "name": "@t3tools/contracts",
-  "version": "0.0.34-fork.1",
+  "version": "0.0.35-fork.5",
   "private": true,
   "files": [
     "dist"
