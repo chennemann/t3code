@@ -9,6 +9,7 @@ import {
   PERSISTED_STATE_KEY,
   type PersistedUiState,
   persistState,
+  reorderActiveThreads,
   reorderProjects,
   resolveProjectExpanded,
   setDefaultAdvertisedEndpointKey,
@@ -21,6 +22,8 @@ function makeUiState(overrides: Partial<UiState> = {}): UiState {
   return {
     projectExpandedById: {},
     projectOrder: [],
+    activeThreadOrder: [],
+    activeThreadOrderAnchorById: {},
     threadLastVisitedAtById: {},
     threadChangedFilesExpandedById: {},
     defaultAdvertisedEndpointKey: null,
@@ -116,6 +119,71 @@ describe("uiStateStore pure functions", () => {
     );
   });
 
+  it("persists a manual active-thread drop and its lifecycle anchors", () => {
+    const currentOrder = ["env:thread-a", "env:thread-b", "env:thread-c"];
+    const next = reorderActiveThreads(
+      makeUiState(),
+      currentOrder,
+      {
+        "env:thread-a": 100,
+        "env:thread-b": 200,
+        "env:thread-c": 300,
+      },
+      "env:thread-a",
+      "env:thread-c",
+    );
+
+    expect(next.activeThreadOrder).toEqual([
+      "env:thread-b",
+      "env:thread-c",
+      "env:thread-a",
+    ]);
+    expect(next.activeThreadOrderAnchorById).toEqual({
+      "env:thread-a": 100,
+      "env:thread-b": 200,
+      "env:thread-c": 300,
+    });
+  });
+
+  it("reorders a filtered thread list without discarding hidden preferences", () => {
+    const state = makeUiState({
+      activeThreadOrder: ["hidden-a", "visible-a", "visible-b", "hidden-b"],
+      activeThreadOrderAnchorById: {
+        "hidden-a": 1,
+        "hidden-b": 4,
+      },
+    });
+
+    const next = reorderActiveThreads(
+      state,
+      ["visible-a", "visible-b"],
+      { "visible-a": 2, "visible-b": 3 },
+      "visible-a",
+      "visible-b",
+    );
+
+    expect(next.activeThreadOrder).toEqual([
+      "hidden-a",
+      "visible-b",
+      "visible-a",
+      "hidden-b",
+    ]);
+    expect(next.activeThreadOrderAnchorById).toEqual({
+      "hidden-a": 1,
+      "visible-a": 2,
+      "visible-b": 3,
+      "hidden-b": 4,
+    });
+  });
+
+  it("ignores active-thread drops without two valid positions", () => {
+    const state = makeUiState();
+    const order = ["env:thread-a", "env:thread-b"];
+
+    expect(reorderActiveThreads(state, order, {}, "missing", "env:thread-b")).toBe(state);
+    expect(reorderActiveThreads(state, order, {}, "env:thread-a", "env:thread-a")).toBe(state);
+  });
+
   it("stores explicit changed-file expansion choices", () => {
     const threadId = ThreadId.make("thread-1");
     const collapsed = setThreadChangedFilesExpanded(makeUiState(), threadId, "turn-1", false);
@@ -154,6 +222,11 @@ describe("parsePersistedState", () => {
         invalid: "no" as unknown as boolean,
       },
       projectOrder: ["physical-b", "", "physical-a", "physical-b"],
+      activeThreadOrder: ["environment:thread-b", "", "environment:thread-a"],
+      activeThreadOrderAnchorById: {
+        "environment:thread-b": 200,
+        invalid: Number.NaN,
+      },
       threadLastVisitedAtById: {
         "environment:thread-1": "2026-02-25T12:35:00.000Z",
         invalid: "not-a-date",
@@ -173,6 +246,10 @@ describe("parsePersistedState", () => {
         logical: false,
       },
       projectOrder: ["physical-b", "physical-a"],
+      activeThreadOrder: ["environment:thread-b", "environment:thread-a"],
+      activeThreadOrderAnchorById: {
+        "environment:thread-b": 200,
+      },
       threadLastVisitedAtById: {
         "environment:thread-1": "2026-02-25T12:35:00.000Z",
       },
@@ -270,6 +347,11 @@ describe("uiStateStore persistence", () => {
         logical: false,
       },
       projectOrder: ["physical-b", "physical-a"],
+      activeThreadOrder: ["environment:thread-b", "environment:thread-a"],
+      activeThreadOrderAnchorById: {
+        "environment:thread-b": 200,
+        "environment:thread-a": 100,
+      },
       threadLastVisitedAtById: {
         "environment:thread-1": "2026-02-25T12:35:00.000Z",
       },
@@ -292,6 +374,11 @@ describe("uiStateStore persistence", () => {
         logical: false,
       },
       projectOrder: ["physical-b", "physical-a"],
+      activeThreadOrder: ["environment:thread-b", "environment:thread-a"],
+      activeThreadOrderAnchorById: {
+        "environment:thread-b": 200,
+        "environment:thread-a": 100,
+      },
       threadLastVisitedAtById: {
         "environment:thread-1": "2026-02-25T12:35:00.000Z",
       },

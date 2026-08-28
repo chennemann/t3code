@@ -10,6 +10,15 @@ request merges if **Auto-settle merged threads** is enabled.
 When you un-settle a thread, it returns to the top of the active list so you can find it right
 away. Its timestamps do not change. Other threads keep their positions.
 
+On web and desktop, active threads otherwise keep a stable order while work continues. If you
+return to a thread with a user message after at least 36 hours without a user message, it moves to
+the top of active work. Follow-up messages sent within 36 hours of the previous user message do not
+keep reshuffling the list, and agent messages never move a thread on their own.
+
+Drag an active thread to place it manually. This order is saved on the current browser or desktop
+app. A newly created, un-settled, or re-engaged thread still appears above the manually arranged
+threads; drag it into place when you want to make it part of the saved order.
+
 Right-click a pull request link in a thread and choose **Link to thread** to show that pull request
 in the sidebar. The thread settles when the linked pull request merges if **Auto-settle merged
 threads** is enabled. Right-click the same link and choose **Unlink from thread** to remove it.

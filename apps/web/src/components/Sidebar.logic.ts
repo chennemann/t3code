@@ -539,25 +539,79 @@ export function firstValidTimestamp(
   return null;
 }
 
-// Sidebar sort: static order, newest anchor on top. Activity NEVER reorders
+// Sidebar sort: stable order, newest anchor on top. Ordinary activity never
 // the list — a row holds its position between lifecycle transitions, so the
-// screen only moves when a thread enters or leaves the active list. The
+// screen only moves when a thread enters or leaves the active list, or when
+// a user message resumes it after the server's 36-hour inactivity window. The
 // anchor is creation time until an un-settle re-anchors it (see
 // activeThreadAnchorTimestampMs), so an un-settled thread surfaces at the
 // top instead of sinking back to its creation-order slot. Status (including
 // pending approval) is carried by each card's edge strip, not by position.
+export function activeSidebarThreadOrderAnchorTimestampMs(thread: {
+  readonly createdAt: string;
+  readonly unsettledAt?: string | null | undefined;
+  readonly recencyAnchorAt?: string | null | undefined;
+}): number {
+  return Math.max(
+    activeThreadAnchorTimestampMs(thread),
+    firstValidTimestampMs(thread.recencyAnchorAt ?? null),
+  );
+}
+
 export function sortThreadsForSidebar<
   T extends {
     readonly id: string;
     readonly createdAt: string;
     readonly unsettledAt?: string | null | undefined;
+    readonly recencyAnchorAt?: string | null | undefined;
   },
 >(threads: readonly T[]): T[] {
   return [...threads].toSorted(
     (left, right) =>
-      activeThreadAnchorTimestampMs(right) - activeThreadAnchorTimestampMs(left) ||
+      activeSidebarThreadOrderAnchorTimestampMs(right) -
+        activeSidebarThreadOrderAnchorTimestampMs(left) ||
       left.id.localeCompare(right.id),
   );
+}
+
+/** Applies the user's local drag order beneath threads whose lifecycle anchor
+    has changed since the last drop. Those newly created, un-settled, or
+    re-engaged threads keep the automatic recency behavior until the user
+    manually places the active list again. */
+export function applyManualActiveThreadOrder<
+  T extends {
+    readonly createdAt: string;
+    readonly unsettledAt?: string | null | undefined;
+    readonly recencyAnchorAt?: string | null | undefined;
+  },
+>(input: {
+  readonly threads: readonly T[];
+  readonly preferredIds: readonly string[];
+  readonly anchorById: Readonly<Record<string, number>>;
+  readonly getId: (thread: T) => string;
+}): T[] {
+  const preferredIdSet = new Set(input.preferredIds);
+  const automatic: T[] = [];
+  const manual: T[] = [];
+  for (const thread of input.threads) {
+    const id = input.getId(thread);
+    if (
+      preferredIdSet.has(id) &&
+      input.anchorById[id] === activeSidebarThreadOrderAnchorTimestampMs(thread)
+    ) {
+      manual.push(thread);
+    } else {
+      automatic.push(thread);
+    }
+  }
+  return [
+    ...automatic,
+    ...orderItemsByPreferredIds({
+      items: manual,
+      preferredIds: input.preferredIds,
+      getId: input.getId,
+    }),
+  ];
 }
 
 // Pinned-reorder key math and the keyed sort live in client-runtime

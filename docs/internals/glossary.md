@@ -46,6 +46,12 @@ A single user-to-assistant work cycle inside a thread. It starts with user input
 
 A user-visible log item attached to a thread. In [the contracts][1], activities cover important non-message events like approvals, tool actions, and failures. They are projected into thread state in [projector.ts][4].
 
+#### Recency anchor
+
+The stable timestamp that orders a thread among active work. It starts at thread creation and
+advances when a user message resumes the thread after at least 36 hours without another user
+message. User messages inside that working period and all agent activity leave the anchor alone.
+
 ### Orchestration
 
 Orchestration is the server-side domain layer that turns runtime activity into stable app state. The main entry point is [OrchestrationEngine.ts][7], with core logic in [decider.ts][8] and [projector.ts][4].

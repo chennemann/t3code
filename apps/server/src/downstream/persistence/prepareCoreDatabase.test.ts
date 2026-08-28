@@ -54,6 +54,7 @@ layer("prepareCoreDatabase", (it) => {
         { migration_id: 41, name: "AuthSessionClientConnection" },
         { migration_id: 42, name: "ProjectionThreadLinkedPullRequest" },
         { migration_id: 43, name: "ProjectionThreadsUnsettledAt" },
+        { migration_id: 44, name: "ProjectionThreadsRecencyAnchor" },
       ]);
       assert.includeMembers(
         authColumns.map((column) => column.name),
@@ -61,7 +62,7 @@ layer("prepareCoreDatabase", (it) => {
       );
       assert.includeMembers(
         threadColumns.map((column) => column.name),
-        ["linked_pull_request_json", "unsettled_at"],
+        ["linked_pull_request_json", "unsettled_at", "recency_anchor_at"],
       );
     }),
   );
@@ -88,6 +89,7 @@ layer("prepareCoreDatabase", (it) => {
         { migration_id: 41, name: "AuthSessionClientConnection" },
         { migration_id: 42, name: "ProjectionThreadLinkedPullRequest" },
         { migration_id: 43, name: "ProjectionThreadsUnsettledAt" },
+        { migration_id: 44, name: "ProjectionThreadsRecencyAnchor" },
       ]);
     }),
   );

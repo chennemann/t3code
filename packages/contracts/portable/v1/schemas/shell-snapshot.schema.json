@@ -509,6 +509,23 @@
                         "projectId": {
                             "type": "string"
                         },
+                        "recencyAnchorAt": {
+                            "anyOf": [
+                                {
+                                    "anyOf": [
+                                        {
+                                            "type": "string"
+                                        },
+                                        {
+                                            "type": "null"
+                                        }
+                                    ]
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ]
+                        },
                         "runtimeMode": {
                             "enum": ["approval-required", "auto-accept-edits", "auto", "full-access"],
                             "type": "string"

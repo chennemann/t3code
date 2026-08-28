@@ -321,6 +321,67 @@ it.layer(BaseTestLayer)("OrchestrationProjectionPipeline", (it) => {
           unsettledAt: "2026-01-01T00:00:02.000Z",
         },
       ]);
+
+      yield* eventStore.append({
+        type: "thread.message-sent",
+        eventId: EventId.make("evt-user-before-pause"),
+        aggregateKind: "thread",
+        aggregateId: ThreadId.make("thread-1"),
+        occurredAt: "2026-01-01T01:00:00.000Z",
+        commandId: CommandId.make("cmd-user-before-pause"),
+        causationEventId: null,
+        correlationId: CommandId.make("cmd-user-before-pause"),
+        metadata: {},
+        payload: {
+          threadId: ThreadId.make("thread-1"),
+          messageId: MessageId.make("message-user-before-pause"),
+          role: "user",
+          text: "Pause here",
+          turnId: null,
+          streaming: false,
+          createdAt: "2026-01-01T01:00:00.000Z",
+          updatedAt: "2026-01-01T01:00:00.000Z",
+        },
+      });
+      yield* eventStore.append({
+        type: "thread.message-sent",
+        eventId: EventId.make("evt-user-reengaged"),
+        aggregateKind: "thread",
+        aggregateId: ThreadId.make("thread-1"),
+        occurredAt: "2026-01-02T13:00:00.000Z",
+        commandId: CommandId.make("cmd-user-reengaged"),
+        causationEventId: null,
+        correlationId: CommandId.make("cmd-user-reengaged"),
+        metadata: {},
+        payload: {
+          threadId: ThreadId.make("thread-1"),
+          messageId: MessageId.make("message-user-reengaged"),
+          role: "user",
+          text: "Continue",
+          turnId: null,
+          streaming: false,
+          createdAt: "2026-01-02T13:00:00.000Z",
+          updatedAt: "2026-01-02T13:00:00.000Z",
+        },
+      });
+      yield* projectionPipeline.bootstrap;
+
+      const recencyRows = yield* sql<{
+        readonly latestUserMessageAt: string | null;
+        readonly recencyAnchorAt: string | null;
+      }>`
+        SELECT
+          latest_user_message_at AS "latestUserMessageAt",
+          recency_anchor_at AS "recencyAnchorAt"
+        FROM projection_threads
+        WHERE thread_id = 'thread-1'
+      `;
+      assert.deepEqual(recencyRows, [
+        {
+          latestUserMessageAt: "2026-01-02T13:00:00.000Z",
+          recencyAnchorAt: "2026-01-02T13:00:00.000Z",
+        },
+      ]);
     }),
   );
 });

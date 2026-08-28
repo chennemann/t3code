@@ -2448,6 +2448,23 @@
                                                     "projectId": {
                                                         "type": "string"
                                                     },
+                                                    "recencyAnchorAt": {
+                                                        "anyOf": [
+                                                            {
+                                                                "anyOf": [
+                                                                    {
+                                                                        "type": "string"
+                                                                    },
+                                                                    {
+                                                                        "type": "null"
+                                                                    }
+                                                                ]
+                                                            },
+                                                            {
+                                                                "type": "null"
+                                                            }
+                                                        ]
+                                                    },
                                                     "runtimeMode": {
                                                         "enum": [
                                                             "approval-required",

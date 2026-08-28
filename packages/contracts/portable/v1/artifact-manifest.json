@@ -1,6 +1,6 @@
 {
     "algorithm": "sha256",
-    "checksum": "acd946ba475b3701ecc0f28ac4b269cb9d264dbc41a6c5a09f031315c62284fa",
+    "checksum": "b487d4b7c955356b3419775f2c89c1ffc7764386ab00d74faa082f87b2f37545",
     "files": [
         {
             "path": "fixture-manifest.json",
@@ -28,7 +28,7 @@
         },
         {
             "path": "openapi.json",
-            "sha256": "011a8b57bc6736d17db3cd7b0dfc14e0e1a5daacc78699bc39054f7914883e74"
+            "sha256": "245fdc10002ea58d22125343d2fc02dd07d698e1706570450385a132aced6b86"
         },
         {
             "path": "protocol-version.json",
@@ -44,11 +44,11 @@
         },
         {
             "path": "schemas/shell-snapshot.schema.json",
-            "sha256": "b7b1ebaf705ed860f8e2489afe54e7df566b1c7e5a7c2e24e9ddfa2c83b44790"
+            "sha256": "5326977a9a4860de60eebb95481ee64be067918d29eb6cb6068af4d1ab9d7f41"
         },
         {
             "path": "schemas/shell-stream-item.schema.json",
-            "sha256": "f2a72b9f04e5cfa939075b983610a00e25afeef5c4cbe043435e0189361ca608"
+            "sha256": "1c8dae06ff99f0afc96b29f754f8579247338816b652390a6c0b5e3b6c1331fb"
         },
         {
             "path": "schemas/thread-snapshot.schema.json",

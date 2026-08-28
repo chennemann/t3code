@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { defaultAnimateLayoutChanges, type AnimateLayoutChanges } from "@dnd-kit/sortable";
 import {
+  activeSidebarThreadOrderAnchorTimestampMs,
+  applyManualActiveThreadOrder,
   animatePinnedLayoutChanges,
   archiveSelectedThreadEntries,
   buildBulkTitleRegenerationContextMenuItem,
@@ -784,19 +786,33 @@ describe("searchSidebarThreadsByTitle", () => {
 });
 
 describe("sortThreadsForSidebar", () => {
-  const sortable = (input: { id: string; createdAt: string }) => ({
+  const sortable = (input: { id: string; createdAt: string; recencyAnchorAt?: string | null }) => ({
     id: input.id,
     createdAt: input.createdAt,
+    recencyAnchorAt: input.recencyAnchorAt ?? null,
   });
 
-  it("orders by creation time, newest first, ignoring activity", () => {
+  it("orders by the stable recency anchor, newest first", () => {
     const sorted = sortThreadsForSidebar([
-      sortable({ id: "oldest", createdAt: "2026-03-09T08:00:00.000Z" }),
+      sortable({
+        id: "oldest",
+        createdAt: "2026-03-09T08:00:00.000Z",
+        recencyAnchorAt: "2026-03-09T13:00:00.000Z",
+      }),
       sortable({ id: "newest", createdAt: "2026-03-09T12:00:00.000Z" }),
       sortable({ id: "middle", createdAt: "2026-03-09T10:00:00.000Z" }),
     ]);
 
-    expect(sorted.map((thread) => thread.id)).toEqual(["newest", "middle", "oldest"]);
+    expect(sorted.map((thread) => thread.id)).toEqual(["oldest", "newest", "middle"]);
+  });
+
+  it("falls back to v2 creation order for servers without recency anchors", () => {
+    const sorted = sortThreadsForSidebar([
+      { id: "oldest", createdAt: "2026-03-09T08:00:00.000Z" },
+      { id: "newest", createdAt: "2026-03-09T12:00:00.000Z" },
+    ]);
+
+    expect(sorted.map((thread) => thread.id)).toEqual(["newest", "oldest"]);
   });
 
   it("breaks creation-time ties by id so the order is stable", () => {
@@ -833,6 +849,50 @@ describe("sortThreadsForSidebar", () => {
     ]);
 
     expect(sorted.map((thread) => thread.id)).toEqual(["newest", "stale-stamp"]);
+  });
+
+  it("applies a saved manual order after the automatic recency sort", () => {
+    const automatic = sortThreadsForSidebar([
+      sortable({ id: "a", createdAt: "2026-03-09T12:00:00.000Z" }),
+      sortable({ id: "b", createdAt: "2026-03-09T11:00:00.000Z" }),
+      sortable({ id: "c", createdAt: "2026-03-09T10:00:00.000Z" }),
+    ]);
+    const anchorById = Object.fromEntries(
+      automatic.map((thread) => [thread.id, activeSidebarThreadOrderAnchorTimestampMs(thread)]),
+    );
+
+    const ordered = applyManualActiveThreadOrder({
+      threads: automatic,
+      preferredIds: ["c", "a", "b"],
+      anchorById,
+      getId: (thread) => thread.id,
+    });
+
+    expect(ordered.map((thread) => thread.id)).toEqual(["c", "a", "b"]);
+  });
+
+  it("surfaces a new or re-engaged thread above the saved manual order", () => {
+    const threads = [
+      sortable({
+        id: "resumed",
+        createdAt: "2026-03-09T08:00:00.000Z",
+        recencyAnchorAt: "2026-03-11T13:00:00.000Z",
+      }),
+      sortable({ id: "a", createdAt: "2026-03-09T12:00:00.000Z" }),
+      sortable({ id: "b", createdAt: "2026-03-09T11:00:00.000Z" }),
+    ];
+    const ordered = applyManualActiveThreadOrder({
+      threads: sortThreadsForSidebar(threads),
+      preferredIds: ["b", "resumed", "a"],
+      anchorById: {
+        b: activeSidebarThreadOrderAnchorTimestampMs(threads[2]!),
+        resumed: Date.parse("2026-03-09T08:00:00.000Z"),
+        a: activeSidebarThreadOrderAnchorTimestampMs(threads[1]!),
+      },
+      getId: (thread) => thread.id,
+    });
+
+    expect(ordered.map((thread) => thread.id)).toEqual(["resumed", "b", "a"]);
   });
 });
 
