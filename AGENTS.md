@@ -109,6 +109,13 @@ An empty database is a bad test. Seed your worktree's `.t3` with a copy of real 
 - The server is event-sourced and its async flows emit typed receipts. Wait on receipts and worker drains, never on sleeps or polling. A test that needs a timeout to pass is wrong.
 - Upon request, user-visible frontend changes should get one integrated pass in a real client: `test-t3-app` for web, `test-t3-mobile` for mobile. The primary agent does this once after integrating. Subagents do not launch their own dev servers. Ask permission before doing computer use or spinning up browsers.
 
+## Fork desktop releases
+
+- Before building a numbered fork release, synchronize the releasable package versions with `node scripts/update-release-package-versions.ts <version>`, then refresh the lockfile with `vp install --lockfile-only --ignore-scripts`.
+- Build distributable fork artifacts with `T3CODE_DESKTOP_UPDATE_REPOSITORY=chennemann/t3code` and the canonical `scripts/build-desktop-artifact.ts` command. Without an update repository, the installed app has no `app-update.yml` and cannot check for updates.
+- The artifact builder must fail if package versions disagree, the compiled server reports a different version, or a distributable has no update feed. `--skip-build` is safe only when the existing bundles were built for the exact requested version; do not bypass these checks.
+- For in-app update discovery, upload the installer, blockmap, and generated `latest.yml` to the matching GitHub release in `chennemann/t3code`. See `docs/operations/release.md` for the complete workflow.
+
 ## Pull requests
 
 - Never make a PR unless the developer explicitly asks you to do so.

@@ -208,6 +208,13 @@ available.
 - Repository slug source:
   - `T3CODE_DESKTOP_UPDATE_REPOSITORY` (format `owner/repo`), if set.
   - otherwise `GITHUB_REPOSITORY` from GitHub Actions.
+- Local distributable builds must set one of those repository variables. The artifact builder fails
+  instead of creating a package without `app-update.yml`, because that package would permanently
+  disable manual and automatic update checks.
+- Before overriding the desktop artifact version locally, run
+  `node scripts/update-release-package-versions.ts <version>`. The builder requires every releasable
+  package manifest and the compiled server's `--version` output to match the artifact version, so a
+  stale client/server version cannot be packaged even when `--skip-build` is used.
 - Required release assets for updater:
   - platform installers (`.exe`, `.dmg`, `.AppImage`, plus macOS `.zip` for Squirrel.Mac update payloads)
   - channel metadata: `latest*.yml` for stable releases, `nightly*.yml` for nightly releases

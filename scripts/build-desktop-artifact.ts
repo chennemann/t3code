@@ -3,6 +3,7 @@
 
 import * as NodeFSP from "node:fs/promises";
 import * as NodeModule from "node:module";
+import * as NodePath from "node:path";
 
 import {
   createPackageWithOptions,
@@ -19,6 +20,8 @@ import { resolveSpawnCommand } from "@t3tools/shared/shell";
 import rootPackageJson from "../package.json" with { type: "json" };
 import desktopPackageJson from "../apps/desktop/package.json" with { type: "json" };
 import serverPackageJson from "../apps/server/package.json" with { type: "json" };
+import webPackageJson from "../apps/web/package.json" with { type: "json" };
+import contractsPackageJson from "../packages/contracts/package.json" with { type: "json" };
 
 import { applyWebBrandAssets } from "./apply-web-brand-assets.ts";
 import {
@@ -90,6 +93,18 @@ const decodeNodePtyManifest = Schema.decodeUnknownEffect(
   Schema.fromJsonString(Schema.Struct({ version: Schema.String })),
 );
 const encodeStageWorkspaceConfig = Schema.encodeEffect(fromYaml(StageWorkspaceConfig));
+
+export function resolveLocalVpInvocation(
+  repoRoot: string,
+  args: ReadonlyArray<string>,
+  nodeExecutable = process.execPath,
+) {
+  return {
+    command: nodeExecutable,
+    args: [NodePath.join(repoRoot, "node_modules/vite-plus/bin/vp"), ...args],
+    shell: false,
+  } as const;
+}
 
 const readWorkspaceConfig = Effect.fn("readWorkspaceConfig")(function* () {
   const fs = yield* FileSystem.FileSystem;
@@ -515,6 +530,50 @@ export class DesktopBuildNoArtifactsProducedError extends Schema.TaggedErrorClas
 ) {
   override get message(): string {
     return `Build completed but no files were produced in ${this.distPath}`;
+  }
+}
+
+const DesktopBuildVersionMismatch = Schema.Struct({
+  packagePath: Schema.String,
+  actualVersion: Schema.String,
+});
+
+export class DesktopBuildVersionMismatchError extends Schema.TaggedErrorClass<DesktopBuildVersionMismatchError>()(
+  "DesktopBuildVersionMismatchError",
+  {
+    expectedVersion: Schema.String,
+    mismatches: Schema.Array(DesktopBuildVersionMismatch),
+  },
+) {
+  override get message(): string {
+    const details = this.mismatches
+      .map(({ packagePath, actualVersion }) => `${packagePath}=${actualVersion}`)
+      .join(", ");
+    return `Desktop artifact version ${this.expectedVersion} does not match release package versions: ${details}. Run scripts/update-release-package-versions.ts first.`;
+  }
+}
+
+export class DesktopServerBundleVersionMismatchError extends Schema.TaggedErrorClass<DesktopServerBundleVersionMismatchError>()(
+  "DesktopServerBundleVersionMismatchError",
+  {
+    entryPath: Schema.String,
+    expectedVersion: Schema.String,
+    actualOutput: Schema.String,
+  },
+) {
+  override get message(): string {
+    return `Compiled server bundle at ${this.entryPath} reported '${this.actualOutput}' instead of 't3 v${this.expectedVersion}'.`;
+  }
+}
+
+export class DesktopUpdateFeedConfigurationMissingError extends Schema.TaggedErrorClass<DesktopUpdateFeedConfigurationMissingError>()(
+  "DesktopUpdateFeedConfigurationMissingError",
+  {
+    version: Schema.String,
+  },
+) {
+  override get message(): string {
+    return `Desktop artifact ${this.version} has no update feed. Set T3CODE_DESKTOP_UPDATE_REPOSITORY (owner/repo) before building.`;
   }
 }
 
@@ -1408,6 +1467,31 @@ const runCommand = Effect.fn("runCommand")(function* (
       ...(stderr.trim() ? { stderrTail: stderr } : {}),
     });
   }
+
+  return { stdout, stderr } as const;
+});
+
+export const verifyServerBundleVersion = Effect.fn("verifyServerBundleVersion")(function* (input: {
+  readonly entryPath: string;
+  readonly expectedVersion: string;
+  readonly verbose: boolean;
+}) {
+  const result = yield* runCommand(
+    ChildProcess.make(process.execPath, ["--no-global-search-paths", input.entryPath, "--version"], {
+      stdout: "pipe",
+      stderr: "pipe",
+      env: { ...process.env, NODE_PATH: "" },
+    }),
+    { label: "compiled server version check", verbose: input.verbose },
+  );
+  const actualOutput = `${result.stdout}${result.stderr}`.trim();
+  if (actualOutput !== `t3 v${input.expectedVersion}`) {
+    return yield* new DesktopServerBundleVersionMismatchError({
+      entryPath: input.entryPath,
+      expectedVersion: input.expectedVersion,
+      actualOutput,
+    });
+  }
 });
 
 /**
@@ -1987,6 +2071,22 @@ export function resolveDesktopRuntimeDependencies(
   return resolveCatalogDependencies(runtimeDependencies, catalog, "apps/desktop");
 }
 
+const desktopBuildPackageVersions = {
+  "apps/server/package.json": serverPackageJson.version,
+  "apps/desktop/package.json": desktopPackageJson.version,
+  "apps/web/package.json": webPackageJson.version,
+  "packages/contracts/package.json": contractsPackageJson.version,
+} as const;
+
+export function findDesktopBuildVersionMismatches(
+  expectedVersion: string,
+  packageVersions: Readonly<Record<string, string>> = desktopBuildPackageVersions,
+): ReadonlyArray<{ readonly packagePath: string; readonly actualVersion: string }> {
+  return Object.entries(packageVersions)
+    .filter(([, actualVersion]) => actualVersion !== expectedVersion)
+    .map(([packagePath, actualVersion]) => ({ packagePath, actualVersion }));
+}
+
 export const resolveGitHubPublishConfig = Effect.fn("resolveGitHubPublishConfig")(function* (
   updateChannel: "latest" | "nightly",
 ) {
@@ -2108,6 +2208,8 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
           url: resolveMockUpdateServerUrl(mockUpdateServerPort),
         },
       ];
+    } else {
+      return yield* new DesktopUpdateFeedConfigurationMissingError({ version });
     }
   }
 
@@ -2388,7 +2490,7 @@ export const stageWindowsServerSidecar = Effect.fn("stageWindowsServerSidecar")(
   }
 
   yield* Effect.log("[desktop-artifact] Installing server sidecar runtime externals...");
-  const installCommand = yield* resolveSpawnCommand("vp", [...STAGE_INSTALL_ARGS]);
+  const installCommand = resolveLocalVpInvocation(input.repoRoot, STAGE_INSTALL_ARGS);
   yield* runCommand(
     ChildProcess.make(installCommand.command, installCommand.args, {
       cwd: serverStageDir,
@@ -2736,6 +2838,13 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
   });
 
   const appVersion = options.version ?? serverPackageJson.version;
+  const versionMismatches = findDesktopBuildVersionMismatches(appVersion);
+  if (versionMismatches.length > 0) {
+    return yield* new DesktopBuildVersionMismatchError({
+      expectedVersion: appVersion,
+      mismatches: versionMismatches,
+    });
+  }
   const iconAssets = resolveDesktopBuildIconAssets(appVersion);
   const commitHash = yield* resolveGitCommitHash(repoRoot);
   const mkdir = options.keepStage ? fs.makeTempDirectory : fs.makeTempDirectoryScoped;
@@ -2754,7 +2863,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
 
   if (!options.skipBuild) {
     yield* Effect.log("[desktop-artifact] Building desktop/server/web artifacts...");
-    const spawnCommand = yield* resolveSpawnCommand("vp", ["run", "build:desktop"]);
+    const spawnCommand = resolveLocalVpInvocation(repoRoot, ["run", "build:desktop"]);
     yield* runCommand(
       ChildProcess.make(spawnCommand.command, spawnCommand.args, {
         cwd: repoRoot,
@@ -2777,6 +2886,12 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
       });
     }
   }
+
+  yield* verifyServerBundleVersion({
+    entryPath: path.join(distDirs.serverDist, "bin.mjs"),
+    expectedVersion: appVersion,
+    verbose: options.verbose,
+  });
 
   // Assert against the emitted bundle, not the bundler config. `alwaysBundle`
   // only forces packages IN, so a transitive dependency of an external package
@@ -3006,7 +3121,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
   }
 
   yield* Effect.log("[desktop-artifact] Installing staged production dependencies...");
-  const installCommand = yield* resolveSpawnCommand("vp", [...STAGE_INSTALL_ARGS]);
+  const installCommand = resolveLocalVpInvocation(repoRoot, STAGE_INSTALL_ARGS);
   yield* runCommand(
     ChildProcess.make(installCommand.command, installCommand.args, {
       cwd: stageAppDir,
@@ -3092,7 +3207,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
     "--publish",
     "never",
   ];
-  const builderCommand = yield* resolveSpawnCommand("vp", builderArgs, { env: buildEnv });
+  const builderCommand = resolveLocalVpInvocation(repoRoot, builderArgs);
   yield* runCommand(
     ChildProcess.make(builderCommand.command, builderCommand.args, {
       cwd: repoRoot,
