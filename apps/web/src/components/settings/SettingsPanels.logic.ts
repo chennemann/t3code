@@ -31,6 +31,11 @@ export function projectGroupingModeFromToggle(
   return lastEnabledMode === "repository_path" ? "repository_path" : "repository";
 }
 
+export function normalizeTerminalShellPath(value: string): string {
+  const trimmed = value.trim();
+  return (trimmed.match(/^(["'])(.*)\1$/)?.[2] ?? trimmed).trim();
+}
+
 const LAST_ENABLED_PROJECT_GROUPING_MODE_KEY = "t3code:last-enabled-project-grouping-mode";
 
 export function readLastEnabledProjectGroupingMode(): SidebarProjectGroupingMode {

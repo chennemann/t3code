@@ -17,6 +17,7 @@ import {
   hasChangedBackgroundActivitySettings,
   isProjectGroupingEnabled,
   projectGroupingModeFromToggle,
+  normalizeTerminalShellPath,
   resolveBackgroundActivityProfileOption,
 } from "./SettingsPanels.logic";
 
@@ -148,6 +149,16 @@ describe("project grouping toggle", () => {
   it("restores repository path grouping when the toggle is cycled", () => {
     expect(projectGroupingModeFromToggle(false, "repository_path")).toBe("separate");
     expect(projectGroupingModeFromToggle(true, "repository_path")).toBe("repository_path");
+  });
+});
+
+describe("terminal shell setting", () => {
+  it.each([
+    [" /bin/fish ", "/bin/fish"],
+    ['"C:\\Program Files\\PowerShell\\7\\pwsh.exe"', "C:\\Program Files\\PowerShell\\7\\pwsh.exe"],
+    ["", ""],
+  ])("normalizes %s", (value, expected) => {
+    expect(normalizeTerminalShellPath(value)).toBe(expected);
   });
 });
 
