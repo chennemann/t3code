@@ -706,6 +706,18 @@ describe("ClientSettings pull request merge methods", () => {
   });
 });
 
+describe("ServerSettings terminal shell policy", () => {
+  it("defaults to the platform-selected shell", () => {
+    expect(decodeServerSettings({}).terminalShellPath).toBe("");
+  });
+
+  it("accepts a trimmed shell path through settings patches", () => {
+    expect(decodeServerSettingsPatch({ terminalShellPath: "  /bin/fish  " }).terminalShellPath).toBe(
+      "/bin/fish",
+    );
+  });
+});
+
 describe("ServerSettings.providerInstances (slice-2 invariant)", () => {
   it("defaults to an empty record so legacy configs without the key still decode", () => {
     expect(DEFAULT_SERVER_SETTINGS.providerInstances).toEqual({});
