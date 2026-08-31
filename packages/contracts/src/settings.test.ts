@@ -689,6 +689,18 @@ describe("ClientSettings pull request merge methods", () => {
   });
 });
 
+describe("ServerSettings terminal shell policy", () => {
+  it("defaults to the platform-selected shell", () => {
+    expect(decodeServerSettings({}).terminalShellPath).toBe("");
+  });
+
+  it("accepts a trimmed shell path through settings patches", () => {
+    expect(decodeServerSettingsPatch({ terminalShellPath: "  /bin/fish  " }).terminalShellPath).toBe(
+      "/bin/fish",
+    );
+  });
+});
+
 describe("ServerSettings.providerInstances (slice-2 invariant)", () => {
   it("defaults text generation to Luna at low reasoning effort", () => {
     expect(DEFAULT_SERVER_SETTINGS.textGenerationModelSelection).toEqual({
