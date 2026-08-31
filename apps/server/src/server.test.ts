@@ -2252,6 +2252,48 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
   );
 
+  it.effect("serves bearer-authenticated portable client configuration", () =>
+    Effect.gen(function* () {
+      yield* buildAppUnderTest();
+      const { body: token } = yield* exchangeAccessToken();
+      const url = yield* getHttpServerUrl("/api/environment/client-config");
+      const response = yield* fetchEffect(url, {
+        headers: { authorization: `Bearer ${token.access_token ?? ""}` },
+      });
+      const body = yield* responseJsonEffect<{
+        readonly protocolVersion: number;
+        readonly shellResumeCompletionMarker: boolean;
+        readonly threadResumeCompletionMarker: boolean;
+      }>(response);
+
+      assert.equal(response.status, 200);
+      assert.equal(body.protocolVersion, 1);
+      assert.equal(body.shellResumeCompletionMarker, true);
+      assert.equal(body.threadResumeCompletionMarker, true);
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("rejects an unauthenticated portable shell stream", () =>
+    Effect.gen(function* () {
+      yield* buildAppUnderTest();
+      const url = yield* getHttpServerUrl("/api/orchestration/shell/stream");
+      const response = yield* fetchEffect(url);
+      assert.equal(response.status, 401);
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("requires a portable stream resume cursor", () =>
+    Effect.gen(function* () {
+      yield* buildAppUnderTest();
+      const { body: token } = yield* exchangeAccessToken();
+      const url = yield* getHttpServerUrl("/api/orchestration/shell/stream");
+      const response = yield* fetchEffect(url, {
+        headers: { authorization: `Bearer ${token.access_token ?? ""}` },
+      });
+      assert.equal(response.status, 400);
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
   it.effect("bootstraps a browser session and authenticates the session endpoint via cookie", () =>
     Effect.gen(function* () {
       yield* buildAppUnderTest();
