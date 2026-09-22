@@ -64,3 +64,7 @@ Terms whose meaning matters across T3 Code. Architecture and lifecycle constrain
 | Attachment inventory | The ordered image records shown as thumbnails above the prose, including images with no inline references.                          |
 
 See [composer context references](./composer-context-references.md) for the contract and lifecycle.
+
+## Fork work planning
+
+The managed **Workspace** is an environment-owned project for work without a repository. A **to-do** is a planning item that can link a project, a planning thread, and a saved plan. These records use the separate downstream database.

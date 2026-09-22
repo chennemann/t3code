@@ -37,6 +37,7 @@ import {
   type ThreadLinkedPullRequest,
   type TurnId,
   type KeybindingCommand,
+  WORKSPACE_PROJECT_ID,
   OrchestrationThreadActivity,
   PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
   ProviderInteractionMode,
@@ -100,6 +101,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
 } from "react";
 import { flushSync } from "react-dom";
 import { useLocation, useNavigate } from "@tanstack/react-router";
@@ -479,6 +481,7 @@ import {
   codexArtifactTemplatePromptToAppend,
   waitForStartedServerThread,
   shouldRefocusComposerOnWindowFocus,
+  workspaceThreadPath,
 } from "./ChatView.logic";
 import type { ThreadSyncPhase } from "../threadSync";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
@@ -540,6 +543,7 @@ const EMPTY_PROVIDERS: ServerProvider[] = [];
 const EMPTY_USAGE_LIMIT_SOURCES: UsageLimitSourceSnapshots = [];
 const EMPTY_PROVIDER_SKILLS: ServerProvider["skills"] = [];
 const EMPTY_PENDING_USER_INPUT_ANSWERS: Record<string, PendingUserInputDraftAnswer> = {};
+
 function useDraftHeroLayoutTransition(
   isDraftHeroState: boolean,
   animationsActive: boolean,
@@ -749,6 +753,8 @@ type ChatViewProps =
       onDiffPanelOpen?: () => void;
       reserveTitleBarControlInset?: boolean;
       forceExpandedMobileComposer?: boolean;
+      auxiliaryPanel?: ReactNode;
+      agentInstructions?: string;
       threadSyncPhase?: ThreadSyncPhase | null;
       routeKind: "server";
       draftId?: never;
@@ -759,6 +765,8 @@ type ChatViewProps =
       onDiffPanelOpen?: () => void;
       reserveTitleBarControlInset?: boolean;
       forceExpandedMobileComposer?: boolean;
+      auxiliaryPanel?: ReactNode;
+      agentInstructions?: string;
       threadSyncPhase?: never;
       routeKind: "draft";
       draftId: DraftId;
@@ -1482,6 +1490,8 @@ export default function ChatView(props: ChatViewProps) {
     onDiffPanelOpen,
     reserveTitleBarControlInset = true,
     forceExpandedMobileComposer = false,
+    auxiliaryPanel,
+    agentInstructions,
   } = props;
   const draftId = routeKind === "draft" ? props.draftId : null;
   const threadSyncPhase = routeKind === "server" ? (props.threadSyncPhase ?? null) : null;
@@ -8346,7 +8356,11 @@ export default function ChatView(props: ChatViewProps) {
                       runtimeMode,
                       interactionMode: sendInteractionMode,
                       branch: activeThreadBranch,
-                      worktreePath: activeThread.worktreePath,
+                      worktreePath:
+                        activeThread.worktreePath ??
+                        (activeProject.id === WORKSPACE_PROJECT_ID
+                          ? workspaceThreadPath(activeProject.workspaceRoot, threadIdForSend)
+                          : null),
                       createdAt: activeThread.createdAt,
                     },
                   }
@@ -8407,6 +8421,7 @@ export default function ChatView(props: ChatViewProps) {
               return { context };
             })(),
           },
+          ...(agentInstructions ? { agentInstructions } : {}),
           modelSelection: ctxSelectedModelSelection,
           titleSeed: title,
           runtimeMode,
@@ -9103,7 +9118,11 @@ export default function ChatView(props: ChatViewProps) {
         runtimeMode: defaultRuntimeMode,
         interactionMode: "default",
         branch: activeThreadBranch,
-        worktreePath: activeThread.worktreePath,
+        worktreePath:
+          activeThread.worktreePath ??
+          (activeProject.id === WORKSPACE_PROJECT_ID
+            ? workspaceThreadPath(activeProject.workspaceRoot, nextThreadId)
+            : null),
         createdAt,
       },
     });
@@ -10150,7 +10169,9 @@ export default function ChatView(props: ChatViewProps) {
                                 envLocked={envLocked}
                                 onComposerFocusRequest={scheduleComposerFocus}
                                 {...(canCheckoutPullRequestIntoThread
-                                  ? { onCheckoutPullRequestRequest: openPullRequestDialog }
+                                  ? {
+                                      onCheckoutPullRequestRequest: openPullRequestDialog,
+                                    }
                                   : {})}
                                 {...(hasMultipleEnvironments ? { onEnvironmentChange } : {})}
                                 autoEnvironmentLabel={autoEnvironmentLabel}
@@ -10260,7 +10281,13 @@ export default function ChatView(props: ChatViewProps) {
         ))}
       </div>
 
-      {rightPanelPresent && !shouldUseRightPanelSheet && activeThreadRef ? (
+      {auxiliaryPanel ? (
+        <aside className="hidden h-full w-96 flex-none overflow-y-auto border-l bg-background lg:block">
+          {auxiliaryPanel}
+        </aside>
+      ) : null}
+
+      {!auxiliaryPanel && !shouldUseRightPanelSheet && rightPanelPresent && activeThreadRef ? (
         <RightPanelTabs
           mode="inline"
           widthStorageKey={`t3code:preview-panel-width:${activeThreadKey}`}
@@ -10306,7 +10333,7 @@ export default function ChatView(props: ChatViewProps) {
           {rightPanelContent}
         </RightPanelTabs>
       ) : null}
-      {rightPanelPresent && shouldUseRightPanelSheet && activeThreadRef ? (
+      {!auxiliaryPanel && rightPanelPresent && shouldUseRightPanelSheet && activeThreadRef ? (
         <RightPanelSheet
           animationDurationMs={panelAnimationsActive ? panelAnimationDurationMs : 0}
           open={rightPanelOpen}

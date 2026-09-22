@@ -1,3 +1,5 @@
+import { ServerConfig } from "../config.ts";
+import * as NodeServices from "@effect/platform-node/NodeServices";
 import {
   CheckpointRef,
   EventId,
@@ -759,6 +761,10 @@ describe("ThreadPullRequestReactor", () => {
             }),
           ),
           Layer.provideMerge(SqlitePersistenceMemory),
+          Layer.provideMerge(
+            ServerConfig.layerTest(process.cwd(), { prefix: "t3-snapshot-query-" }),
+          ),
+          Layer.provideMerge(NodeServices.layer),
         ),
       ),
     ),

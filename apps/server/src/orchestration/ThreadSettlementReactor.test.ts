@@ -1526,6 +1526,10 @@ describe("ThreadSettlementReactor", () => {
             Layer.succeed(RepositoryIdentityResolver, { resolve: () => Effect.succeed(null) }),
           ),
           Layer.provideMerge(SqlitePersistenceMemory),
+          Layer.provideMerge(
+            ServerConfig.layerTest(process.cwd(), { prefix: "t3-snapshot-query-" }),
+          ),
+          Layer.provideMerge(NodeServices.layer),
         ),
       ),
     ),

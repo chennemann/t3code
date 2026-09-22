@@ -34,6 +34,8 @@ import {
   type EnvironmentId,
   type EnvironmentMachineKind,
   type FilesystemBrowseResult,
+  type OrchestrationShellSnapshot,
+  WORKSPACE_PROJECT_ID,
   type ProjectId,
   type SourceControlDiscoveryResult,
   type SourceControlProviderKind,
@@ -61,6 +63,7 @@ import {
   PaletteIcon,
   RotateCcwIcon,
   SettingsIcon,
+  ListTodoIcon,
   SquarePenIcon,
   SunIcon,
   TextSearchIcon,
@@ -78,6 +81,7 @@ import {
   type ReactNode,
 } from "react";
 import { useAtomValue } from "@effect/atom-react";
+import { Atom } from "effect/unstable/reactivity";
 
 import { isDesktopLocalConnectionTarget } from "../connection/desktopLocal";
 import { useDesktopLocalBootstraps } from "../connection/useDesktopLocalBootstraps";
@@ -110,8 +114,10 @@ import { useNewProject } from "../hooks/useNewProject";
 import { isScratchProject } from "@t3tools/client-runtime/state/projects";
 import { useEnvironments, usePrimaryEnvironmentId } from "../state/environments";
 import { useProjects, useServerConfigs, useThreadShells, waitForProject } from "../state/entities";
+import { environmentSnapshotAtom } from "../state/shell";
 import { useThreadSearch } from "../state/queries";
 import { resolveThreadActionProjectRef, startNewThreadFromContext } from "../lib/chatThreadActions";
+import { buildTodoDraftPrompt } from "../lib/todos";
 import {
   appendBrowsePathSegment,
   ensureBrowseDirectoryPath,
@@ -202,6 +208,7 @@ import { ComposerHandleContext, useComposerHandleContext } from "../composerHand
 import type { ChatComposerHandle } from "./chat/ChatComposer";
 import { getProjectOrderKey, selectProjectGroupingSettings } from "../logicalProject";
 import { legacyProjectCwdPreferenceKey, useUiStateStore } from "../uiStateStore";
+import { useComposerDraftStore } from "../composerDraftStore";
 import {
   buildSidebarProjectPickerEntries,
   buildSidebarProjectSnapshots,
@@ -496,6 +503,7 @@ export function CommandPalette({ children }: { children: ReactNode }) {
   );
   const openAddProject = useCallback(() => dispatch({ _tag: "OpenAddProject" }), []);
   const openNewThreadIn = useCallback(() => dispatch({ _tag: "OpenNewThreadIn" }), []);
+  const openNewThreadInTodos = useCallback(() => dispatch({ _tag: "OpenNewThreadInTodos" }), []);
   const clearOpenIntent = useCallback(() => dispatch({ _tag: "ClearOpenIntent" }), []);
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
   const { theme, themeHalves, resolvedTheme, appearanceMode, setAppearanceMode } = useTheme();
@@ -583,6 +591,18 @@ export function CommandPalette({ children }: { children: ReactNode }) {
         void navigate({ to: "/usage" });
         return;
       }
+      if (command === "todoSearch.toggle") {
+        event.preventDefault();
+        event.stopPropagation();
+        openNewThreadInTodos();
+        return;
+      }
+      if (state.open && command === "chat.new") {
+        event.preventDefault();
+        event.stopPropagation();
+        openNewThreadIn();
+        return;
+      }
       const mode = overlayModeForCommand(command);
       if (mode === null) {
         return;
@@ -595,6 +615,9 @@ export function CommandPalette({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [
     appearanceMode,
+    openNewThreadIn,
+    openNewThreadInTodos,
+    state.open,
     keybindings,
     navigate,
     previewOpen,
@@ -656,6 +679,10 @@ export function CommandPalette({ children }: { children: ReactNode }) {
   );
 }
 
+const EMPTY_SHELL_SNAPSHOT_ATOM = Atom.make<OrchestrationShellSnapshot | null>(null).pipe(
+  Atom.withLabel("command-palette-empty-shell-snapshot"),
+);
+
 function CommandPaletteDialog(props: {
   readonly mode: SearchOverlayMode;
   readonly openIntent: CommandPaletteOpenIntent | null;
@@ -674,7 +701,11 @@ function CommandPaletteDialog(props: {
             ? "Search project contents"
             : "Command palette"
       }
-      className={cn("overflow-hidden", props.mode === "content" && "h-105")}
+      className={cn(
+        "overflow-hidden",
+        props.mode === "command" && "max-w-2xl",
+        props.mode === "content" && "h-105",
+      )}
       data-command-palette="true"
       data-palette-mode={props.mode}
       data-testid="command-palette"
@@ -746,6 +777,11 @@ function OpenCommandPaletteDialog(props: {
   const desktopLocalBootstraps = useDesktopLocalBootstraps();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const availableSettingsSearchItems = useAvailableSettingsSearchItems();
+  const primarySnapshot = useAtomValue(
+    primaryEnvironmentId === null
+      ? EMPTY_SHELL_SNAPSHOT_ATOM
+      : environmentSnapshotAtom(primaryEnvironmentId),
+  );
   const { activeDraftThread, activeThread, defaultProjectRef, handleNewThread } =
     useHandleNewThread();
   const projects = useProjects();
@@ -836,6 +872,9 @@ function OpenCommandPaletteDialog(props: {
     return map;
   }, [environments, primaryEnvironmentId, providers]);
   const [viewStack, setViewStack] = useState<CommandPaletteView[]>([]);
+  const [newThreadPickerScope, setNewThreadPickerScope] = useState<"projects" | "todos" | null>(
+    null,
+  );
   const currentView = viewStack.at(-1) ?? null;
   const environmentIds = useMemo(
     () =>
@@ -1311,6 +1350,37 @@ function OpenCommandPaletteDialog(props: {
     ],
   );
 
+  const todoSearchItems = useMemo<CommandPaletteActionItem[]>(
+    () =>
+      (primarySnapshot?.todos ?? [])
+        .filter((todo) => todo.completedAt === null)
+        .map((todo) => {
+          const projectTitle = todo.projectId
+            ? projects.find(
+                (project) =>
+                  project.environmentId === primaryEnvironmentId && project.id === todo.projectId,
+              )?.title
+            : null;
+          return {
+            kind: "action" as const,
+            value: `todo-search:${todo.id}`,
+            searchTerms: [todo.title, todo.notes, projectTitle ?? "Inbox"],
+            title: todo.title,
+            description: projectTitle ?? "Inbox",
+            icon: <ListTodoIcon className={ITEM_ICON_CLASS} />,
+            run: async () => {
+              if (primaryEnvironmentId === null) return;
+              setOpen(false);
+              await navigate({
+                to: "/$environmentId/todos/$todoId",
+                params: { environmentId: primaryEnvironmentId, todoId: todo.id },
+              });
+            },
+          };
+        }),
+    [navigate, primaryEnvironmentId, primarySnapshot?.todos, projects, setOpen],
+  );
+
   const projectThreadItems = useMemo(
     () =>
       enumerateCommandPaletteItems([
@@ -1393,6 +1463,40 @@ function OpenCommandPaletteDialog(props: {
       scratchWorkspaceRootFor,
       startScratchThread,
     ],
+  );
+
+  const todoThreadItems = useMemo<CommandPaletteActionItem[]>(
+    () =>
+      (primarySnapshot?.todos ?? [])
+        .filter((todo) => todo.completedAt === null)
+        .map((todo) => {
+          const project = projects.find(
+            (candidate) =>
+              candidate.environmentId === primaryEnvironmentId &&
+              candidate.id === (todo.projectId ?? WORKSPACE_PROJECT_ID),
+          );
+          return {
+            kind: "action" as const,
+            value: `new-thread-from-todo:${todo.id}`,
+            searchTerms: [todo.title, todo.notes, project?.title ?? "Inbox"],
+            title: todo.title,
+            description: project?.title ?? "Inbox",
+            icon: <ListTodoIcon className={ITEM_ICON_CLASS} />,
+            disabled: project === null,
+            run: async () => {
+              if (!project) return;
+              const created = await handleNewThread(
+                scopeProjectRef(project.environmentId, project.id),
+              );
+              if (created !== null) {
+                useComposerDraftStore
+                  .getState()
+                  .setPrompt(created.draftId, buildTodoDraftPrompt(todo));
+              }
+            },
+          };
+        }),
+    [handleNewThread, primaryEnvironmentId, primarySnapshot?.todos, projects],
   );
 
   const allThreadItems = useMemo(
@@ -1484,6 +1588,9 @@ function OpenCommandPaletteDialog(props: {
   );
 
   function pushView(item: CommandPaletteSubmenuItem): void {
+    if (item.value === "action:new-thread-in") {
+      setNewThreadPickerScope("projects");
+    }
     pushPaletteView({
       addonIcon: item.addonIcon,
       groups: item.groups,
@@ -1504,7 +1611,37 @@ function OpenCommandPaletteDialog(props: {
     setViewStack((previousViews) => previousViews.slice(0, -1));
     setHighlightedItemValue(null);
     setQuery("");
+    setNewThreadPickerScope(null);
   }
+
+  const switchNewThreadPickerScope = useCallback(
+    (scope: "projects" | "todos") => {
+      setNewThreadPickerScope(scope);
+      setHighlightedItemValue(null);
+      setViewStack((previousViews) => {
+        if (previousViews.length === 0) return previousViews;
+        return [
+          ...previousViews.slice(0, -1),
+          {
+            addonIcon:
+              scope === "projects" ? (
+                <SquarePenIcon className={ADDON_ICON_CLASS} />
+              ) : (
+                <ListTodoIcon className={ADDON_ICON_CLASS} />
+              ),
+            groups: [
+              {
+                value: scope,
+                label: scope === "projects" ? "Projects" : "To-dos",
+                items: scope === "projects" ? projectThreadItems : todoThreadItems,
+              },
+            ],
+          },
+        ];
+      });
+    },
+    [projectThreadItems, todoThreadItems],
+  );
 
   function handleQueryChange(nextQuery: string): void {
     browseNavigation.invalidate();
@@ -1837,32 +1974,46 @@ function OpenCommandPaletteDialog(props: {
   }, [clearOpenIntent, openAddProjectFlow, openIntent]);
 
   useLayoutEffect(() => {
-    if (openIntent?.kind !== "new-thread-in" || projectThreadItems.length === 0) {
+    if (
+      (openIntent?.kind !== "new-thread-in" && openIntent?.kind !== "new-thread-in-todos") ||
+      projectThreadItems.length === 0
+    ) {
       return;
     }
+    const initialScope = openIntent.kind === "new-thread-in-todos" ? "todos" : "projects";
     clearOpenIntent();
     browseNavigation.invalidate();
     setAddProjectCloneFlow(null);
     setNewProjectFlow(null);
     setViewStack([]);
+    setNewThreadPickerScope(initialScope);
     setQuery("");
     const currentPrefix =
       currentProjectEnvironmentId && currentProjectId
         ? `new-thread-in:${currentProjectEnvironmentId}:${currentProjectId}`
         : null;
-    const prioritized = currentPrefix
+    const prioritizedProjects = currentPrefix
       ? [
           ...projectThreadItems.filter((item) => item.value === currentPrefix),
           ...projectThreadItems.filter((item) => item.value !== currentPrefix),
         ]
       : projectThreadItems;
+    const initialItems =
+      initialScope === "projects"
+        ? enumerateCommandPaletteItems(prioritizedProjects)
+        : todoThreadItems;
     pushPaletteView({
-      addonIcon: <SquarePenIcon className={ADDON_ICON_CLASS} />,
+      addonIcon:
+        initialScope === "projects" ? (
+          <SquarePenIcon className={ADDON_ICON_CLASS} />
+        ) : (
+          <ListTodoIcon className={ADDON_ICON_CLASS} />
+        ),
       groups: [
         {
-          value: "projects",
-          label: "Projects",
-          items: enumerateCommandPaletteItems(prioritized),
+          value: initialScope,
+          label: initialScope === "projects" ? "Projects" : "To-dos",
+          items: initialItems,
         },
       ],
     });
@@ -1874,6 +2025,7 @@ function OpenCommandPaletteDialog(props: {
     openIntent,
     projectThreadItems,
     pushPaletteView,
+    todoThreadItems,
   ]);
 
   const actionItems: Array<CommandPaletteActionItem | CommandPaletteSubmenuItem> = [];
@@ -2015,6 +2167,17 @@ function OpenCommandPaletteDialog(props: {
       },
     });
   }
+
+  actionItems.push({
+    kind: "action",
+    value: "action:todos",
+    searchTerms: ["todo", "to-do", "task", "idea", "inbox"],
+    title: "Open to-dos",
+    icon: <ListTodoIcon className={ITEM_ICON_CLASS} />,
+    run: async () => {
+      await navigate({ to: "/todos" });
+    },
+  });
 
   actionItems.push({
     kind: "action",
@@ -2333,6 +2496,7 @@ function OpenCommandPaletteDialog(props: {
     isInSubmenu: currentView !== null,
     projectSearchItems: projectSearchItems,
     settingsSearchItems,
+    todoSearchItems,
     threadSearchItems:
       linkedThreadSearch?.linkedThreads && deferredQuery === linkedThreadSearch.query
         ? buildLinkedThreadActionItems({
@@ -3034,6 +3198,13 @@ function OpenCommandPaletteDialog(props: {
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
+    if (event.key === "Tab" && newThreadPickerScope !== null) {
+      event.preventDefault();
+      event.stopPropagation();
+      switchNewThreadPickerScope(newThreadPickerScope === "projects" ? "todos" : "projects");
+      return;
+    }
+
     const command = resolveShortcutCommand(event, keybindings, {
       platform: navigator.platform,
       context: { modelPickerOpen: false },
@@ -3367,6 +3538,13 @@ function OpenCommandPaletteDialog(props: {
         isBrowsing || isRemoteProjectCloneFlow || newProjectFlow !== null ? false : "always"
       }
       footerActionLabel={footerActionLabel}
+      footerNavigationHint={
+        newThreadPickerScope === "projects"
+          ? "To-dos"
+          : newThreadPickerScope === "todos"
+            ? "Projects"
+            : undefined
+      }
       footerTrailing={footerTrailing}
       inputAccessory={inputAccessory}
       inputProps={{

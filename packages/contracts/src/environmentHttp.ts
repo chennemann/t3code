@@ -1,7 +1,6 @@
 import * as Context from "effect/Context";
 import type * as DateTime from "effect/DateTime";
 import * as Schema from "effect/Schema";
-import * as HttpApi from "effect/unstable/httpapi/HttpApi";
 import * as HttpApiEndpoint from "effect/unstable/httpapi/HttpApiEndpoint";
 import * as HttpApiGroup from "effect/unstable/httpapi/HttpApiGroup";
 import * as HttpApiMiddleware from "effect/unstable/httpapi/HttpApiMiddleware";
@@ -31,7 +30,6 @@ import {
   TrimmedNonEmptyString,
 } from "./baseSchemas.ts";
 import { ExecutionEnvironmentDescriptor } from "./environment.ts";
-import { EnvironmentClientConfig } from "./portableClient.ts";
 import {
   ClientOrchestrationCommand,
   DispatchResult,
@@ -55,7 +53,7 @@ import {
   RelayLinkProofRequest,
 } from "./relay.ts";
 
-const OptionalBearerHeaders = Schema.Struct({
+export const OptionalBearerHeaders = Schema.Struct({
   authorization: Schema.optionalKey(Schema.String),
   dpop: Schema.optionalKey(Schema.String),
 });
@@ -340,10 +338,6 @@ const EnvironmentOrchestrationDispatchErrors = [
   EnvironmentScopeRequiredError,
   EnvironmentInternalError,
 ] as const;
-const EnvironmentClientConfigErrors = [
-  EnvironmentScopeRequiredError,
-  EnvironmentInternalError,
-] as const;
 
 export interface EnvironmentSessionPrincipalShape {
   readonly sessionId: AuthSessionId;
@@ -415,13 +409,13 @@ export const AuthOtherClientSessionsRevokeResult = Schema.Struct({
 });
 export type AuthOtherClientSessionsRevokeResult = typeof AuthOtherClientSessionsRevokeResult.Type;
 
-class EnvironmentMetadataHttpApi extends HttpApiGroup.make("metadata").add(
+export class EnvironmentMetadataHttpApi extends HttpApiGroup.make("metadata").add(
   HttpApiEndpoint.get("descriptor", "/.well-known/t3/environment", {
     success: ExecutionEnvironmentDescriptor,
   }),
 ) {}
 
-class EnvironmentAuthHttpApi extends HttpApiGroup.make("auth")
+export class EnvironmentAuthHttpApi extends HttpApiGroup.make("auth")
   .add(
     HttpApiEndpoint.get("session", "/api/auth/session", {
       headers: OptionalBearerHeaders,
@@ -545,16 +539,8 @@ export class EnvironmentOrchestrationHttpApi extends HttpApiGroup.make("orchestr
     }).middleware(EnvironmentAuthenticatedAuth),
   ) {}
 
-export class EnvironmentClientHttpApi extends HttpApiGroup.make("environmentClient").add(
-  HttpApiEndpoint.get("clientConfig", "/api/environment/client-config", {
-    headers: OptionalBearerHeaders,
-    success: EnvironmentClientConfig,
-    error: EnvironmentClientConfigErrors,
-  }).middleware(EnvironmentAuthenticatedAuth),
-) {}
-
 /** Large, compressible pull-request payloads travel over HTTP rather than the RPC socket. */
-class EnvironmentPullRequestsHttpApi extends HttpApiGroup.make("pullRequests").add(
+export class EnvironmentPullRequestsHttpApi extends HttpApiGroup.make("pullRequests").add(
   HttpApiEndpoint.post("diff", "/api/pull-requests/diff", {
     headers: OptionalBearerHeaders,
     payload: PullRequestDiffInput,
@@ -569,7 +555,7 @@ class EnvironmentPullRequestsHttpApi extends HttpApiGroup.make("pullRequests").a
   }).middleware(EnvironmentAuthenticatedAuth),
 ) {}
 
-class EnvironmentConnectHttpApi extends HttpApiGroup.make("connect")
+export class EnvironmentConnectHttpApi extends HttpApiGroup.make("connect")
   .add(
     HttpApiEndpoint.post("linkProof", "/api/connect/link-proof", {
       headers: OptionalBearerHeaders,
@@ -629,11 +615,3 @@ class EnvironmentConnectHttpApi extends HttpApiGroup.make("connect")
       error: EnvironmentHttpCloudErrors,
     }),
   ) {}
-
-export class EnvironmentHttpApi extends HttpApi.make("environment")
-  .add(EnvironmentMetadataHttpApi)
-  .add(EnvironmentAuthHttpApi)
-  .add(EnvironmentClientHttpApi)
-  .add(EnvironmentOrchestrationHttpApi)
-  .add(EnvironmentPullRequestsHttpApi)
-  .add(EnvironmentConnectHttpApi) {}

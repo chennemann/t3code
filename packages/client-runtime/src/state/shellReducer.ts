@@ -40,6 +40,22 @@ export function applyShellStreamEvent(
         threads: Arr.filter(snapshot.threads, (t) => t.id !== event.threadId),
         snapshotSequence: event.sequence,
       };
+    case "todo-upserted": {
+      const todos = snapshot.todos ?? [];
+      return {
+        ...snapshot,
+        todos: todos.some((todo) => todo.id === event.todo.id)
+          ? Arr.map(todos, (todo) => (todo.id === event.todo.id ? event.todo : todo))
+          : Arr.append(todos, event.todo),
+        snapshotSequence: event.sequence,
+      };
+    }
+    case "todo-removed":
+      return {
+        ...snapshot,
+        todos: Arr.filter(snapshot.todos ?? [], (todo) => todo.id !== event.todoId),
+        snapshotSequence: event.sequence,
+      };
     default:
       return snapshot;
   }

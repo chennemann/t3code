@@ -193,7 +193,11 @@ describe("reduceCommandPaletteUiState", () => {
 
     expect(
       reduceCommandPaletteUiState(contentOpen, { _tag: "ToggleMode", mode: "content" }),
-    ).toEqual({ open: false, mode: "content", openIntent: null });
+    ).toEqual({
+      open: false,
+      mode: "content",
+      openIntent: null,
+    });
   });
 
   it("switches between open modes without closing", () => {
@@ -250,6 +254,11 @@ describe("reduceCommandPaletteUiState", () => {
       open: true,
       mode: "command",
       openIntent: { kind: "new-thread-in" },
+    });
+    expect(reduceCommandPaletteUiState(filesOpen, { _tag: "OpenNewThreadInTodos" })).toEqual({
+      open: true,
+      mode: "command",
+      openIntent: { kind: "new-thread-in-todos" },
     });
   });
 
@@ -429,6 +438,7 @@ describe("buildThreadActionItems", () => {
       query: "project",
       isInSubmenu: false,
       projectSearchItems: [],
+      todoSearchItems: [],
       threadSearchItems: threadItems,
     });
 
@@ -510,6 +520,7 @@ describe("buildThreadActionItems", () => {
       query: "project",
       isInSubmenu: false,
       projectSearchItems: [],
+      todoSearchItems: [],
       threadSearchItems: [],
     });
 

@@ -7,6 +7,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type BackgroundActivityProfile,
+  DEFAULT_TODO_PLANNING_INSTRUCTIONS,
   type DesktopUpdateChannel,
   ProviderDriverKind,
   type ProviderInstanceId,
@@ -119,6 +120,7 @@ import {
 } from "../ui/dialog";
 import { DraftInput } from "../ui/draft-input";
 import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
 import {
   DEFAULT_CODE_FONT_STACK,
   DEFAULT_SANS_FONT_STACK,
@@ -2245,6 +2247,30 @@ export function GeneralSettingsPanel() {
     <SettingsPageContainer>
       <ProjectDefaultsSettings category="general" />
       <SettingsSection id="organization" title="Organization">
+        <SettingsRow
+          title="To-do planning instructions"
+          description="Hidden instructions injected into planning sessions."
+          resetAction={
+            settings.todoPlanningInstructions !== DEFAULT_TODO_PLANNING_INSTRUCTIONS ? (
+              <SettingResetButton
+                label="to-do planning instructions"
+                onClick={() =>
+                  updateSettings({ todoPlanningInstructions: DEFAULT_TODO_PLANNING_INSTRUCTIONS })
+                }
+              />
+            ) : null
+          }
+          control={
+            <Textarea
+              className="min-h-28 w-[min(32rem,60vw)]"
+              value={settings.todoPlanningInstructions}
+              onChange={(event) =>
+                updateSettings({ todoPlanningInstructions: event.currentTarget.value })
+              }
+              aria-label="To-do planning instructions"
+            />
+          }
+        />
         <SettingsRow
           {...searchableSetting("project-grouping")}
           description="Combine matching repositories across environments."

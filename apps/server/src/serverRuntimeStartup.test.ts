@@ -1,6 +1,8 @@
+import * as DownstreamRuntime from "./downstream/Runtime.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import {
   DEFAULT_MODEL,
+  WORKSPACE_PROJECT_ID,
   DEFAULT_SERVER_SETTINGS,
   ProjectId,
   ProviderInstanceId,
@@ -10,8 +12,10 @@ import { assert, it } from "@effect/vitest";
 import * as Crypto from "effect/Crypto";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
 import * as Fiber from "effect/Fiber";
 import * as Option from "effect/Option";
+import * as Path from "effect/Path";
 import * as PlatformError from "effect/PlatformError";
 import * as Ref from "effect/Ref";
 import * as Stream from "effect/Stream";
@@ -148,6 +152,124 @@ it.effect("resolveWelcomeBase derives cwd and project name from server config", 
       projectName: "startup-project",
     });
   }),
+);
+
+it.effect("ensureWorkspaceProject creates the managed workspace project", () =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const path = yield* Path.Path;
+      const baseDir = yield* fs.makeTempDirectoryScoped({ prefix: "t3-workspace-project-" });
+      const createdProject = yield* Ref.make<{ id: string; workspaceRoot: string } | null>(null);
+
+      yield* DownstreamRuntime.ensureManagedWorkspace().pipe(
+        Effect.provideService(ServerConfig.ServerConfig, { baseDir } as never),
+        Effect.provideService(ProjectionSnapshotQuery.ProjectionSnapshotQuery, {
+          getCommandReadModel: () => Effect.die("unused"),
+          getSnapshot: () => Effect.die("unused"),
+          getShellSnapshot: () => Effect.die("unused"),
+          getArchivedShellSnapshot: () => Effect.die("unused"),
+          getSnapshotSequence: () => Effect.die("unused"),
+          getCounts: () => Effect.die("unused"),
+          getUserInputActivity: () => Effect.die("unused"),
+          listActivitiesByKind: () => Effect.die("unused"),
+          getDeletedWorktreeThreads: () => Effect.die("unused"),
+          listThreadsWithPullRequests: () => Effect.die("unused"),
+          getEventReplayStats: () => Effect.die("unused"),
+          getProjectShells: () => Effect.die("unused"),
+          getImportedAgentSessionSources: () => Effect.die("unused"),
+          getThreadRuntimeContext: () => Effect.die("unused"),
+          getTurnStartMessage: () => Effect.die("unused"),
+          getActiveProjectByWorkspaceRoot: () => Effect.die("unused"),
+          getProjectShellById: () => Effect.succeed(Option.none()),
+          getFirstActiveThreadIdByProjectId: () => Effect.die("unused"),
+          getThreadCheckpointContext: () => Effect.die("unused"),
+          getFullThreadDiffContext: () => Effect.die("unused"),
+          getThreadShellById: () => Effect.die("unused"),
+          getThreadDetailById: () => Effect.die("unused"),
+          getThreadDetailSnapshot: () => Effect.die("unused"),
+          searchThreads: () => Effect.die("unused"),
+        }),
+        Effect.provideService(OrchestrationEngine.OrchestrationEngineService, {
+          readEvents: () => Stream.empty,
+          readThreadEvents: () => Stream.empty,
+          getThreadReplayStats: () => Effect.die("unused"),
+          subscribeDomainEvents: Effect.die("unused"),
+          dispatch: (command) =>
+            command.type === "project.create"
+              ? Ref.set(createdProject, {
+                  id: command.projectId,
+                  workspaceRoot: command.workspaceRoot,
+                }).pipe(Effect.as({ sequence: 1 }))
+              : Effect.die(`unexpected command: ${command.type}`),
+          streamDomainEvents: Stream.empty,
+          latestSequence: Effect.succeed(0),
+        } satisfies OrchestrationEngine.OrchestrationEngineService["Service"]),
+      );
+
+      assert.deepStrictEqual(yield* Ref.get(createdProject), {
+        id: WORKSPACE_PROJECT_ID,
+        workspaceRoot: path.join(baseDir, "workspace"),
+      });
+      assert.isTrue(yield* fs.exists(path.join(baseDir, "workspace")));
+
+      const renamed = yield* Ref.make(false);
+      yield* DownstreamRuntime.ensureManagedWorkspace().pipe(
+        Effect.provideService(ServerConfig.ServerConfig, { baseDir } as never),
+        Effect.provideService(ProjectionSnapshotQuery.ProjectionSnapshotQuery, {
+          getCommandReadModel: () => Effect.die("unused"),
+          getSnapshot: () => Effect.die("unused"),
+          getShellSnapshot: () => Effect.die("unused"),
+          getArchivedShellSnapshot: () => Effect.die("unused"),
+          getSnapshotSequence: () => Effect.die("unused"),
+          getCounts: () => Effect.die("unused"),
+          getUserInputActivity: () => Effect.die("unused"),
+          listActivitiesByKind: () => Effect.die("unused"),
+          getDeletedWorktreeThreads: () => Effect.die("unused"),
+          listThreadsWithPullRequests: () => Effect.die("unused"),
+          getEventReplayStats: () => Effect.die("unused"),
+          getProjectShells: () => Effect.die("unused"),
+          getImportedAgentSessionSources: () => Effect.die("unused"),
+          getThreadRuntimeContext: () => Effect.die("unused"),
+          getTurnStartMessage: () => Effect.die("unused"),
+          getActiveProjectByWorkspaceRoot: () => Effect.die("unused"),
+          getProjectShellById: () =>
+            Effect.succeed(
+              Option.some({
+                id: WORKSPACE_PROJECT_ID,
+                title: "Inbox",
+                workspaceRoot: path.join(baseDir, "workspace"),
+                defaultModelSelection: null,
+                scripts: [],
+                createdAt: "2026-01-01T00:00:00.000Z",
+                updatedAt: "2026-01-01T00:00:00.000Z",
+                deletedAt: null,
+              }),
+            ),
+          getFirstActiveThreadIdByProjectId: () => Effect.die("unused"),
+          getThreadCheckpointContext: () => Effect.die("unused"),
+          getFullThreadDiffContext: () => Effect.die("unused"),
+          getThreadShellById: () => Effect.die("unused"),
+          getThreadDetailById: () => Effect.die("unused"),
+          getThreadDetailSnapshot: () => Effect.die("unused"),
+          searchThreads: () => Effect.die("unused"),
+        }),
+        Effect.provideService(OrchestrationEngine.OrchestrationEngineService, {
+          readEvents: () => Stream.empty,
+          readThreadEvents: () => Stream.empty,
+          getThreadReplayStats: () => Effect.die("unused"),
+          subscribeDomainEvents: Effect.die("unused"),
+          dispatch: (command) =>
+            command.type === "project.meta.update" && command.title === "Workspace"
+              ? Ref.set(renamed, true).pipe(Effect.as({ sequence: 2 }))
+              : Effect.die(`unexpected command: ${command.type}`),
+          streamDomainEvents: Stream.empty,
+          latestSequence: Effect.succeed(1),
+        } satisfies OrchestrationEngine.OrchestrationEngineService["Service"]),
+      );
+      assert.isTrue(yield* Ref.get(renamed));
+    }),
+  ).pipe(Effect.provide(NodeServices.layer)),
 );
 
 it.effect("resolveAutoBootstrapWelcomeTargets returns existing project and thread ids", () => {
@@ -381,7 +503,6 @@ it.effect(
           autoBootstrapProjectFromCwd: true,
         } as never),
         Effect.provideService(ProjectionSnapshotQuery.ProjectionSnapshotQuery, {
-          getUserInputActivity: () => Effect.die("unused"),
           listActivitiesByKind: () => Effect.succeed([]),
           getCommandReadModel: () => Effect.die("unused"),
           getSnapshot: () => Effect.die("unused"),
@@ -391,6 +512,7 @@ it.effect(
           getArchivedShellSnapshot: () => Effect.die("unused"),
           getSnapshotSequence: () => Effect.die("unused"),
           getCounts: () => Effect.die("unused"),
+          getUserInputActivity: () => Effect.die("unused"),
           getEventReplayStats: () => Effect.die("unused"),
           getActiveProjectByWorkspaceRoot: () => Effect.succeedNone,
           getProjectShells: () => Effect.die("unused"),
@@ -408,6 +530,7 @@ it.effect(
         }),
         Effect.provideService(OrchestrationEngine.OrchestrationEngineService, {
           readEvents: () => Stream.empty,
+
           readThreadEvents: () => Stream.empty,
           getThreadReplayStats: () => Effect.die("unused thread replay stats"),
           dispatch: (command) =>

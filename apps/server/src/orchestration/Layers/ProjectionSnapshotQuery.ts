@@ -80,6 +80,8 @@ import {
   type ProjectionThreadPullRequests,
   type ProjectionSnapshotQueryShape,
 } from "../Services/ProjectionSnapshotQuery.ts";
+import { DownstreamProjection } from "../../downstream/Projection.ts";
+import { layer as DownstreamDataLayer } from "../../downstream/Data.ts";
 
 const decodeReadModel = Schema.decodeUnknownEffect(OrchestrationReadModel);
 const decodeThread = Schema.decodeUnknownEffect(OrchestrationThread);
@@ -284,7 +286,10 @@ const REQUIRED_SNAPSHOT_PROJECTORS = [
   ORCHESTRATION_PROJECTOR_NAMES.checkpoints,
 ] as const;
 
-function maxIso(left: string | null, right: string): string {
+function maxIso(left: string | null, right: string | null): string | null {
+  if (right === null) {
+    return left;
+  }
   if (left === null) {
     return right;
   }
@@ -311,9 +316,7 @@ function buildSearchSnippet(text: string, query: string): string {
   const idealStart = Math.max(0, matchIndex - 72);
   const start = Math.min(idealStart, normalizedText.length - bodyLength);
   const end = Math.min(normalizedText.length, start + bodyLength);
-  return `${start > 0 ? "…" : ""}${normalizedText.slice(start, end)}${
-    end < normalizedText.length ? "…" : ""
-  }`;
+  return `${start > 0 ? "…" : ""}${normalizedText.slice(start, end)}${end < normalizedText.length ? "…" : ""}`;
 }
 
 function computeSnapshotSequence(
@@ -494,6 +497,8 @@ function toPersistenceSqlOrDecodeError(sqlOperation: string, decodeOperation: st
 const makeProjectionSnapshotQuery = Effect.gen(function* () {
   const threadBackgroundLiveness = yield* ThreadBackgroundLivenessService;
   const threadPlanProgress = yield* ThreadPlanProgressService;
+  const downstreamProjection = yield* DownstreamProjection;
+  const readDownstreamModel = downstreamProjection.readModelContribution;
   const sql = yield* SqlClient.SqlClient;
   const repositoryIdentityResolver = yield* RepositoryIdentityResolver.RepositoryIdentityResolver;
   const repositoryIdentityResolutionConcurrency = 4;
@@ -592,6 +597,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           title_regeneration_request_id AS "titleRegenerationRequestId",
           title_regeneration_started_at AS "titleRegenerationStartedAt",
           latest_user_message_at AS "latestUserMessageAt",
+          recency_anchor_at AS "recencyAnchorAt",
           pending_approval_count AS "pendingApprovalCount",
           pending_user_input_count AS "pendingUserInputCount",
           has_actionable_proposed_plan AS "hasActionableProposedPlan",
@@ -640,6 +646,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           title_regeneration_request_id AS "titleRegenerationRequestId",
           title_regeneration_started_at AS "titleRegenerationStartedAt",
           latest_user_message_at AS "latestUserMessageAt",
+          recency_anchor_at AS "recencyAnchorAt",
           pending_approval_count AS "pendingApprovalCount",
           pending_user_input_count AS "pendingUserInputCount",
           has_actionable_proposed_plan AS "hasActionableProposedPlan",
@@ -715,6 +722,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           title_regeneration_request_id AS "titleRegenerationRequestId",
           title_regeneration_started_at AS "titleRegenerationStartedAt",
           latest_user_message_at AS "latestUserMessageAt",
+          recency_anchor_at AS "recencyAnchorAt",
           pending_approval_count AS "pendingApprovalCount",
           pending_user_input_count AS "pendingUserInputCount",
           has_actionable_proposed_plan AS "hasActionableProposedPlan",
@@ -1319,6 +1327,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           title_regeneration_request_id AS "titleRegenerationRequestId",
           title_regeneration_started_at AS "titleRegenerationStartedAt",
           latest_user_message_at AS "latestUserMessageAt",
+          recency_anchor_at AS "recencyAnchorAt",
           pending_approval_count AS "pendingApprovalCount",
           pending_user_input_count AS "pendingUserInputCount",
           has_actionable_proposed_plan AS "hasActionableProposedPlan",
@@ -2119,6 +2128,7 @@ pending_approval_requests AS (
               ),
             ),
           ),
+          readDownstreamModel,
           listThreadRows(undefined).pipe(
             Effect.mapError(
               toPersistenceSqlOrDecodeError(
@@ -2197,6 +2207,7 @@ pending_approval_requests AS (
         Effect.flatMap(
           ([
             projectRows,
+            downstreamModel,
             threadRows,
             messageRows,
             proposedPlanRows,
@@ -2218,6 +2229,7 @@ pending_approval_requests AS (
 
               let updatedAt: string | null = null;
 
+              updatedAt = maxIso(updatedAt, downstreamModel.updatedAt);
               for (const row of projectRows) {
                 updatedAt = maxIso(updatedAt, row.updatedAt);
               }
@@ -2345,7 +2357,9 @@ pending_approval_requests AS (
 
               const repositoryIdentities = yield* resolveRepositoryIdentitiesForProjects(
                 projectRows,
-                { includeDeleted: true },
+                {
+                  includeDeleted: true,
+                },
               );
 
               const projects: ReadonlyArray<OrchestrationProject> = projectRows.map((row) => ({
@@ -2363,6 +2377,7 @@ pending_approval_requests AS (
                 updatedAt: row.updatedAt,
                 deletedAt: row.deletedAt,
               }));
+              updatedAt = maxIso(updatedAt, downstreamModel.updatedAt);
 
               const threads: ReadonlyArray<OrchestrationThread> = threadRows.map((row) => ({
                 id: row.threadId,
@@ -2406,6 +2421,7 @@ pending_approval_requests AS (
                 snapshotSequence: computeSnapshotSequence(stateRows),
                 projects,
                 threads,
+                ...downstreamModel.fragment,
                 updatedAt: updatedAt ?? "1970-01-01T00:00:00.000Z",
               };
 
@@ -2436,6 +2452,7 @@ pending_approval_requests AS (
               ),
             ),
           ),
+          readDownstreamModel,
           listThreadRows(undefined).pipe(
             Effect.mapError(
               toPersistenceSqlOrDecodeError(
@@ -2490,6 +2507,7 @@ pending_approval_requests AS (
         Effect.flatMap(
           ([
             projectRows,
+            downstreamModel,
             threadRows,
             proposedPlanRows,
             pullRequestRows,
@@ -2510,6 +2528,7 @@ pending_approval_requests AS (
               let updatedAt: string | null = null;
               const projects: OrchestrationProject[] = [];
               const threads: OrchestrationThread[] = [];
+              updatedAt = maxIso(updatedAt, downstreamModel.updatedAt);
 
               for (let index = 0; index < projectRows.length; index += 1) {
                 const row = projectRows[index];
@@ -2653,6 +2672,7 @@ pending_approval_requests AS (
                 snapshotSequence: computeSnapshotSequence(stateRows),
                 projects,
                 threads,
+                ...downstreamModel.fragment,
                 updatedAt: updatedAt ?? "1970-01-01T00:00:00.000Z",
               } satisfies OrchestrationReadModel;
             }),
@@ -2678,6 +2698,7 @@ pending_approval_requests AS (
               ),
             ),
           ),
+          readDownstreamModel,
           listActiveThreadRows({ unsettledOnly }).pipe(
             Effect.mapError(
               toPersistenceSqlOrDecodeError(
@@ -2722,9 +2743,17 @@ pending_approval_requests AS (
       )
       .pipe(
         Effect.flatMap(
-          ([projectRows, threadRows, sessionRows, pullRequestRows, latestTurnRows, stateRows]) =>
+          ([
+            projectRows,
+            downstreamModel,
+            threadRows,
+            sessionRows,
+            pullRequestRows,
+            latestTurnRows,
+            stateRows,
+          ]) =>
             Effect.gen(function* () {
-              let updatedAt: string | null = null;
+              let updatedAt: string | null = downstreamModel.updatedAt;
               for (const row of projectRows) {
                 updatedAt = maxIso(updatedAt, row.updatedAt);
               }
@@ -2761,6 +2790,7 @@ pending_approval_requests AS (
               // and RPC layers encode it against OrchestrationShellSnapshot on the
               // way out, like the per-item shells from getThreadShellById.
               return {
+                ...downstreamModel.fragment,
                 snapshotSequence: computeSnapshotSequence(stateRows),
                 projects: Arr.filterMap(projectRows, (row) =>
                   row.deletedAt === null
@@ -2803,6 +2833,7 @@ pending_approval_requests AS (
                         titleState: row.titleState,
                         session: sessionByThread.get(row.threadId) ?? null,
                         latestUserMessageAt: row.latestUserMessageAt,
+                        recencyAnchorAt: row.recencyAnchorAt ?? null,
                         hasPendingApprovals: row.pendingApprovalCount > 0,
                         hasPendingUserInput: row.pendingUserInputCount > 0,
                         hasActionableProposedPlan: row.hasActionableProposedPlan > 0,
@@ -2989,6 +3020,7 @@ pending_approval_requests AS (
                   titleState: row.titleState,
                   session: sessionByThread.get(row.threadId) ?? null,
                   latestUserMessageAt: row.latestUserMessageAt,
+                  recencyAnchorAt: row.recencyAnchorAt ?? null,
                   hasPendingApprovals: row.pendingApprovalCount > 0,
                   hasPendingUserInput: row.pendingUserInputCount > 0,
                   hasActionableProposedPlan: row.hasActionableProposedPlan > 0,
@@ -3338,6 +3370,7 @@ pending_approval_requests AS (
         titleState: threadRow.value.titleState,
         session: Option.isSome(sessionRow) ? mapSessionRow(sessionRow.value) : null,
         latestUserMessageAt: threadRow.value.latestUserMessageAt,
+        recencyAnchorAt: threadRow.value.recencyAnchorAt ?? null,
         hasPendingApprovals: threadRow.value.pendingApprovalCount > 0,
         hasPendingUserInput: threadRow.value.pendingUserInputCount > 0,
         hasActionableProposedPlan: threadRow.value.hasActionableProposedPlan > 0,
@@ -3867,4 +3900,4 @@ pending_approval_requests AS (
 export const OrchestrationProjectionSnapshotQueryLive = Layer.effect(
   ProjectionSnapshotQuery,
   makeProjectionSnapshotQuery,
-);
+).pipe(Layer.provide(DownstreamDataLayer));

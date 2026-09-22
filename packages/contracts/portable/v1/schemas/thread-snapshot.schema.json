@@ -1,906 +1,1599 @@
 {
-    "definitions": {},
-    "dialect": "draft-2020-12",
-    "schema": {
-        "additionalProperties": false,
-        "properties": {
-            "page": {
+  "definitions": {
+    "Objects_": {
+      "additionalProperties": true,
+      "properties": {
+        "actions": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 32,
+          "type": "array"
+        },
+        "bounds": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "properties": {
+                "height": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "width": {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "x": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "y": {
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": ["x", "y", "width", "height"],
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "children": {
+          "items": {
+            "$ref": "#/$defs/Objects_"
+          },
+          "maxItems": 10000,
+          "type": "array"
+        },
+        "description": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "state": {
+          "additionalProperties": true,
+          "properties": {
+            "active": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "busy": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "checked": {
+              "anyOf": [
+                {
+                  "enum": ["on", "off", "mixed"],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "editable": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "enabled": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "expanded": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "focused": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "selected": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "visible": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": ["role", "bounds", "children"],
+      "type": "object"
+    }
+  },
+  "dialect": "draft-2020-12",
+  "schema": {
+    "additionalProperties": true,
+    "properties": {
+      "page": {
+        "anyOf": [
+          {
+            "additionalProperties": true,
+            "properties": {
+              "beforeCursor": {
                 "anyOf": [
-                    {
-                        "additionalProperties": false,
-                        "properties": {
-                            "beforeCursor": {
-                                "anyOf": [
-                                    {
-                                        "type": "string"
-                                    },
-                                    {
-                                        "type": "null"
-                                    }
-                                ]
-                            },
-                            "hasMore": {
-                                "type": "boolean"
-                            },
-                            "snapshotSequence": {
-                                "allOf": [
-                                    {
-                                        "minimum": 0
-                                    }
-                                ],
-                                "type": "integer"
-                            },
-                            "threadSequence": {
-                                "allOf": [
-                                    {
-                                        "minimum": 0
-                                    }
-                                ],
-                                "type": "integer"
-                            }
-                        },
-                        "required": ["beforeCursor", "hasMore", "snapshotSequence"],
-                        "type": "object"
-                    },
-                    {
-                        "type": "null"
-                    }
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
-            },
-            "snapshotSequence": {
-                "allOf": [
-                    {
-                        "minimum": 0
-                    }
-                ],
+              },
+              "hasMore": {
+                "type": "boolean"
+              },
+              "snapshotSequence": {
+                "minimum": 0,
                 "type": "integer"
+              },
+              "threadSequence": {
+                "minimum": 0,
+                "type": "integer"
+              }
             },
-            "thread": {
-                "additionalProperties": false,
-                "properties": {
-                    "activities": {
-                        "items": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "createdAt": {
-                                    "type": "string"
-                                },
-                                "id": {
-                                    "type": "string"
-                                },
-                                "kind": {
-                                    "type": "string"
-                                },
-                                "payload": {},
-                                "sequence": {
-                                    "anyOf": [
-                                        {
-                                            "allOf": [
-                                                {
-                                                    "minimum": 0
-                                                }
-                                            ],
-                                            "type": "integer"
-                                        },
-                                        {
-                                            "type": "null"
-                                        }
-                                    ]
-                                },
-                                "summary": {
-                                    "type": "string"
-                                },
-                                "tone": {
-                                    "enum": ["info", "tool", "approval", "error"],
-                                    "type": "string"
-                                },
-                                "turnId": {
-                                    "anyOf": [
-                                        {
-                                            "type": "string"
-                                        },
-                                        {
-                                            "type": "null"
-                                        }
-                                    ]
-                                }
-                            },
-                            "required": ["id", "tone", "kind", "summary", "payload", "turnId", "createdAt"],
-                            "type": "object"
-                        },
-                        "type": "array"
+            "required": ["beforeCursor", "hasMore", "snapshotSequence"],
+            "type": "object"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "snapshotSequence": {
+        "minimum": 0,
+        "type": "integer"
+      },
+      "thread": {
+        "additionalProperties": true,
+        "properties": {
+          "activeOrderKey": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "activities": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "createdAt": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "payload": {},
+                "sequence": {
+                  "anyOf": [
+                    {
+                      "minimum": 0,
+                      "type": "integer"
                     },
-                    "archivedAt": {
-                        "anyOf": [
-                            {
-                                "anyOf": [
-                                    {
-                                        "type": "string"
-                                    },
-                                    {
-                                        "type": "null"
-                                    }
-                                ]
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
-                    },
-                    "branch": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
-                    },
-                    "checkpoints": {
-                        "items": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "assistantMessageId": {
-                                    "anyOf": [
-                                        {
-                                            "type": "string"
-                                        },
-                                        {
-                                            "type": "null"
-                                        }
-                                    ]
-                                },
-                                "checkpointRef": {
-                                    "type": "string"
-                                },
-                                "checkpointTurnCount": {
-                                    "allOf": [
-                                        {
-                                            "minimum": 0
-                                        }
-                                    ],
-                                    "type": "integer"
-                                },
-                                "completedAt": {
-                                    "type": "string"
-                                },
-                                "files": {
-                                    "items": {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "additions": {
-                                                "allOf": [
-                                                    {
-                                                        "minimum": 0
-                                                    }
-                                                ],
-                                                "type": "integer"
-                                            },
-                                            "deletions": {
-                                                "allOf": [
-                                                    {
-                                                        "minimum": 0
-                                                    }
-                                                ],
-                                                "type": "integer"
-                                            },
-                                            "kind": {
-                                                "type": "string"
-                                            },
-                                            "path": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": ["path", "kind", "additions", "deletions"],
-                                        "type": "object"
-                                    },
-                                    "type": "array"
-                                },
-                                "status": {
-                                    "enum": ["ready", "missing", "error"],
-                                    "type": "string"
-                                },
-                                "turnId": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "turnId",
-                                "checkpointTurnCount",
-                                "checkpointRef",
-                                "status",
-                                "files",
-                                "assistantMessageId",
-                                "completedAt"
-                            ],
-                            "type": "object"
-                        },
-                        "type": "array"
-                    },
-                    "createdAt": {
-                        "type": "string"
-                    },
-                    "deletedAt": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
-                    },
-                    "id": {
-                        "type": "string"
-                    },
-                    "interactionMode": {
-                        "anyOf": [
-                            {
-                                "enum": ["default", "plan"],
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
-                    },
-                    "latestTurn": {
-                        "anyOf": [
-                            {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "assistantMessageId": {
-                                        "anyOf": [
-                                            {
-                                                "type": "string"
-                                            },
-                                            {
-                                                "type": "null"
-                                            }
-                                        ]
-                                    },
-                                    "completedAt": {
-                                        "anyOf": [
-                                            {
-                                                "type": "string"
-                                            },
-                                            {
-                                                "type": "null"
-                                            }
-                                        ]
-                                    },
-                                    "requestedAt": {
-                                        "type": "string"
-                                    },
-                                    "sourceProposedPlan": {
-                                        "anyOf": [
-                                            {
-                                                "additionalProperties": false,
-                                                "properties": {
-                                                    "planId": {
-                                                        "type": "string"
-                                                    },
-                                                    "threadId": {
-                                                        "type": "string"
-                                                    }
-                                                },
-                                                "required": ["threadId", "planId"],
-                                                "type": "object"
-                                            },
-                                            {
-                                                "type": "null"
-                                            }
-                                        ]
-                                    },
-                                    "startedAt": {
-                                        "anyOf": [
-                                            {
-                                                "type": "string"
-                                            },
-                                            {
-                                                "type": "null"
-                                            }
-                                        ]
-                                    },
-                                    "state": {
-                                        "enum": ["running", "interrupted", "completed", "error"],
-                                        "type": "string"
-                                    },
-                                    "turnId": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "turnId",
-                                    "state",
-                                    "requestedAt",
-                                    "startedAt",
-                                    "completedAt",
-                                    "assistantMessageId"
-                                ],
-                                "type": "object"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
-                    },
-                    "linkedPullRequest": {
-                        "anyOf": [
-                            {
-                                "anyOf": [
-                                    {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "number": {
-                                                "allOf": [
-                                                    {
-                                                        "minimum": 1
-                                                    }
-                                                ],
-                                                "type": "integer"
-                                            },
-                                            "projectId": {
-                                                "type": "string"
-                                            },
-                                            "repository": {
-                                                "type": "string"
-                                            },
-                                            "url": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": ["projectId", "repository", "number", "url"],
-                                        "type": "object"
-                                    },
-                                    {
-                                        "type": "null"
-                                    }
-                                ]
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
-                    },
-                    "messages": {
-                        "items": {
-                            "additionalProperties": false,
-                            "properties": {
-                                "attachments": {
-                                    "anyOf": [
-                                        {
-                                            "items": {
-                                                "anyOf": [
-                                                    {
-                                                        "additionalProperties": false,
-                                                        "properties": {
-                                                            "id": {
-                                                                "type": "string"
-                                                            },
-                                                            "mimeType": {
-                                                                "type": "string"
-                                                            },
-                                                            "name": {
-                                                                "type": "string"
-                                                            },
-                                                            "sizeBytes": {
-                                                                "allOf": [
-                                                                    {
-                                                                        "minimum": 0
-                                                                    },
-                                                                    {
-                                                                        "maximum": 10485760
-                                                                    }
-                                                                ],
-                                                                "type": "integer"
-                                                            },
-                                                            "type": {
-                                                                "enum": ["image"],
-                                                                "type": "string"
-                                                            }
-                                                        },
-                                                        "required": ["type", "id", "name", "mimeType", "sizeBytes"],
-                                                        "type": "object"
-                                                    },
-                                                    {
-                                                        "additionalProperties": false,
-                                                        "properties": {
-                                                            "id": {
-                                                                "type": "string"
-                                                            },
-                                                            "mimeType": {
-                                                                "type": "string"
-                                                            },
-                                                            "name": {
-                                                                "type": "string"
-                                                            },
-                                                            "sizeBytes": {
-                                                                "allOf": [
-                                                                    {
-                                                                        "minimum": 0
-                                                                    },
-                                                                    {
-                                                                        "minimum": 1
-                                                                    },
-                                                                    {
-                                                                        "maximum": 52428800
-                                                                    }
-                                                                ],
-                                                                "type": "integer"
-                                                            },
-                                                            "type": {
-                                                                "enum": ["file"],
-                                                                "type": "string"
-                                                            }
-                                                        },
-                                                        "required": ["type", "id", "name", "mimeType", "sizeBytes"],
-                                                        "type": "object"
-                                                    },
-                                                    {
-                                                        "additionalProperties": false,
-                                                        "properties": {
-                                                            "id": {
-                                                                "type": "string"
-                                                            },
-                                                            "mimeType": {
-                                                                "type": "string"
-                                                            },
-                                                            "name": {
-                                                                "type": "string"
-                                                            },
-                                                            "sizeBytes": {
-                                                                "allOf": [
-                                                                    {
-                                                                        "minimum": 0
-                                                                    }
-                                                                ],
-                                                                "type": "integer"
-                                                            },
-                                                            "type": {
-                                                                "type": "string"
-                                                            }
-                                                        },
-                                                        "required": ["type", "id", "name", "mimeType", "sizeBytes"],
-                                                        "type": "object"
-                                                    }
-                                                ]
-                                            },
-                                            "type": "array"
-                                        },
-                                        {
-                                            "type": "null"
-                                        }
-                                    ]
-                                },
-                                "createdAt": {
-                                    "type": "string"
-                                },
-                                "id": {
-                                    "type": "string"
-                                },
-                                "role": {
-                                    "enum": ["user", "assistant", "system"],
-                                    "type": "string"
-                                },
-                                "streaming": {
-                                    "type": "boolean"
-                                },
-                                "text": {
-                                    "type": "string"
-                                },
-                                "turnId": {
-                                    "anyOf": [
-                                        {
-                                            "type": "string"
-                                        },
-                                        {
-                                            "type": "null"
-                                        }
-                                    ]
-                                },
-                                "updatedAt": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": ["id", "role", "text", "turnId", "streaming", "createdAt", "updatedAt"],
-                            "type": "object"
-                        },
-                        "type": "array"
-                    },
-                    "modelSelection": {
-                        "additionalProperties": false,
-                        "properties": {
-                            "instanceId": {
-                                "anyOf": [
-                                    {},
-                                    {
-                                        "type": "null"
-                                    }
-                                ]
-                            },
-                            "model": {},
-                            "options": {
-                                "anyOf": [
-                                    {},
-                                    {
-                                        "type": "null"
-                                    }
-                                ]
-                            },
-                            "provider": {
-                                "anyOf": [
-                                    {},
-                                    {
-                                        "type": "null"
-                                    }
-                                ]
-                            }
-                        },
-                        "required": ["model"],
-                        "type": "object"
-                    },
-                    "pinnedAt": {
-                        "anyOf": [
-                            {
-                                "anyOf": [
-                                    {
-                                        "type": "string"
-                                    },
-                                    {
-                                        "type": "null"
-                                    }
-                                ]
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
-                    },
-                    "pinOrderKey": {
-                        "anyOf": [
-                            {
-                                "anyOf": [
-                                    {
-                                        "type": "string"
-                                    },
-                                    {
-                                        "type": "null"
-                                    }
-                                ]
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
-                    },
-                    "projectId": {
-                        "type": "string"
-                    },
-                    "proposedPlans": {
-                        "anyOf": [
-                            {
-                                "items": {
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "createdAt": {
-                                            "type": "string"
-                                        },
-                                        "id": {
-                                            "type": "string"
-                                        },
-                                        "implementationThreadId": {
-                                            "anyOf": [
-                                                {
-                                                    "anyOf": [
-                                                        {
-                                                            "type": "string"
-                                                        },
-                                                        {
-                                                            "type": "null"
-                                                        }
-                                                    ]
-                                                },
-                                                {
-                                                    "type": "null"
-                                                }
-                                            ]
-                                        },
-                                        "implementedAt": {
-                                            "anyOf": [
-                                                {
-                                                    "anyOf": [
-                                                        {
-                                                            "type": "string"
-                                                        },
-                                                        {
-                                                            "type": "null"
-                                                        }
-                                                    ]
-                                                },
-                                                {
-                                                    "type": "null"
-                                                }
-                                            ]
-                                        },
-                                        "planMarkdown": {
-                                            "type": "string"
-                                        },
-                                        "turnId": {
-                                            "anyOf": [
-                                                {
-                                                    "type": "string"
-                                                },
-                                                {
-                                                    "type": "null"
-                                                }
-                                            ]
-                                        },
-                                        "updatedAt": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "required": ["id", "turnId", "planMarkdown", "createdAt", "updatedAt"],
-                                    "type": "object"
-                                },
-                                "type": "array"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
-                    },
-                    "runtimeMode": {
-                        "enum": ["approval-required", "auto-accept-edits", "auto", "full-access"],
-                        "type": "string"
-                    },
-                    "session": {
-                        "anyOf": [
-                            {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "activeTurnId": {
-                                        "anyOf": [
-                                            {
-                                                "type": "string"
-                                            },
-                                            {
-                                                "type": "null"
-                                            }
-                                        ]
-                                    },
-                                    "lastError": {
-                                        "anyOf": [
-                                            {
-                                                "type": "string"
-                                            },
-                                            {
-                                                "type": "null"
-                                            }
-                                        ]
-                                    },
-                                    "providerInstanceId": {
-                                        "anyOf": [
-                                            {
-                                                "type": "string"
-                                            },
-                                            {
-                                                "type": "null"
-                                            }
-                                        ]
-                                    },
-                                    "providerName": {
-                                        "anyOf": [
-                                            {
-                                                "type": "string"
-                                            },
-                                            {
-                                                "type": "null"
-                                            }
-                                        ]
-                                    },
-                                    "runtimeMode": {
-                                        "anyOf": [
-                                            {
-                                                "enum": [
-                                                    "approval-required",
-                                                    "auto-accept-edits",
-                                                    "auto",
-                                                    "full-access"
-                                                ],
-                                                "type": "string"
-                                            },
-                                            {
-                                                "type": "null"
-                                            }
-                                        ]
-                                    },
-                                    "status": {
-                                        "enum": [
-                                            "idle",
-                                            "starting",
-                                            "running",
-                                            "ready",
-                                            "interrupted",
-                                            "stopped",
-                                            "error"
-                                        ],
-                                        "type": "string"
-                                    },
-                                    "threadId": {
-                                        "type": "string"
-                                    },
-                                    "updatedAt": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required": [
-                                    "threadId",
-                                    "status",
-                                    "providerName",
-                                    "activeTurnId",
-                                    "lastError",
-                                    "updatedAt"
-                                ],
-                                "type": "object"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
-                    },
-                    "settledAt": {
-                        "anyOf": [
-                            {
-                                "anyOf": [
-                                    {
-                                        "type": "string"
-                                    },
-                                    {
-                                        "type": "null"
-                                    }
-                                ]
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
-                    },
-                    "settledOverride": {
-                        "anyOf": [
-                            {
-                                "anyOf": [
-                                    {
-                                        "enum": ["settled", "active"],
-                                        "type": "string"
-                                    },
-                                    {
-                                        "type": "null"
-                                    }
-                                ]
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
-                    },
-                    "snoozedAt": {
-                        "anyOf": [
-                            {
-                                "anyOf": [
-                                    {
-                                        "type": "string"
-                                    },
-                                    {
-                                        "type": "null"
-                                    }
-                                ]
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
-                    },
-                    "snoozedUntil": {
-                        "anyOf": [
-                            {
-                                "anyOf": [
-                                    {
-                                        "type": "string"
-                                    },
-                                    {
-                                        "type": "null"
-                                    }
-                                ]
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
-                    },
-                    "title": {
-                        "type": "string"
-                    },
-                    "titleRegeneration": {
-                        "anyOf": [
-                            {
-                                "anyOf": [
-                                    {
-                                        "additionalProperties": false,
-                                        "properties": {
-                                            "requestId": {
-                                                "type": "string"
-                                            },
-                                            "startedAt": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "required": ["requestId", "startedAt"],
-                                        "type": "object"
-                                    },
-                                    {
-                                        "type": "null"
-                                    }
-                                ]
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
-                    },
-                    "unsettledAt": {
-                        "anyOf": [
-                            {
-                                "anyOf": [
-                                    {
-                                        "type": "string"
-                                    },
-                                    {
-                                        "type": "null"
-                                    }
-                                ]
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
-                    },
-                    "updatedAt": {
-                        "type": "string"
-                    },
-                    "worktreePath": {
-                        "anyOf": [
-                            {
-                                "type": "string"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
+                    {
+                      "type": "null"
                     }
+                  ]
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "tone": {
+                  "enum": ["info", "tool", "approval", "error"],
+                  "type": "string"
+                },
+                "turnId": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": ["id", "tone", "kind", "summary", "payload", "turnId", "createdAt"],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "archivedAt": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "autoSettleDisabledAt": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "branch": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "branchPullRequest": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "properties": {
+                      "number": {
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      "projectId": {
+                        "type": "string"
+                      },
+                      "repository": {
+                        "type": "string"
+                      },
+                      "url": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["projectId", "repository", "number", "url"],
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "checkpoints": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "assistantMessageId": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "checkpointRef": {
+                  "type": "string"
+                },
+                "checkpointTurnCount": {
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "completedAt": {
+                  "type": "string"
+                },
+                "files": {
+                  "items": {
+                    "additionalProperties": true,
+                    "properties": {
+                      "additions": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "deletions": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "kind": {
+                        "type": "string"
+                      },
+                      "path": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["path", "kind", "additions", "deletions"],
+                    "type": "object"
+                  },
+                  "type": "array"
+                },
+                "status": {
+                  "enum": ["ready", "missing", "error"],
+                  "type": "string"
+                },
+                "turnId": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "turnId",
+                "checkpointTurnCount",
+                "checkpointRef",
+                "status",
+                "files",
+                "assistantMessageId",
+                "completedAt"
+              ],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "deletedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "type": "string"
+          },
+          "interactionMode": {
+            "anyOf": [
+              {
+                "enum": ["default", "plan"],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "latestTurn": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "properties": {
+                  "assistantMessageId": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "completedAt": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "requestedAt": {
+                    "type": "string"
+                  },
+                  "sourceProposedPlan": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": true,
+                        "properties": {
+                          "planId": {
+                            "type": "string"
+                          },
+                          "threadId": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["threadId", "planId"],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "startedAt": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "state": {
+                    "enum": ["running", "interrupted", "completed", "error"],
+                    "type": "string"
+                  },
+                  "turnId": {
+                    "type": "string"
+                  }
                 },
                 "required": [
-                    "id",
-                    "projectId",
-                    "title",
-                    "modelSelection",
-                    "runtimeMode",
-                    "branch",
-                    "worktreePath",
-                    "latestTurn",
-                    "createdAt",
-                    "updatedAt",
-                    "deletedAt",
-                    "messages",
-                    "activities",
-                    "checkpoints",
-                    "session"
+                  "turnId",
+                  "state",
+                  "requestedAt",
+                  "startedAt",
+                  "completedAt",
+                  "assistantMessageId"
                 ],
                 "type": "object"
-            }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "linkedPullRequest": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "properties": {
+                      "number": {
+                        "minimum": 1,
+                        "type": "integer"
+                      },
+                      "projectId": {
+                        "type": "string"
+                      },
+                      "repository": {
+                        "type": "string"
+                      },
+                      "url": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["projectId", "repository", "number", "url"],
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "messages": {
+            "items": {
+              "additionalProperties": true,
+              "properties": {
+                "attachments": {
+                  "anyOf": [
+                    {
+                      "items": {
+                        "anyOf": [
+                          {
+                            "additionalProperties": true,
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "mimeType": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "sizeBytes": {
+                                "maximum": 10485760,
+                                "minimum": 0,
+                                "type": "integer"
+                              },
+                              "source": {
+                                "anyOf": [
+                                  {
+                                    "additionalProperties": true,
+                                    "properties": {
+                                      "accessibility": {
+                                        "anyOf": [
+                                          {
+                                            "anyOf": [
+                                              {
+                                                "additionalProperties": true,
+                                                "properties": {
+                                                  "format": {
+                                                    "enum": ["flat-text"],
+                                                    "type": "string"
+                                                  },
+                                                  "text": {
+                                                    "type": "string"
+                                                  },
+                                                  "truncated": {
+                                                    "type": "boolean"
+                                                  }
+                                                },
+                                                "required": ["format", "text", "truncated"],
+                                                "type": "object"
+                                              },
+                                              {
+                                                "additionalProperties": true,
+                                                "properties": {
+                                                  "coordinateSpace": {
+                                                    "enum": ["captured-image"],
+                                                    "type": "string"
+                                                  },
+                                                  "format": {
+                                                    "enum": ["element-tree"],
+                                                    "type": "string"
+                                                  },
+                                                  "imageSize": {
+                                                    "additionalProperties": true,
+                                                    "properties": {
+                                                      "height": {
+                                                        "minimum": 1,
+                                                        "type": "integer"
+                                                      },
+                                                      "width": {
+                                                        "minimum": 1,
+                                                        "type": "integer"
+                                                      }
+                                                    },
+                                                    "required": ["width", "height"],
+                                                    "type": "object"
+                                                  },
+                                                  "root": {
+                                                    "$ref": "#/$defs/Objects_"
+                                                  },
+                                                  "truncated": {
+                                                    "type": "boolean"
+                                                  }
+                                                },
+                                                "required": [
+                                                  "format",
+                                                  "coordinateSpace",
+                                                  "imageSize",
+                                                  "truncated",
+                                                  "root"
+                                                ],
+                                                "type": "object"
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "accessibleText": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "appIconDataUrl": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "appIdentifier": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "appName": {
+                                        "type": "string"
+                                      },
+                                      "capturedAt": {
+                                        "type": "string"
+                                      },
+                                      "kind": {
+                                        "enum": ["snap-shot"],
+                                        "type": "string"
+                                      },
+                                      "windowTitle": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": ["kind", "capturedAt", "appName", "windowTitle"],
+                                    "type": "object"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "type": {
+                                "enum": ["image"],
+                                "type": "string"
+                              }
+                            },
+                            "required": ["type", "id", "name", "mimeType", "sizeBytes"],
+                            "type": "object"
+                          },
+                          {
+                            "additionalProperties": true,
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "mimeType": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "sizeBytes": {
+                                "allOf": [
+                                  {
+                                    "minimum": 1
+                                  }
+                                ],
+                                "maximum": 52428800,
+                                "minimum": 0,
+                                "type": "integer"
+                              },
+                              "source": {
+                                "anyOf": [
+                                  {
+                                    "additionalProperties": true,
+                                    "properties": {
+                                      "_tag": {
+                                        "enum": ["pasted-text"],
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": ["_tag"],
+                                    "type": "object"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "type": {
+                                "enum": ["file"],
+                                "type": "string"
+                              }
+                            },
+                            "required": ["type", "id", "name", "mimeType", "sizeBytes"],
+                            "type": "object"
+                          },
+                          {
+                            "additionalProperties": true,
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "mimeType": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "sizeBytes": {
+                                "minimum": 0,
+                                "type": "integer"
+                              },
+                              "type": {
+                                "type": "string"
+                              }
+                            },
+                            "required": ["type", "id", "name", "mimeType", "sizeBytes"],
+                            "type": "object"
+                          }
+                        ]
+                      },
+                      "type": "array"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "context": {
+                  "anyOf": [
+                    {
+                      "additionalProperties": true,
+                      "properties": {
+                        "records": {
+                          "maxItems": 200,
+                          "type": "array"
+                        },
+                        "version": {
+                          "enum": [1],
+                          "type": "number"
+                        }
+                      },
+                      "required": ["version", "records"],
+                      "type": "object"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "role": {
+                  "enum": ["user", "assistant", "system", "reasoning"],
+                  "type": "string"
+                },
+                "streaming": {
+                  "type": "boolean"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "turnId": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "updatedAt": {
+                  "type": "string"
+                }
+              },
+              "required": ["id", "role", "text", "turnId", "streaming", "createdAt", "updatedAt"],
+              "type": "object"
+            },
+            "type": "array"
+          },
+          "modelSelection": {
+            "additionalProperties": true,
+            "properties": {
+              "instanceId": {
+                "anyOf": [
+                  {},
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "model": {},
+              "options": {
+                "anyOf": [
+                  {},
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "provider": {
+                "anyOf": [
+                  {},
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": ["model"],
+            "type": "object"
+          },
+          "pinnedAt": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pinOrderKey": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "projectId": {
+            "type": "string"
+          },
+          "proposedPlans": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "implementationThreadId": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "implementedAt": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "planMarkdown": {
+                      "type": "string"
+                    },
+                    "turnId": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["id", "turnId", "planMarkdown", "createdAt", "updatedAt"],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pullRequests": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "host": {
+                      "type": "string"
+                    },
+                    "linkedAt": {
+                      "type": "string"
+                    },
+                    "number": {
+                      "minimum": 1,
+                      "type": "integer"
+                    },
+                    "repository": {
+                      "type": "string"
+                    },
+                    "snapshot": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": true,
+                          "properties": {
+                            "additions": {
+                              "anyOf": [
+                                {
+                                  "minimum": 0,
+                                  "type": "integer"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "author": {
+                              "anyOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "additionalProperties": true,
+                                      "properties": {
+                                        "avatarUrl": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        "isBot": {
+                                          "anyOf": [
+                                            {
+                                              "type": "boolean"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        "login": {
+                                          "type": "string"
+                                        },
+                                        "name": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "required": ["login", "name", "avatarUrl"],
+                                      "type": "object"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "baseBranch": {
+                              "type": "string"
+                            },
+                            "changedFiles": {
+                              "anyOf": [
+                                {
+                                  "minimum": 0,
+                                  "type": "integer"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "checksState": {
+                              "anyOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "enum": ["passing", "failing", "pending"],
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "closedAt": {
+                              "anyOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "deletions": {
+                              "anyOf": [
+                                {
+                                  "minimum": 0,
+                                  "type": "integer"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "headBranch": {
+                              "type": "string"
+                            },
+                            "isDraft": {
+                              "type": "boolean"
+                            },
+                            "mergeability": {
+                              "anyOf": [
+                                {
+                                  "enum": ["mergeable", "conflicting", "unknown"],
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "mergedAt": {
+                              "anyOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "reviewDecision": {
+                              "anyOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "enum": ["approved", "changes-requested", "review-required"],
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "state": {
+                              "enum": ["open", "closed", "merged"],
+                              "type": "string"
+                            },
+                            "syncedAt": {
+                              "type": "string"
+                            },
+                            "title": {
+                              "type": "string"
+                            },
+                            "updatedAt": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "state",
+                            "title",
+                            "headBranch",
+                            "baseBranch",
+                            "isDraft",
+                            "updatedAt",
+                            "syncedAt"
+                          ],
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "source": {
+                      "enum": ["manual", "created", "agent", "stack", "stack-dismissed"],
+                      "type": "string"
+                    },
+                    "stack": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": true,
+                          "properties": {
+                            "base": {
+                              "type": "string"
+                            },
+                            "id": {
+                              "type": "string"
+                            },
+                            "kind": {
+                              "enum": ["native"],
+                              "type": "string"
+                            },
+                            "layers": {
+                              "items": {
+                                "additionalProperties": true,
+                                "properties": {
+                                  "headBranch": {
+                                    "type": "string"
+                                  },
+                                  "number": {
+                                    "minimum": 1,
+                                    "type": "integer"
+                                  },
+                                  "state": {
+                                    "enum": ["open", "closed", "merged"],
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["number", "headBranch", "state"],
+                                "type": "object"
+                              },
+                              "type": "array"
+                            },
+                            "number": {
+                              "minimum": 1,
+                              "type": "integer"
+                            },
+                            "url": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["kind", "id", "number", "url", "base", "layers"],
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "host",
+                    "repository",
+                    "number",
+                    "url",
+                    "source",
+                    "linkedAt",
+                    "snapshot",
+                    "stack"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "runtimeMode": {
+            "enum": ["approval-required", "auto-accept-edits", "auto", "full-access"],
+            "type": "string"
+          },
+          "session": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "properties": {
+                  "activeTurnId": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "lastError": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "providerInstanceId": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "providerName": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "runtimeMode": {
+                    "anyOf": [
+                      {
+                        "enum": ["approval-required", "auto-accept-edits", "auto", "full-access"],
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "status": {
+                    "enum": [
+                      "idle",
+                      "starting",
+                      "running",
+                      "ready",
+                      "interrupted",
+                      "stopped",
+                      "error"
+                    ],
+                    "type": "string"
+                  },
+                  "threadId": {
+                    "type": "string"
+                  },
+                  "updatedAt": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "threadId",
+                  "status",
+                  "providerName",
+                  "activeTurnId",
+                  "lastError",
+                  "updatedAt"
+                ],
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "settledAt": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "settledOverride": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "enum": ["settled", "active"],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "snoozedAt": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "snoozedUntil": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "titleRegeneration": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "properties": {
+                      "requestId": {
+                        "type": "string"
+                      },
+                      "startedAt": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["requestId", "startedAt"],
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "titleState": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "properties": {
+                      "needsRefinement": {
+                        "type": "boolean"
+                      },
+                      "source": {
+                        "enum": ["manual", "generated"],
+                        "type": "string"
+                      },
+                      "version": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["source", "version", "needsRefinement"],
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "unsettledAt": {
+            "anyOf": [
+              {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "worktreePath": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
         },
-        "required": ["snapshotSequence", "thread"],
+        "required": [
+          "id",
+          "projectId",
+          "title",
+          "modelSelection",
+          "runtimeMode",
+          "branch",
+          "worktreePath",
+          "latestTurn",
+          "createdAt",
+          "updatedAt",
+          "deletedAt",
+          "messages",
+          "activities",
+          "checkpoints",
+          "session"
+        ],
         "type": "object"
-    }
+      }
+    },
+    "required": ["snapshotSequence", "thread"],
+    "type": "object"
+  }
 }

@@ -4,9 +4,9 @@ T3 Code exposes protocol version `1` for native clients that cannot or should no
 The protocol is provider-neutral: provider instance identifiers and model metadata are data, never
 transport routing rules.
 
-Support is discovered through `GET /api/environment/client-config`. Its protocol-owned
-`protocolVersion` field is the compatibility check; clients must reject a version they do not
-implement. A missing endpoint means the environment does not expose the portable protocol.
+Support is advertised by
+`ExecutionEnvironmentDescriptor.capabilities.portableClientProtocol === 1`. Clients must reject an
+environment that does not advertise the exact version they implement.
 
 ## Authentication and endpoints
 

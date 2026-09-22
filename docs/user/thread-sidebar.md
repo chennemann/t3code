@@ -93,7 +93,9 @@ after the drop.
 
 New threads appear above the active threads you have arranged. Settling clears a thread's active
 position, so using **Un-settle** returns it to the top. Pinning and snoozing preserve its active
-position until you move it again. Thread activity does not change the order. The settled shelf
+position until you move it again. Ordinary activity does not change the order. A user message after
+at least 36 hours without a user message returns the thread to the top of active work; assistant
+messages never move it. The settled shelf
 continues to use settlement time.
 
 If dragging is unavailable for one environment, update the T3 Code server running in that
