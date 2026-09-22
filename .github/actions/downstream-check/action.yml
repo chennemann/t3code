@@ -1,0 +1,32 @@
+name: Validate downstream compatibility
+description: Check the fork integration points and the behavior changed by the fork.
+runs:
+  using: composite
+  steps:
+    - name: Check integration points and generated contracts
+      shell: bash
+      run: |
+        set -euo pipefail
+        node scripts/check-downstream.ts
+        node packages/contracts/scripts/generatePortableClientArtifacts.ts --check
+        node scripts/downstream-release-state.ts validate
+
+    - name: Typecheck affected packages
+      shell: bash
+      run: |
+        set -euo pipefail
+        for package in @t3tools/contracts @t3tools/client-runtime t3 @t3tools/web @t3tools/mobile @t3tools/desktop @t3tools/scripts; do
+          vp run --filter "$package" typecheck
+        done
+
+    - name: Lint and test fork changes
+      shell: bash
+      run: |
+        set -euo pipefail
+        base="$(node -p "JSON.parse(require('fs').readFileSync('.github/downstream-integration.json', 'utf8')).baseCommit ?? JSON.parse(require('fs').readFileSync('.github/upstream-release.json', 'utf8')).commit")"
+        mapfile -t sources < <(git diff --name-only --diff-filter=ACMR "$base" -- '*.ts' '*.tsx')
+        test "${#sources[@]}" -gt 0
+        vp lint "${sources[@]}"
+        mapfile -t tests < <(git diff --name-only --diff-filter=ACMR "$base" -- '*.test.ts' '*.test.tsx')
+        test "${#tests[@]}" -gt 0
+        vp test run "${tests[@]}"
