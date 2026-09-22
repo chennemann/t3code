@@ -1,22 +1,26 @@
 {
-    "algorithm": "sha256",
-    "checksum": "464ef2cf07ee4fd35bb9fed39009bab2581a97b7034520807c77f0d3630655a2",
-    "files": [
-        {
-            "path": "fixtures/client-config.json",
-            "sha256": "ce9a56ba92950feb7d22e4f37e1730e5a892313753b687f808e006fec2eaa3a9"
-        },
-        {
-            "path": "fixtures/commands.json",
-            "sha256": "9a9a7f5b18a997ada9d63208a75246b3aade9f0c15964b995dcdae5b269f9e77"
-        },
-        {
-            "path": "fixtures/shell-stream-items.json",
-            "sha256": "60377b2e70ba219068326c6c726a7069b665aeeb79dc54321af13b4f72e5e81e"
-        },
-        {
-            "path": "fixtures/thread-stream-items.json",
-            "sha256": "cc0bf1d9c35b5cc46ef1ccac56d734dec24ff429b1990e7b93640a4909df1edd"
-        }
-    ]
+  "algorithm": "sha256",
+  "checksum": "1f2d8a489a7476237d4b59475b26ee16b6b33e73cd71d9a7e81e1e6c63cdf978",
+  "files": [
+    {
+      "path": "fixtures/client-config.json",
+      "sha256": "062013f798b1855314b4db9b385d5956275a9b60ca3113108cf29bf5fcb98ceb"
+    },
+    {
+      "path": "fixtures/commands.json",
+      "sha256": "01893f23bc650c3cf73e5d90414084e9d0799f641a6ea16bd777c07261b4cf96"
+    },
+    {
+      "path": "fixtures/shell-stream-items.json",
+      "sha256": "11e507a5021375ced735f4c889f12ade7af6c584bc0372228cf020602982b215"
+    },
+    {
+      "path": "fixtures/stream-evolution-cases.json",
+      "sha256": "2caa93c2972e0d8a5b166b3a253acdd15c5a9086669e1218af0cb8e0d44f12ff"
+    },
+    {
+      "path": "fixtures/thread-stream-items.json",
+      "sha256": "d48213256097d0fa54673d1942516fffa2c474a1a4d3f73d5f255e6a7ecb0982"
+    }
+  ]
 }

@@ -40,6 +40,7 @@ import {
   DeviceScreenshotToolkit,
   DeviceStandardToolkit,
 } from "./toolkits/device/tools.ts";
+import { mcpRegistrationLayer as DownstreamMcpRegistrationLayer } from "../downstream/index.ts";
 
 const unauthorized = HttpServerResponse.jsonUnsafe(
   {
@@ -629,6 +630,7 @@ const McpTransportLive = McpServer.layerHttp({
 }).pipe(Layer.provide(McpAuthMiddlewareLive));
 
 export const layer = Layer.mergeAll(
+  DownstreamMcpRegistrationLayer,
   PreviewToolkitRegistrationLive,
   PullRequestsToolkitRegistrationLive,
   DeviceToolkitRegistrationLive,

@@ -63,9 +63,16 @@ import {
   parseThreadSegmentFromAttachmentId,
   toSafeThreadAttachmentSegment,
 } from "../../attachmentStore.ts";
+import {
+  DownstreamProjection,
+  projectorNames as downstreamProjectorNames,
+} from "../../downstream/Projection.ts";
+import { layer as DownstreamDataLayer } from "../../downstream/Data.ts";
+import { THREAD_REENGAGEMENT_WINDOW_MS } from "../threadRecency.ts";
 
 export const ORCHESTRATION_PROJECTOR_NAMES = {
   projects: "projection.projects",
+  ...downstreamProjectorNames,
   threads: "projection.threads",
   threadMessages: "projection.thread-messages",
   threadProposedPlans: "projection.thread-proposed-plans",
@@ -491,6 +498,7 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
     const projectionThreadSessionRepository = yield* ProjectionThreadSessionRepository;
     const projectionTurnRepository = yield* ProjectionTurnRepository;
     const projectionPendingApprovalRepository = yield* ProjectionPendingApprovalRepository;
+    const downstreamProjection = yield* DownstreamProjection;
 
     const fileSystem = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
@@ -595,6 +603,21 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
       yield* projectionThreadRepository.upsert({
         ...existingRow.value,
         latestUserMessageAt,
+        recencyAnchorAt:
+          (yield* sql<{
+            anchor: string | null;
+          }>`
+            WITH ordered AS (
+              SELECT created_at,
+                LAG(created_at) OVER (ORDER BY created_at, message_id) AS previous
+              FROM projection_thread_messages
+              WHERE thread_id = ${threadId} AND role = 'user'
+                AND message_id NOT GLOB 'import:*'
+            )
+            SELECT MAX(created_at) AS anchor FROM ordered
+            WHERE julianday(created_at) - julianday(previous) >= 1.5
+          `.pipe(Effect.mapError(toPersistenceSqlError("ProjectionPipeline.recency"))))[0]
+            ?.anchor ?? existingRow.value.createdAt,
         pendingApprovalCount,
         pendingUserInputCount,
         hasActionableProposedPlan: hasActionableProposedPlan ? 1 : 0,
@@ -636,6 +659,7 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
             titleRegenerationRequestId: null,
             titleRegenerationStartedAt: null,
             latestUserMessageAt: null,
+            recencyAnchorAt: event.payload.createdAt,
             pendingApprovalCount: 0,
             pendingUserInputCount: 0,
             hasActionableProposedPlan: 0,
@@ -1005,9 +1029,18 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
             return;
           }
           const previousLatest = existingRow.value.latestUserMessageAt;
+          const reengaged =
+            event.payload.role === "user" &&
+            !isImportedAgentSessionMessageId(event.payload.messageId) &&
+            previousLatest !== null &&
+            Date.parse(event.payload.createdAt) - Date.parse(previousLatest) >=
+              THREAD_REENGAGEMENT_WINDOW_MS;
           yield* projectionThreadRepository.upsert({
             ...existingRow.value,
             updatedAt: event.occurredAt,
+            ...(reengaged
+              ? { recencyAnchorAt: event.payload.createdAt, activeOrderKey: null }
+              : {}),
             latestUserMessageAt:
               event.payload.role === "user" &&
               !isImportedAgentSessionMessageId(event.payload.messageId) &&
@@ -1935,6 +1968,7 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
     });
 
     const projectors: ReadonlyArray<ProjectorDefinition> = [
+      ...downstreamProjection.projectors,
       {
         name: ORCHESTRATION_PROJECTOR_NAMES.projects,
         apply: applyProjectsProjection,
@@ -2204,4 +2238,5 @@ export const OrchestrationProjectionPipelineLive = Layer.effect(
   Layer.provideMerge(ProjectionTurnRepositoryLive),
   Layer.provideMerge(ProjectionPendingApprovalRepositoryLive),
   Layer.provideMerge(ProjectionStateRepositoryLive),
+  Layer.provide(DownstreamDataLayer),
 );

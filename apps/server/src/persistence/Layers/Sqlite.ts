@@ -7,6 +7,7 @@ import * as NodeSqliteClient from "@t3tools/shared/nodeSqliteClient";
 
 import { runMigrations } from "../Migrations.ts";
 import { ServerConfig } from "../../config.ts";
+import { prepareCoreDatabase, prepareCoreProjections } from "../../downstream/persistence/index.ts";
 
 const setup = Layer.effectDiscard(
   Effect.gen(function* () {
@@ -15,7 +16,9 @@ const setup = Layer.effectDiscard(
     yield* sql`PRAGMA busy_timeout = 5000;`;
     yield* sql`PRAGMA foreign_keys = ON;`;
     yield* sql`PRAGMA journal_mode = WAL;`;
+    yield* prepareCoreDatabase();
     yield* runMigrations();
+    yield* prepareCoreProjections;
   }),
 );
 

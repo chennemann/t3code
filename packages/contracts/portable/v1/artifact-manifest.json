@@ -1,59 +1,63 @@
 {
-    "algorithm": "sha256",
-    "checksum": "ba56c76a0c179d45d45a67f70ad9a6c788affc359ec22bf909e6002c73132227",
-    "files": [
-        {
-            "path": "fixture-manifest.json",
-            "sha256": "922584628de4cc3d1388c7e792d330a1722ea60b8c5571747a134579763e6516"
-        },
-        {
-            "path": "fixtures/client-config.json",
-            "sha256": "ce9a56ba92950feb7d22e4f37e1730e5a892313753b687f808e006fec2eaa3a9"
-        },
-        {
-            "path": "fixtures/commands.json",
-            "sha256": "9a9a7f5b18a997ada9d63208a75246b3aade9f0c15964b995dcdae5b269f9e77"
-        },
-        {
-            "path": "fixtures/shell-stream-items.json",
-            "sha256": "60377b2e70ba219068326c6c726a7069b665aeeb79dc54321af13b4f72e5e81e"
-        },
-        {
-            "path": "fixtures/thread-stream-items.json",
-            "sha256": "cc0bf1d9c35b5cc46ef1ccac56d734dec24ff429b1990e7b93640a4909df1edd"
-        },
-        {
-            "path": "openapi.json",
-            "sha256": "b07b3c62fee1e1461a8ec5ba721ba4a59e84df9e89eb367f80d30c68f26fc792"
-        },
-        {
-            "path": "protocol-version.json",
-            "sha256": "c32a7317b687dca026b4a413bcf5219d04742342bd7793c878b64614a2e98003"
-        },
-        {
-            "path": "schemas/client-config.schema.json",
-            "sha256": "8ea86da072f5edaa470371a58316e532b8911475c29cce9e7673260eb3ed9dbf"
-        },
-        {
-            "path": "schemas/orchestration-command.schema.json",
-            "sha256": "f852defcd08b306acccd1c568ef5348f9acf4d0c8c72dceb21e5b6581c8864ff"
-        },
-        {
-            "path": "schemas/shell-snapshot.schema.json",
-            "sha256": "741a7c2ef7cf70f87396649c51dabd62f69c93c341f8a6ec927cd825b65e6baa"
-        },
-        {
-            "path": "schemas/shell-stream-item.schema.json",
-            "sha256": "07d445ac7c6fe63573e680d8c681f3041e25835e54999d2d49248d2ad1a5031e"
-        },
-        {
-            "path": "schemas/thread-snapshot.schema.json",
-            "sha256": "0d39ea1c3a6745fa6935db40300320f6fe316550a11810affb4187887b8a928d"
-        },
-        {
-            "path": "schemas/thread-stream-item.schema.json",
-            "sha256": "88a7a7ca5e32b0d1c963ddb7318561d788e756143ff0a83467d2b5bb99b0d464"
-        }
-    ],
-    "protocolVersion": 1
+  "algorithm": "sha256",
+  "checksum": "25450f6ee9be8e63a60f310f18a8ea24bb0a636e12596aeaaaca7dd23fde533f",
+  "files": [
+    {
+      "path": "fixture-manifest.json",
+      "sha256": "b0e4b3768d880aefffe1ebf8e614c6e4784179b3b04836f32fbb37d192035eab"
+    },
+    {
+      "path": "fixtures/client-config.json",
+      "sha256": "062013f798b1855314b4db9b385d5956275a9b60ca3113108cf29bf5fcb98ceb"
+    },
+    {
+      "path": "fixtures/commands.json",
+      "sha256": "01893f23bc650c3cf73e5d90414084e9d0799f641a6ea16bd777c07261b4cf96"
+    },
+    {
+      "path": "fixtures/shell-stream-items.json",
+      "sha256": "11e507a5021375ced735f4c889f12ade7af6c584bc0372228cf020602982b215"
+    },
+    {
+      "path": "fixtures/stream-evolution-cases.json",
+      "sha256": "2caa93c2972e0d8a5b166b3a253acdd15c5a9086669e1218af0cb8e0d44f12ff"
+    },
+    {
+      "path": "fixtures/thread-stream-items.json",
+      "sha256": "d48213256097d0fa54673d1942516fffa2c474a1a4d3f73d5f255e6a7ecb0982"
+    },
+    {
+      "path": "openapi.json",
+      "sha256": "23d2d06f1e4eb5c59a9c4ffc137ca797ace69c85020df9e6881c5ec893135568"
+    },
+    {
+      "path": "protocol-version.json",
+      "sha256": "de334ee97609f889faa63e68c72fce3cb362ed34ec1d9a41d309b6859552d41f"
+    },
+    {
+      "path": "schemas/client-config.schema.json",
+      "sha256": "333fd5315a03e7ecf19c9a6f91ae3688e35297a38e95c9a6dccc7e95d449e2e2"
+    },
+    {
+      "path": "schemas/orchestration-command.schema.json",
+      "sha256": "347a45604651c5c0df8df1e7cb6dffd4e0ae3ff1ca563f9014dae73d2f772fc1"
+    },
+    {
+      "path": "schemas/shell-snapshot.schema.json",
+      "sha256": "39b7109b16bf0c34d9d4b4357a6ab0e258bd6c960e08afc44f72424d8f5e7023"
+    },
+    {
+      "path": "schemas/shell-stream-item.schema.json",
+      "sha256": "d8719a8b2a74bad65e5153fcabe740f895ef7540c9a74ea8dc62122dd236a7f8"
+    },
+    {
+      "path": "schemas/thread-snapshot.schema.json",
+      "sha256": "288486d37c9a5c8370e9ffba5cf918c0ad23615613a0a81ab51948d3c12bec93"
+    },
+    {
+      "path": "schemas/thread-stream-item.schema.json",
+      "sha256": "20d425c43b9878886cb6d0d418cb35a1bb5e07bd5e3a07a1598d243e05e411e2"
+    }
+  ],
+  "protocolVersion": 1
 }

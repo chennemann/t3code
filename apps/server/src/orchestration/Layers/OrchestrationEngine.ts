@@ -2,8 +2,6 @@ import type {
   OrchestrationClientOrigin,
   OrchestrationEvent,
   OrchestrationReadModel,
-  ProjectId,
-  ThreadId,
 } from "@t3tools/contracts";
 import { OrchestrationCommand } from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
@@ -49,6 +47,10 @@ import {
   OrchestrationEngineService,
   type OrchestrationEngineShape,
 } from "../Services/OrchestrationEngine.ts";
+import {
+  commandAggregateRef as downstreamCommandAggregateRef,
+  isDownstreamCommand,
+} from "../../downstream/Orchestration.ts";
 const isOrchestrationCommandPreviouslyRejectedError = Schema.is(
   OrchestrationCommandPreviouslyRejectedError,
 );
@@ -62,9 +64,11 @@ interface CommandEnvelope {
 }
 
 function commandToAggregateRef(command: OrchestrationCommand): {
-  readonly aggregateKind: "project" | "thread";
-  readonly aggregateId: ProjectId | ThreadId;
+  readonly aggregateKind: OrchestrationEvent["aggregateKind"];
+  readonly aggregateId: OrchestrationEvent["aggregateId"];
 } {
+  if (isDownstreamCommand(command)) return downstreamCommandAggregateRef(command)!;
+
   switch (command.type) {
     case "project.create":
     case "project.meta.update":

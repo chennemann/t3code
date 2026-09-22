@@ -54,6 +54,7 @@ import {
   ThreadSessionSetPayload,
   ThreadTurnDiffCompletedPayload,
 } from "./Schemas.ts";
+import { projectDownstreamEvent } from "../downstream/Orchestration.ts";
 
 type ThreadPatch = Partial<Omit<OrchestrationThread, "id" | "projectId">>;
 const MAX_THREAD_MESSAGES = 2_000;
@@ -317,6 +318,7 @@ export function createEmptyReadModel(nowIso: string): OrchestrationReadModel {
     snapshotSequence: 0,
     projects: [],
     threads: [],
+    todos: [],
     updatedAt: nowIso,
   };
 }
@@ -330,6 +332,9 @@ export function projectEvent(
     snapshotSequence: event.sequence,
     updatedAt: event.occurredAt,
   };
+
+  const downstreamProjection = projectDownstreamEvent(nextBase, event);
+  if (downstreamProjection !== null) return downstreamProjection;
 
   switch (event.type) {
     case "project.created":

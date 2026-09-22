@@ -1,872 +1,3191 @@
 {
-    "definitions": {
-        "Objects_": {
-            "additionalProperties": false,
+  "definitions": {},
+  "dialect": "draft-2020-12",
+  "schema": {
+    "anyOf": [
+      {
+        "additionalProperties": true,
+        "properties": {
+          "kind": {
+            "enum": ["synchronized"],
+            "type": "string"
+          }
+        },
+        "required": ["kind"],
+        "type": "object"
+      },
+      {
+        "additionalProperties": true,
+        "properties": {
+          "kind": {
+            "enum": ["snapshot"],
+            "type": "string"
+          },
+          "snapshot": {
+            "additionalProperties": true,
             "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
-                "defaultModelSelection": {
-                    "anyOf": [
+              "projects": {
+                "items": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "autoPull": {
+                      "anyOf": [
                         {
-                            "$ref": "#/$defs/Objects_1"
+                          "type": "boolean"
                         },
                         {
-                            "type": "null"
+                          "type": "null"
                         }
-                    ]
-                },
-                "defaultThreadEnvMode": {
-                    "anyOf": [
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "defaultModelSelection": {
+                      "anyOf": [
                         {
-                            "anyOf": [
+                          "additionalProperties": true,
+                          "properties": {
+                            "instanceId": {
+                              "anyOf": [
+                                {},
                                 {
-                                    "enum": ["local", "worktree"],
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
+                                  "type": "null"
                                 }
-                            ]
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "faviconPath": {
-                    "anyOf": [
-                        {
-                            "anyOf": [
+                              ]
+                            },
+                            "model": {},
+                            "options": {
+                              "anyOf": [
+                                {},
                                 {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
+                                  "type": "null"
                                 }
-                            ]
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "id": {
-                    "type": "string"
-                },
-                "repositoryIdentity": {
-                    "anyOf": [
-                        {
-                            "anyOf": [
+                              ]
+                            },
+                            "provider": {
+                              "anyOf": [
+                                {},
                                 {
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "canonicalKey": {
-                                            "type": "string"
-                                        },
-                                        "displayName": {
-                                            "type": "string"
-                                        },
-                                        "locator": {
-                                            "additionalProperties": false,
-                                            "properties": {
-                                                "remoteName": {
-                                                    "type": "string"
-                                                },
-                                                "remoteUrl": {
-                                                    "type": "string"
-                                                },
-                                                "source": {
-                                                    "enum": ["git-remote"],
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "required": ["source", "remoteName", "remoteUrl"],
-                                            "type": "object"
-                                        },
-                                        "name": {
-                                            "type": "string"
-                                        },
-                                        "owner": {
-                                            "type": "string"
-                                        },
-                                        "provider": {
-                                            "type": "string"
-                                        },
-                                        "rootPath": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "required": ["canonicalKey", "locator"],
-                                    "type": "object"
-                                },
-                                {
-                                    "type": "null"
+                                  "type": "null"
                                 }
-                            ]
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "scripts": {
-                    "items": {
-                        "additionalProperties": false,
-                        "properties": {
-                            "autoOpenPreview": {
-                                "anyOf": [
-                                    {
-                                        "type": "boolean"
-                                    },
-                                    {
-                                        "type": "null"
-                                    }
-                                ]
-                            },
-                            "command": {
-                                "type": "string"
-                            },
-                            "icon": {
-                                "enum": ["play", "test", "lint", "configure", "build", "debug"],
-                                "type": "string"
-                            },
-                            "id": {
-                                "type": "string"
-                            },
-                            "name": {
-                                "type": "string"
-                            },
-                            "previewUrl": {
-                                "anyOf": [
-                                    {
-                                        "type": "string"
-                                    },
-                                    {
-                                        "type": "null"
-                                    }
-                                ]
-                            },
-                            "runOnWorktreeCreate": {
-                                "type": "boolean"
+                              ]
                             }
+                          },
+                          "required": ["model"],
+                          "type": "object"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "defaultThreadEnvMode": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "enum": ["local", "worktree"],
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "faviconPath": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "projectIcon": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "additionalProperties": true,
+                                  "properties": {
+                                    "color": {
+                                      "enum": [
+                                        "gray",
+                                        "red",
+                                        "orange",
+                                        "amber",
+                                        "yellow",
+                                        "lime",
+                                        "green",
+                                        "emerald",
+                                        "teal",
+                                        "cyan",
+                                        "sky",
+                                        "blue",
+                                        "indigo",
+                                        "violet",
+                                        "purple",
+                                        "fuchsia",
+                                        "pink",
+                                        "rose"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "kind": {
+                                      "enum": ["lucide"],
+                                      "type": "string"
+                                    },
+                                    "monogram": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "monogramText": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "name": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["kind", "name", "color"],
+                                  "type": "object"
+                                },
+                                {
+                                  "additionalProperties": true,
+                                  "properties": {
+                                    "emoji": {
+                                      "type": "string"
+                                    },
+                                    "kind": {
+                                      "enum": ["emoji"],
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["kind", "emoji"],
+                                  "type": "object"
+                                },
+                                {
+                                  "additionalProperties": true,
+                                  "properties": {
+                                    "color": {
+                                      "enum": [
+                                        "gray",
+                                        "red",
+                                        "orange",
+                                        "amber",
+                                        "yellow",
+                                        "lime",
+                                        "green",
+                                        "emerald",
+                                        "teal",
+                                        "cyan",
+                                        "sky",
+                                        "blue",
+                                        "indigo",
+                                        "violet",
+                                        "purple",
+                                        "fuchsia",
+                                        "pink",
+                                        "rose"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    "kind": {
+                                      "enum": ["monogram"],
+                                      "type": "string"
+                                    },
+                                    "text": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["kind", "text", "color"],
+                                  "type": "object"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "repositoryIdentity": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "additionalProperties": true,
+                              "properties": {
+                                "canonicalKey": {
+                                  "type": "string"
+                                },
+                                "displayName": {
+                                  "type": "string"
+                                },
+                                "locator": {
+                                  "additionalProperties": true,
+                                  "properties": {
+                                    "remoteName": {
+                                      "type": "string"
+                                    },
+                                    "remoteUrl": {
+                                      "type": "string"
+                                    },
+                                    "source": {
+                                      "enum": ["git-remote"],
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["source", "remoteName", "remoteUrl"],
+                                  "type": "object"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "owner": {
+                                  "type": "string"
+                                },
+                                "provider": {
+                                  "type": "string"
+                                },
+                                "rootPath": {
+                                  "type": "string"
+                                },
+                                "webUrl": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["canonicalKey", "locator"],
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "scripts": {
+                      "items": {
+                        "additionalProperties": true,
+                        "properties": {
+                          "async": {
+                            "anyOf": [
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "autoOpenPreview": {
+                            "anyOf": [
+                              {
+                                "type": "boolean"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "command": {
+                            "type": "string"
+                          },
+                          "icon": {
+                            "enum": ["play", "test", "lint", "configure", "build", "debug"],
+                            "type": "string"
+                          },
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "previewUrl": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "runOnWorktreeCreate": {
+                            "type": "boolean"
+                          }
                         },
                         "required": ["id", "name", "command", "icon", "runOnWorktreeCreate"],
                         "type": "object"
+                      },
+                      "type": "array"
                     },
-                    "type": "array"
+                    "title": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    },
+                    "workspaceRoot": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "workspaceRoot",
+                    "defaultModelSelection",
+                    "scripts",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "type": "object"
                 },
-                "title": {
-                    "type": "string"
-                },
-                "updatedAt": {
-                    "type": "string"
-                },
-                "workspaceRoot": {
-                    "type": "string"
-                }
-            },
-            "required": ["id", "title", "workspaceRoot", "defaultModelSelection", "scripts", "createdAt", "updatedAt"],
-            "type": "object"
-        },
-        "Objects_1": {
-            "additionalProperties": false,
-            "properties": {
-                "instanceId": {
-                    "anyOf": [
-                        {},
+                "type": "array"
+              },
+              "snapshotSequence": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "threads": {
+                "items": {
+                  "additionalProperties": true,
+                  "properties": {
+                    "activeOrderKey": {
+                      "anyOf": [
                         {
-                            "type": "null"
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
                         }
-                    ]
-                },
-                "model": {},
-                "options": {
-                    "anyOf": [
-                        {},
+                      ]
+                    },
+                    "archivedAt": {
+                      "anyOf": [
                         {
-                            "type": "null"
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
                         }
-                    ]
-                },
-                "provider": {
-                    "anyOf": [
-                        {},
+                      ]
+                    },
+                    "backgroundLiveness": {
+                      "anyOf": [
                         {
-                            "type": "null"
+                          "anyOf": [
+                            {
+                              "enum": ["working", "monitoring"],
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
                         }
-                    ]
-                }
-            },
-            "required": ["model"],
-            "type": "object"
-        },
-        "Objects_2": {
-            "additionalProperties": false,
-            "properties": {
-                "archivedAt": {
-                    "anyOf": [
+                      ]
+                    },
+                    "branch": {
+                      "anyOf": [
                         {
-                            "anyOf": [
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "branchPullRequest": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "additionalProperties": true,
+                              "properties": {
+                                "number": {
+                                  "minimum": 1,
+                                  "type": "integer"
+                                },
+                                "projectId": {
+                                  "type": "string"
+                                },
+                                "repository": {
+                                  "type": "string"
+                                },
+                                "url": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["projectId", "repository", "number", "url"],
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "hasActionableProposedPlan": {
+                      "type": "boolean"
+                    },
+                    "hasPendingApprovals": {
+                      "type": "boolean"
+                    },
+                    "hasPendingUserInput": {
+                      "type": "boolean"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "interactionMode": {
+                      "anyOf": [
+                        {
+                          "enum": ["default", "plan"],
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "latestTurn": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": true,
+                          "properties": {
+                            "assistantMessageId": {
+                              "anyOf": [
                                 {
-                                    "type": "string"
+                                  "type": "string"
                                 },
                                 {
-                                    "type": "null"
+                                  "type": "null"
                                 }
-                            ]
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "backgroundLiveness": {
-                    "anyOf": [
-                        {
-                            "anyOf": [
+                              ]
+                            },
+                            "completedAt": {
+                              "anyOf": [
                                 {
-                                    "enum": ["working", "monitoring"],
-                                    "type": "string"
+                                  "type": "string"
                                 },
                                 {
-                                    "type": "null"
+                                  "type": "null"
                                 }
-                            ]
+                              ]
+                            },
+                            "requestedAt": {
+                              "type": "string"
+                            },
+                            "sourceProposedPlan": {
+                              "anyOf": [
+                                {
+                                  "additionalProperties": true,
+                                  "properties": {
+                                    "planId": {
+                                      "type": "string"
+                                    },
+                                    "threadId": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["threadId", "planId"],
+                                  "type": "object"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "startedAt": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "state": {
+                              "enum": ["running", "interrupted", "completed", "error"],
+                              "type": "string"
+                            },
+                            "turnId": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "turnId",
+                            "state",
+                            "requestedAt",
+                            "startedAt",
+                            "completedAt",
+                            "assistantMessageId"
+                          ],
+                          "type": "object"
                         },
                         {
-                            "type": "null"
+                          "type": "null"
                         }
-                    ]
-                },
-                "branch": {
-                    "anyOf": [
+                      ]
+                    },
+                    "latestUserMessageAt": {
+                      "anyOf": [
                         {
-                            "type": "string"
+                          "type": "string"
                         },
                         {
-                            "type": "null"
+                          "type": "null"
                         }
-                    ]
-                },
-                "createdAt": {
-                    "type": "string"
-                },
-                "hasActionableProposedPlan": {
-                    "type": "boolean"
-                },
-                "hasPendingApprovals": {
-                    "type": "boolean"
-                },
-                "hasPendingUserInput": {
-                    "type": "boolean"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "interactionMode": {
-                    "anyOf": [
+                      ]
+                    },
+                    "linkedPullRequest": {
+                      "anyOf": [
                         {
-                            "enum": ["default", "plan"],
-                            "type": "string"
+                          "anyOf": [
+                            {
+                              "additionalProperties": true,
+                              "properties": {
+                                "number": {
+                                  "minimum": 1,
+                                  "type": "integer"
+                                },
+                                "projectId": {
+                                  "type": "string"
+                                },
+                                "repository": {
+                                  "type": "string"
+                                },
+                                "url": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["projectId", "repository", "number", "url"],
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         },
                         {
-                            "type": "null"
+                          "type": "null"
                         }
-                    ]
-                },
-                "latestTurn": {
-                    "anyOf": [
+                      ]
+                    },
+                    "modelSelection": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "instanceId": {
+                          "anyOf": [
+                            {},
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "model": {},
+                        "options": {
+                          "anyOf": [
+                            {},
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "provider": {
+                          "anyOf": [
+                            {},
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": ["model"],
+                      "type": "object"
+                    },
+                    "pinnedAt": {
+                      "anyOf": [
                         {
-                            "additionalProperties": false,
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "pinOrderKey": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "planProgress": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "additionalProperties": true,
+                              "properties": {
+                                "completedSteps": {
+                                  "minimum": 0,
+                                  "type": "integer"
+                                },
+                                "step": {
+                                  "type": "string"
+                                },
+                                "totalSteps": {
+                                  "minimum": 0,
+                                  "type": "integer"
+                                }
+                              },
+                              "required": ["step", "completedSteps", "totalSteps"],
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "projectId": {
+                      "type": "string"
+                    },
+                    "pullRequests": {
+                      "anyOf": [
+                        {
+                          "items": {
+                            "additionalProperties": true,
                             "properties": {
-                                "assistantMessageId": {
-                                    "anyOf": [
-                                        {
-                                            "type": "string"
-                                        },
-                                        {
+                              "host": {
+                                "type": "string"
+                              },
+                              "linkedAt": {
+                                "type": "string"
+                              },
+                              "number": {
+                                "minimum": 1,
+                                "type": "integer"
+                              },
+                              "repository": {
+                                "type": "string"
+                              },
+                              "snapshot": {
+                                "anyOf": [
+                                  {
+                                    "additionalProperties": true,
+                                    "properties": {
+                                      "additions": {
+                                        "anyOf": [
+                                          {
+                                            "minimum": 0,
+                                            "type": "integer"
+                                          },
+                                          {
                                             "type": "null"
-                                        }
-                                    ]
-                                },
-                                "completedAt": {
-                                    "anyOf": [
-                                        {
-                                            "type": "string"
-                                        },
-                                        {
-                                            "type": "null"
-                                        }
-                                    ]
-                                },
-                                "requestedAt": {
-                                    "type": "string"
-                                },
-                                "sourceProposedPlan": {
-                                    "anyOf": [
-                                        {
-                                            "additionalProperties": false,
-                                            "properties": {
-                                                "planId": {
+                                          }
+                                        ]
+                                      },
+                                      "author": {
+                                        "anyOf": [
+                                          {
+                                            "anyOf": [
+                                              {
+                                                "additionalProperties": true,
+                                                "properties": {
+                                                  "avatarUrl": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "string"
+                                                      },
+                                                      {
+                                                        "type": "null"
+                                                      }
+                                                    ]
+                                                  },
+                                                  "isBot": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "boolean"
+                                                      },
+                                                      {
+                                                        "type": "null"
+                                                      }
+                                                    ]
+                                                  },
+                                                  "login": {
                                                     "type": "string"
+                                                  },
+                                                  "name": {
+                                                    "anyOf": [
+                                                      {
+                                                        "type": "string"
+                                                      },
+                                                      {
+                                                        "type": "null"
+                                                      }
+                                                    ]
+                                                  }
                                                 },
-                                                "threadId": {
-                                                    "type": "string"
-                                                }
+                                                "required": ["login", "name", "avatarUrl"],
+                                                "type": "object"
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "baseBranch": {
+                                        "type": "string"
+                                      },
+                                      "changedFiles": {
+                                        "anyOf": [
+                                          {
+                                            "minimum": 0,
+                                            "type": "integer"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "checksState": {
+                                        "anyOf": [
+                                          {
+                                            "anyOf": [
+                                              {
+                                                "enum": ["passing", "failing", "pending"],
+                                                "type": "string"
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "closedAt": {
+                                        "anyOf": [
+                                          {
+                                            "anyOf": [
+                                              {
+                                                "type": "string"
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "deletions": {
+                                        "anyOf": [
+                                          {
+                                            "minimum": 0,
+                                            "type": "integer"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "headBranch": {
+                                        "type": "string"
+                                      },
+                                      "isDraft": {
+                                        "type": "boolean"
+                                      },
+                                      "mergeability": {
+                                        "anyOf": [
+                                          {
+                                            "enum": ["mergeable", "conflicting", "unknown"],
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "mergedAt": {
+                                        "anyOf": [
+                                          {
+                                            "anyOf": [
+                                              {
+                                                "type": "string"
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "reviewDecision": {
+                                        "anyOf": [
+                                          {
+                                            "anyOf": [
+                                              {
+                                                "enum": [
+                                                  "approved",
+                                                  "changes-requested",
+                                                  "review-required"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "state": {
+                                        "enum": ["open", "closed", "merged"],
+                                        "type": "string"
+                                      },
+                                      "syncedAt": {
+                                        "type": "string"
+                                      },
+                                      "title": {
+                                        "type": "string"
+                                      },
+                                      "updatedAt": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "state",
+                                      "title",
+                                      "headBranch",
+                                      "baseBranch",
+                                      "isDraft",
+                                      "updatedAt",
+                                      "syncedAt"
+                                    ],
+                                    "type": "object"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "source": {
+                                "enum": ["manual", "created", "agent", "stack", "stack-dismissed"],
+                                "type": "string"
+                              },
+                              "stack": {
+                                "anyOf": [
+                                  {
+                                    "additionalProperties": true,
+                                    "properties": {
+                                      "base": {
+                                        "type": "string"
+                                      },
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "kind": {
+                                        "enum": ["native"],
+                                        "type": "string"
+                                      },
+                                      "layers": {
+                                        "items": {
+                                          "additionalProperties": true,
+                                          "properties": {
+                                            "headBranch": {
+                                              "type": "string"
                                             },
-                                            "required": ["threadId", "planId"],
-                                            "type": "object"
+                                            "number": {
+                                              "minimum": 1,
+                                              "type": "integer"
+                                            },
+                                            "state": {
+                                              "enum": ["open", "closed", "merged"],
+                                              "type": "string"
+                                            }
+                                          },
+                                          "required": ["number", "headBranch", "state"],
+                                          "type": "object"
                                         },
-                                        {
-                                            "type": "null"
-                                        }
-                                    ]
-                                },
-                                "startedAt": {
-                                    "anyOf": [
-                                        {
-                                            "type": "string"
-                                        },
-                                        {
-                                            "type": "null"
-                                        }
-                                    ]
-                                },
-                                "state": {
-                                    "enum": ["running", "interrupted", "completed", "error"],
-                                    "type": "string"
-                                },
-                                "turnId": {
-                                    "type": "string"
-                                }
+                                        "type": "array"
+                                      },
+                                      "number": {
+                                        "minimum": 1,
+                                        "type": "integer"
+                                      },
+                                      "url": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": ["kind", "id", "number", "url", "base", "layers"],
+                                    "type": "object"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "url": {
+                                "type": "string"
+                              }
                             },
                             "required": [
-                                "turnId",
-                                "state",
-                                "requestedAt",
-                                "startedAt",
-                                "completedAt",
-                                "assistantMessageId"
+                              "host",
+                              "repository",
+                              "number",
+                              "url",
+                              "source",
+                              "linkedAt",
+                              "snapshot",
+                              "stack"
                             ],
                             "type": "object"
+                          },
+                          "type": "array"
                         },
                         {
-                            "type": "null"
+                          "type": "null"
                         }
-                    ]
-                },
-                "latestUserMessageAt": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "linkedPullRequest": {
-                    "anyOf": [
-                        {
-                            "anyOf": [
-                                {
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "number": {
-                                            "allOf": [
-                                                {
-                                                    "minimum": 1
-                                                }
-                                            ],
-                                            "type": "integer"
-                                        },
-                                        "projectId": {
-                                            "type": "string"
-                                        },
-                                        "repository": {
-                                            "type": "string"
-                                        },
-                                        "url": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "required": ["projectId", "repository", "number", "url"],
-                                    "type": "object"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ]
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "modelSelection": {
-                    "$ref": "#/$defs/Objects_1"
-                },
-                "pinnedAt": {
-                    "anyOf": [
-                        {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ]
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "pinOrderKey": {
-                    "anyOf": [
-                        {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ]
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "planProgress": {
-                    "anyOf": [
-                        {
-                            "anyOf": [
-                                {
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "completedSteps": {
-                                            "allOf": [
-                                                {
-                                                    "minimum": 0
-                                                }
-                                            ],
-                                            "type": "integer"
-                                        },
-                                        "step": {
-                                            "type": "string"
-                                        },
-                                        "totalSteps": {
-                                            "allOf": [
-                                                {
-                                                    "minimum": 0
-                                                }
-                                            ],
-                                            "type": "integer"
-                                        }
-                                    },
-                                    "required": ["step", "completedSteps", "totalSteps"],
-                                    "type": "object"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ]
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "projectId": {
-                    "type": "string"
-                },
-                "runtimeMode": {
-                    "enum": ["approval-required", "auto-accept-edits", "auto", "full-access"],
-                    "type": "string"
-                },
-                "session": {
-                    "anyOf": [
-                        {
-                            "additionalProperties": false,
-                            "properties": {
-                                "activeTurnId": {
-                                    "anyOf": [
-                                        {
-                                            "type": "string"
-                                        },
-                                        {
-                                            "type": "null"
-                                        }
-                                    ]
-                                },
-                                "lastError": {
-                                    "anyOf": [
-                                        {
-                                            "type": "string"
-                                        },
-                                        {
-                                            "type": "null"
-                                        }
-                                    ]
-                                },
-                                "providerInstanceId": {
-                                    "anyOf": [
-                                        {
-                                            "type": "string"
-                                        },
-                                        {
-                                            "type": "null"
-                                        }
-                                    ]
-                                },
-                                "providerName": {
-                                    "anyOf": [
-                                        {
-                                            "type": "string"
-                                        },
-                                        {
-                                            "type": "null"
-                                        }
-                                    ]
-                                },
-                                "runtimeMode": {
-                                    "anyOf": [
-                                        {
-                                            "enum": ["approval-required", "auto-accept-edits", "auto", "full-access"],
-                                            "type": "string"
-                                        },
-                                        {
-                                            "type": "null"
-                                        }
-                                    ]
-                                },
-                                "status": {
-                                    "enum": ["idle", "starting", "running", "ready", "interrupted", "stopped", "error"],
-                                    "type": "string"
-                                },
-                                "threadId": {
-                                    "type": "string"
-                                },
-                                "updatedAt": {
-                                    "type": "string"
-                                }
-                            },
-                            "required": [
-                                "threadId",
-                                "status",
-                                "providerName",
-                                "activeTurnId",
-                                "lastError",
-                                "updatedAt"
-                            ],
-                            "type": "object"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "settledAt": {
-                    "anyOf": [
-                        {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ]
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "settledOverride": {
-                    "anyOf": [
-                        {
-                            "anyOf": [
-                                {
-                                    "enum": ["settled", "active"],
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ]
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "snoozedAt": {
-                    "anyOf": [
-                        {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ]
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "snoozedUntil": {
-                    "anyOf": [
-                        {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ]
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "title": {
-                    "type": "string"
-                },
-                "titleRegeneration": {
-                    "anyOf": [
-                        {
-                            "anyOf": [
-                                {
-                                    "additionalProperties": false,
-                                    "properties": {
-                                        "requestId": {
-                                            "type": "string"
-                                        },
-                                        "startedAt": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "required": ["requestId", "startedAt"],
-                                    "type": "object"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ]
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "unsettledAt": {
-                    "anyOf": [
-                        {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ]
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "updatedAt": {
-                    "type": "string"
-                },
-                "worktreePath": {
-                    "anyOf": [
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                }
-            },
-            "required": [
-                "id",
-                "projectId",
-                "title",
-                "modelSelection",
-                "runtimeMode",
-                "branch",
-                "worktreePath",
-                "latestTurn",
-                "createdAt",
-                "updatedAt",
-                "session",
-                "latestUserMessageAt",
-                "hasPendingApprovals",
-                "hasPendingUserInput",
-                "hasActionableProposedPlan"
-            ],
-            "type": "object"
-        }
-    },
-    "dialect": "draft-2020-12",
-    "schema": {
-        "anyOf": [
-            {
-                "additionalProperties": false,
-                "properties": {
-                    "kind": {
-                        "enum": ["synchronized"],
-                        "type": "string"
-                    }
-                },
-                "required": ["kind"],
-                "type": "object"
-            },
-            {
-                "additionalProperties": false,
-                "properties": {
-                    "kind": {
-                        "enum": ["snapshot"],
-                        "type": "string"
+                      ]
                     },
-                    "snapshot": {
-                        "additionalProperties": false,
-                        "properties": {
-                            "projects": {
-                                "items": {
-                                    "$ref": "#/$defs/Objects_"
+                    "recencyAnchorAt": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "runtimeMode": {
+                      "enum": ["approval-required", "auto-accept-edits", "auto", "full-access"],
+                      "type": "string"
+                    },
+                    "session": {
+                      "anyOf": [
+                        {
+                          "additionalProperties": true,
+                          "properties": {
+                            "activeTurnId": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
                                 },
-                                "type": "array"
+                                {
+                                  "type": "null"
+                                }
+                              ]
                             },
-                            "snapshotSequence": {
-                                "allOf": [
-                                    {
-                                        "minimum": 0
-                                    }
-                                ],
-                                "type": "integer"
-                            },
-                            "threads": {
-                                "items": {
-                                    "$ref": "#/$defs/Objects_2"
+                            "lastError": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
                                 },
-                                "type": "array"
+                                {
+                                  "type": "null"
+                                }
+                              ]
                             },
-                            "updatedAt": {
-                                "type": "string"
-                            }
-                        },
-                        "required": ["snapshotSequence", "projects", "threads", "updatedAt"],
-                        "type": "object"
-                    }
-                },
-                "required": ["kind", "snapshot"],
-                "type": "object"
-            },
-            {
-                "anyOf": [
-                    {
-                        "additionalProperties": false,
-                        "properties": {
-                            "kind": {
-                                "enum": ["project-upserted"],
-                                "type": "string"
+                            "providerInstanceId": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
                             },
-                            "project": {
-                                "$ref": "#/$defs/Objects_"
+                            "providerName": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
                             },
-                            "sequence": {
-                                "allOf": [
-                                    {
-                                        "minimum": 0
-                                    }
-                                ],
-                                "type": "integer"
-                            }
-                        },
-                        "required": ["kind", "sequence", "project"],
-                        "type": "object"
-                    },
-                    {
-                        "additionalProperties": false,
-                        "properties": {
-                            "kind": {
-                                "enum": ["project-removed"],
-                                "type": "string"
+                            "runtimeMode": {
+                              "anyOf": [
+                                {
+                                  "enum": [
+                                    "approval-required",
+                                    "auto-accept-edits",
+                                    "auto",
+                                    "full-access"
+                                  ],
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
                             },
-                            "projectId": {
-                                "type": "string"
-                            },
-                            "sequence": {
-                                "allOf": [
-                                    {
-                                        "minimum": 0
-                                    }
-                                ],
-                                "type": "integer"
-                            }
-                        },
-                        "required": ["kind", "sequence", "projectId"],
-                        "type": "object"
-                    },
-                    {
-                        "additionalProperties": false,
-                        "properties": {
-                            "kind": {
-                                "enum": ["thread-upserted"],
-                                "type": "string"
-                            },
-                            "sequence": {
-                                "allOf": [
-                                    {
-                                        "minimum": 0
-                                    }
-                                ],
-                                "type": "integer"
-                            },
-                            "thread": {
-                                "$ref": "#/$defs/Objects_2"
-                            }
-                        },
-                        "required": ["kind", "sequence", "thread"],
-                        "type": "object"
-                    },
-                    {
-                        "additionalProperties": false,
-                        "properties": {
-                            "kind": {
-                                "enum": ["thread-removed"],
-                                "type": "string"
-                            },
-                            "sequence": {
-                                "allOf": [
-                                    {
-                                        "minimum": 0
-                                    }
-                                ],
-                                "type": "integer"
+                            "status": {
+                              "enum": [
+                                "idle",
+                                "starting",
+                                "running",
+                                "ready",
+                                "interrupted",
+                                "stopped",
+                                "error"
+                              ],
+                              "type": "string"
                             },
                             "threadId": {
-                                "type": "string"
+                              "type": "string"
+                            },
+                            "updatedAt": {
+                              "type": "string"
                             }
+                          },
+                          "required": [
+                            "threadId",
+                            "status",
+                            "providerName",
+                            "activeTurnId",
+                            "lastError",
+                            "updatedAt"
+                          ],
+                          "type": "object"
                         },
-                        "required": ["kind", "sequence", "threadId"],
-                        "type": "object"
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "settledAt": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "settledOverride": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "enum": ["settled", "active"],
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "snoozedAt": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "snoozedUntil": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "titleRegeneration": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "additionalProperties": true,
+                              "properties": {
+                                "requestId": {
+                                  "type": "string"
+                                },
+                                "startedAt": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["requestId", "startedAt"],
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "titleState": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "additionalProperties": true,
+                              "properties": {
+                                "needsRefinement": {
+                                  "type": "boolean"
+                                },
+                                "source": {
+                                  "enum": ["manual", "generated"],
+                                  "type": "string"
+                                },
+                                "version": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": ["source", "version", "needsRefinement"],
+                              "type": "object"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "unsettledAt": {
+                      "anyOf": [
+                        {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    },
+                    "worktreePath": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     }
+                  },
+                  "required": [
+                    "id",
+                    "projectId",
+                    "title",
+                    "modelSelection",
+                    "runtimeMode",
+                    "branch",
+                    "worktreePath",
+                    "latestTurn",
+                    "createdAt",
+                    "updatedAt",
+                    "session",
+                    "latestUserMessageAt",
+                    "hasPendingApprovals",
+                    "hasPendingUserInput",
+                    "hasActionableProposedPlan"
+                  ],
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              "todos": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "completedAt": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "context": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "contextSummary": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "glossary": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "glossarySummary": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "notes": {
+                          "type": "string"
+                        },
+                        "parentTodoId": {
+                          "anyOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "plan": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "plannedAt": {
+                          "anyOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "planningThreadId": {
+                          "anyOf": [
+                            {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "planSummary": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "projectId": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "specification": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "specificationSummary": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "summary": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "notes",
+                        "projectId",
+                        "completedAt",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
-            }
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            },
+            "required": ["snapshotSequence", "projects", "threads", "updatedAt"],
+            "type": "object"
+          }
+        },
+        "required": ["kind", "snapshot"],
+        "type": "object"
+      },
+      {
+        "anyOf": [
+          {
+            "additionalProperties": true,
+            "properties": {
+              "kind": {
+                "enum": ["project-upserted"],
+                "type": "string"
+              },
+              "project": {
+                "additionalProperties": true,
+                "properties": {
+                  "autoPull": {
+                    "anyOf": [
+                      {
+                        "type": "boolean"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "createdAt": {
+                    "type": "string"
+                  },
+                  "defaultModelSelection": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": true,
+                        "properties": {
+                          "instanceId": {
+                            "anyOf": [
+                              {},
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "model": {},
+                          "options": {
+                            "anyOf": [
+                              {},
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "provider": {
+                            "anyOf": [
+                              {},
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": ["model"],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "defaultThreadEnvMode": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "enum": ["local", "worktree"],
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "faviconPath": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "projectIcon": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "anyOf": [
+                              {
+                                "additionalProperties": true,
+                                "properties": {
+                                  "color": {
+                                    "enum": [
+                                      "gray",
+                                      "red",
+                                      "orange",
+                                      "amber",
+                                      "yellow",
+                                      "lime",
+                                      "green",
+                                      "emerald",
+                                      "teal",
+                                      "cyan",
+                                      "sky",
+                                      "blue",
+                                      "indigo",
+                                      "violet",
+                                      "purple",
+                                      "fuchsia",
+                                      "pink",
+                                      "rose"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "enum": ["lucide"],
+                                    "type": "string"
+                                  },
+                                  "monogram": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "monogramText": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "name": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["kind", "name", "color"],
+                                "type": "object"
+                              },
+                              {
+                                "additionalProperties": true,
+                                "properties": {
+                                  "emoji": {
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "enum": ["emoji"],
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["kind", "emoji"],
+                                "type": "object"
+                              },
+                              {
+                                "additionalProperties": true,
+                                "properties": {
+                                  "color": {
+                                    "enum": [
+                                      "gray",
+                                      "red",
+                                      "orange",
+                                      "amber",
+                                      "yellow",
+                                      "lime",
+                                      "green",
+                                      "emerald",
+                                      "teal",
+                                      "cyan",
+                                      "sky",
+                                      "blue",
+                                      "indigo",
+                                      "violet",
+                                      "purple",
+                                      "fuchsia",
+                                      "pink",
+                                      "rose"
+                                    ],
+                                    "type": "string"
+                                  },
+                                  "kind": {
+                                    "enum": ["monogram"],
+                                    "type": "string"
+                                  },
+                                  "text": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["kind", "text", "color"],
+                                "type": "object"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "repositoryIdentity": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "additionalProperties": true,
+                            "properties": {
+                              "canonicalKey": {
+                                "type": "string"
+                              },
+                              "displayName": {
+                                "type": "string"
+                              },
+                              "locator": {
+                                "additionalProperties": true,
+                                "properties": {
+                                  "remoteName": {
+                                    "type": "string"
+                                  },
+                                  "remoteUrl": {
+                                    "type": "string"
+                                  },
+                                  "source": {
+                                    "enum": ["git-remote"],
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["source", "remoteName", "remoteUrl"],
+                                "type": "object"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "owner": {
+                                "type": "string"
+                              },
+                              "provider": {
+                                "type": "string"
+                              },
+                              "rootPath": {
+                                "type": "string"
+                              },
+                              "webUrl": {
+                                "type": "string"
+                              }
+                            },
+                            "required": ["canonicalKey", "locator"],
+                            "type": "object"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "scripts": {
+                    "items": {
+                      "additionalProperties": true,
+                      "properties": {
+                        "async": {
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "autoOpenPreview": {
+                          "anyOf": [
+                            {
+                              "type": "boolean"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "command": {
+                          "type": "string"
+                        },
+                        "icon": {
+                          "enum": ["play", "test", "lint", "configure", "build", "debug"],
+                          "type": "string"
+                        },
+                        "id": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "previewUrl": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "runOnWorktreeCreate": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["id", "name", "command", "icon", "runOnWorktreeCreate"],
+                      "type": "object"
+                    },
+                    "type": "array"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "updatedAt": {
+                    "type": "string"
+                  },
+                  "workspaceRoot": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "title",
+                  "workspaceRoot",
+                  "defaultModelSelection",
+                  "scripts",
+                  "createdAt",
+                  "updatedAt"
+                ],
+                "type": "object"
+              },
+              "sequence": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": ["kind", "sequence", "project"],
+            "type": "object"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "kind": {
+                "enum": ["project-removed"],
+                "type": "string"
+              },
+              "projectId": {
+                "type": "string"
+              },
+              "sequence": {
+                "minimum": 0,
+                "type": "integer"
+              }
+            },
+            "required": ["kind", "sequence", "projectId"],
+            "type": "object"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "kind": {
+                "enum": ["thread-upserted"],
+                "type": "string"
+              },
+              "sequence": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "thread": {
+                "additionalProperties": true,
+                "properties": {
+                  "activeOrderKey": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "archivedAt": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "backgroundLiveness": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "enum": ["working", "monitoring"],
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "branch": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "branchPullRequest": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "additionalProperties": true,
+                            "properties": {
+                              "number": {
+                                "minimum": 1,
+                                "type": "integer"
+                              },
+                              "projectId": {
+                                "type": "string"
+                              },
+                              "repository": {
+                                "type": "string"
+                              },
+                              "url": {
+                                "type": "string"
+                              }
+                            },
+                            "required": ["projectId", "repository", "number", "url"],
+                            "type": "object"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "createdAt": {
+                    "type": "string"
+                  },
+                  "hasActionableProposedPlan": {
+                    "type": "boolean"
+                  },
+                  "hasPendingApprovals": {
+                    "type": "boolean"
+                  },
+                  "hasPendingUserInput": {
+                    "type": "boolean"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "interactionMode": {
+                    "anyOf": [
+                      {
+                        "enum": ["default", "plan"],
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "latestTurn": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": true,
+                        "properties": {
+                          "assistantMessageId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "completedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "requestedAt": {
+                            "type": "string"
+                          },
+                          "sourceProposedPlan": {
+                            "anyOf": [
+                              {
+                                "additionalProperties": true,
+                                "properties": {
+                                  "planId": {
+                                    "type": "string"
+                                  },
+                                  "threadId": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": ["threadId", "planId"],
+                                "type": "object"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "startedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "state": {
+                            "enum": ["running", "interrupted", "completed", "error"],
+                            "type": "string"
+                          },
+                          "turnId": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "turnId",
+                          "state",
+                          "requestedAt",
+                          "startedAt",
+                          "completedAt",
+                          "assistantMessageId"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "latestUserMessageAt": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "linkedPullRequest": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "additionalProperties": true,
+                            "properties": {
+                              "number": {
+                                "minimum": 1,
+                                "type": "integer"
+                              },
+                              "projectId": {
+                                "type": "string"
+                              },
+                              "repository": {
+                                "type": "string"
+                              },
+                              "url": {
+                                "type": "string"
+                              }
+                            },
+                            "required": ["projectId", "repository", "number", "url"],
+                            "type": "object"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "modelSelection": {
+                    "additionalProperties": true,
+                    "properties": {
+                      "instanceId": {
+                        "anyOf": [
+                          {},
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "model": {},
+                      "options": {
+                        "anyOf": [
+                          {},
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "provider": {
+                        "anyOf": [
+                          {},
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": ["model"],
+                    "type": "object"
+                  },
+                  "pinnedAt": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "pinOrderKey": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "planProgress": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "additionalProperties": true,
+                            "properties": {
+                              "completedSteps": {
+                                "minimum": 0,
+                                "type": "integer"
+                              },
+                              "step": {
+                                "type": "string"
+                              },
+                              "totalSteps": {
+                                "minimum": 0,
+                                "type": "integer"
+                              }
+                            },
+                            "required": ["step", "completedSteps", "totalSteps"],
+                            "type": "object"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "projectId": {
+                    "type": "string"
+                  },
+                  "pullRequests": {
+                    "anyOf": [
+                      {
+                        "items": {
+                          "additionalProperties": true,
+                          "properties": {
+                            "host": {
+                              "type": "string"
+                            },
+                            "linkedAt": {
+                              "type": "string"
+                            },
+                            "number": {
+                              "minimum": 1,
+                              "type": "integer"
+                            },
+                            "repository": {
+                              "type": "string"
+                            },
+                            "snapshot": {
+                              "anyOf": [
+                                {
+                                  "additionalProperties": true,
+                                  "properties": {
+                                    "additions": {
+                                      "anyOf": [
+                                        {
+                                          "minimum": 0,
+                                          "type": "integer"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "author": {
+                                      "anyOf": [
+                                        {
+                                          "anyOf": [
+                                            {
+                                              "additionalProperties": true,
+                                              "properties": {
+                                                "avatarUrl": {
+                                                  "anyOf": [
+                                                    {
+                                                      "type": "string"
+                                                    },
+                                                    {
+                                                      "type": "null"
+                                                    }
+                                                  ]
+                                                },
+                                                "isBot": {
+                                                  "anyOf": [
+                                                    {
+                                                      "type": "boolean"
+                                                    },
+                                                    {
+                                                      "type": "null"
+                                                    }
+                                                  ]
+                                                },
+                                                "login": {
+                                                  "type": "string"
+                                                },
+                                                "name": {
+                                                  "anyOf": [
+                                                    {
+                                                      "type": "string"
+                                                    },
+                                                    {
+                                                      "type": "null"
+                                                    }
+                                                  ]
+                                                }
+                                              },
+                                              "required": ["login", "name", "avatarUrl"],
+                                              "type": "object"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "baseBranch": {
+                                      "type": "string"
+                                    },
+                                    "changedFiles": {
+                                      "anyOf": [
+                                        {
+                                          "minimum": 0,
+                                          "type": "integer"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "checksState": {
+                                      "anyOf": [
+                                        {
+                                          "anyOf": [
+                                            {
+                                              "enum": ["passing", "failing", "pending"],
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "closedAt": {
+                                      "anyOf": [
+                                        {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "deletions": {
+                                      "anyOf": [
+                                        {
+                                          "minimum": 0,
+                                          "type": "integer"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "headBranch": {
+                                      "type": "string"
+                                    },
+                                    "isDraft": {
+                                      "type": "boolean"
+                                    },
+                                    "mergeability": {
+                                      "anyOf": [
+                                        {
+                                          "enum": ["mergeable", "conflicting", "unknown"],
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "mergedAt": {
+                                      "anyOf": [
+                                        {
+                                          "anyOf": [
+                                            {
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "reviewDecision": {
+                                      "anyOf": [
+                                        {
+                                          "anyOf": [
+                                            {
+                                              "enum": [
+                                                "approved",
+                                                "changes-requested",
+                                                "review-required"
+                                              ],
+                                              "type": "string"
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "state": {
+                                      "enum": ["open", "closed", "merged"],
+                                      "type": "string"
+                                    },
+                                    "syncedAt": {
+                                      "type": "string"
+                                    },
+                                    "title": {
+                                      "type": "string"
+                                    },
+                                    "updatedAt": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "required": [
+                                    "state",
+                                    "title",
+                                    "headBranch",
+                                    "baseBranch",
+                                    "isDraft",
+                                    "updatedAt",
+                                    "syncedAt"
+                                  ],
+                                  "type": "object"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "source": {
+                              "enum": ["manual", "created", "agent", "stack", "stack-dismissed"],
+                              "type": "string"
+                            },
+                            "stack": {
+                              "anyOf": [
+                                {
+                                  "additionalProperties": true,
+                                  "properties": {
+                                    "base": {
+                                      "type": "string"
+                                    },
+                                    "id": {
+                                      "type": "string"
+                                    },
+                                    "kind": {
+                                      "enum": ["native"],
+                                      "type": "string"
+                                    },
+                                    "layers": {
+                                      "items": {
+                                        "additionalProperties": true,
+                                        "properties": {
+                                          "headBranch": {
+                                            "type": "string"
+                                          },
+                                          "number": {
+                                            "minimum": 1,
+                                            "type": "integer"
+                                          },
+                                          "state": {
+                                            "enum": ["open", "closed", "merged"],
+                                            "type": "string"
+                                          }
+                                        },
+                                        "required": ["number", "headBranch", "state"],
+                                        "type": "object"
+                                      },
+                                      "type": "array"
+                                    },
+                                    "number": {
+                                      "minimum": 1,
+                                      "type": "integer"
+                                    },
+                                    "url": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["kind", "id", "number", "url", "base", "layers"],
+                                  "type": "object"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "url": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "host",
+                            "repository",
+                            "number",
+                            "url",
+                            "source",
+                            "linkedAt",
+                            "snapshot",
+                            "stack"
+                          ],
+                          "type": "object"
+                        },
+                        "type": "array"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "recencyAnchorAt": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "runtimeMode": {
+                    "enum": ["approval-required", "auto-accept-edits", "auto", "full-access"],
+                    "type": "string"
+                  },
+                  "session": {
+                    "anyOf": [
+                      {
+                        "additionalProperties": true,
+                        "properties": {
+                          "activeTurnId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "lastError": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "providerInstanceId": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "providerName": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "runtimeMode": {
+                            "anyOf": [
+                              {
+                                "enum": [
+                                  "approval-required",
+                                  "auto-accept-edits",
+                                  "auto",
+                                  "full-access"
+                                ],
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "status": {
+                            "enum": [
+                              "idle",
+                              "starting",
+                              "running",
+                              "ready",
+                              "interrupted",
+                              "stopped",
+                              "error"
+                            ],
+                            "type": "string"
+                          },
+                          "threadId": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "threadId",
+                          "status",
+                          "providerName",
+                          "activeTurnId",
+                          "lastError",
+                          "updatedAt"
+                        ],
+                        "type": "object"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "settledAt": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "settledOverride": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "enum": ["settled", "active"],
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "snoozedAt": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "snoozedUntil": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "titleRegeneration": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "additionalProperties": true,
+                            "properties": {
+                              "requestId": {
+                                "type": "string"
+                              },
+                              "startedAt": {
+                                "type": "string"
+                              }
+                            },
+                            "required": ["requestId", "startedAt"],
+                            "type": "object"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "titleState": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "additionalProperties": true,
+                            "properties": {
+                              "needsRefinement": {
+                                "type": "boolean"
+                              },
+                              "source": {
+                                "enum": ["manual", "generated"],
+                                "type": "string"
+                              },
+                              "version": {
+                                "type": "string"
+                              }
+                            },
+                            "required": ["source", "version", "needsRefinement"],
+                            "type": "object"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "unsettledAt": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "updatedAt": {
+                    "type": "string"
+                  },
+                  "worktreePath": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "id",
+                  "projectId",
+                  "title",
+                  "modelSelection",
+                  "runtimeMode",
+                  "branch",
+                  "worktreePath",
+                  "latestTurn",
+                  "createdAt",
+                  "updatedAt",
+                  "session",
+                  "latestUserMessageAt",
+                  "hasPendingApprovals",
+                  "hasPendingUserInput",
+                  "hasActionableProposedPlan"
+                ],
+                "type": "object"
+              }
+            },
+            "required": ["kind", "sequence", "thread"],
+            "type": "object"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "kind": {
+                "enum": ["thread-removed"],
+                "type": "string"
+              },
+              "sequence": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "threadId": {
+                "type": "string"
+              }
+            },
+            "required": ["kind", "sequence", "threadId"],
+            "type": "object"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "kind": {
+                "enum": ["todo-upserted"],
+                "type": "string"
+              },
+              "sequence": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "todo": {
+                "additionalProperties": true,
+                "properties": {
+                  "completedAt": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "context": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "contextSummary": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "createdAt": {
+                    "type": "string"
+                  },
+                  "glossary": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "glossarySummary": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "notes": {
+                    "type": "string"
+                  },
+                  "parentTodoId": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "plan": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "plannedAt": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "planningThreadId": {
+                    "anyOf": [
+                      {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "planSummary": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "projectId": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "specification": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "specificationSummary": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "summary": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "updatedAt": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "title",
+                  "notes",
+                  "projectId",
+                  "completedAt",
+                  "createdAt",
+                  "updatedAt"
+                ],
+                "type": "object"
+              }
+            },
+            "required": ["kind", "sequence", "todo"],
+            "type": "object"
+          },
+          {
+            "additionalProperties": true,
+            "properties": {
+              "kind": {
+                "enum": ["todo-removed"],
+                "type": "string"
+              },
+              "sequence": {
+                "minimum": 0,
+                "type": "integer"
+              },
+              "todoId": {
+                "type": "string"
+              }
+            },
+            "required": ["kind", "sequence", "todoId"],
+            "type": "object"
+          }
         ]
-    }
+      }
+    ]
+  }
 }

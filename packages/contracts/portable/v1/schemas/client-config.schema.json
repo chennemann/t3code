@@ -1,161 +1,236 @@
 {
-    "definitions": {},
-    "dialect": "draft-2020-12",
-    "schema": {
-        "additionalProperties": false,
+  "definitions": {},
+  "dialect": "draft-2020-12",
+  "schema": {
+    "additionalProperties": true,
+    "properties": {
+      "auth": {
+        "additionalProperties": true,
         "properties": {
-            "auth": {
-                "additionalProperties": false,
-                "properties": {
-                    "bootstrapMethods": {
-                        "items": {
-                            "enum": ["desktop-bootstrap", "one-time-token"],
-                            "type": "string"
-                        },
-                        "type": "array"
-                    },
-                    "policy": {
-                        "enum": ["desktop-managed-local", "loopback-browser", "remote-reachable", "unsafe-no-auth"],
-                        "type": "string"
-                    },
-                    "sessionCookieName": {
-                        "type": "string"
-                    },
-                    "sessionMethods": {
-                        "items": {
-                            "enum": ["browser-session-cookie", "bearer-access-token", "dpop-access-token"],
-                            "type": "string"
-                        },
-                        "type": "array"
-                    }
-                },
-                "required": ["policy", "bootstrapMethods", "sessionMethods", "sessionCookieName"],
-                "type": "object"
+          "bootstrapMethods": {
+            "items": {
+              "enum": ["desktop-bootstrap", "one-time-token"],
+              "type": "string"
             },
-            "environment": {
-                "additionalProperties": false,
-                "properties": {
-                    "capabilities": {
-                        "additionalProperties": false,
-                        "properties": {
-                            "agentActivityPublishing": {
-                                "type": "boolean"
-                            },
-                            "attachmentUploads": {
-                                "type": "boolean"
-                            },
-                            "connectionProbe": {
-                                "type": "boolean"
-                            },
-                            "environmentThemes": {
-                                "type": "boolean"
-                            },
-                            "fileAttachments": {
-                                "additionalProperties": false,
-                                "properties": {
-                                    "maxUploadBytes": {
-                                        "allOf": [
-                                            {
-                                                "minimum": 1
-                                            }
-                                        ],
-                                        "type": "integer"
-                                    }
-                                },
-                                "required": ["maxUploadBytes"],
-                                "type": "object"
-                            },
-                            "pullRequests": {
-                                "type": "boolean"
-                            },
-                            "repositoryIdentity": {
-                                "anyOf": [
-                                    {
-                                        "type": "boolean"
-                                    },
-                                    {
-                                        "type": "null"
-                                    }
-                                ]
-                            },
-                            "serverSelfUpdate": {
-                                "enum": ["boot-service", "respawn", "desktop-managed"],
-                                "type": "string"
-                            },
-                            "serverSelfUpdateProgress": {
-                                "type": "boolean"
-                            },
-                            "threadPinning": {
-                                "type": "boolean"
-                            },
-                            "threadPinReorder": {
-                                "type": "boolean"
-                            },
-                            "threadPullRequestLinking": {
-                                "type": "boolean"
-                            },
-                            "threadSettlement": {
-                                "type": "boolean"
-                            },
-                            "threadSnooze": {
-                                "type": "boolean"
-                            },
-                            "threadTitleRegeneration": {
-                                "type": "boolean"
-                            }
-                        },
-                        "type": "object"
-                    },
-                    "environmentId": {
-                        "type": "string"
-                    },
-                    "label": {
-                        "type": "string"
-                    },
-                    "platform": {
-                        "additionalProperties": false,
-                        "properties": {
-                            "arch": {
-                                "enum": ["arm64", "x64", "other"],
-                                "type": "string"
-                            },
-                            "os": {
-                                "enum": ["darwin", "linux", "windows", "unknown"],
-                                "type": "string"
-                            }
-                        },
-                        "required": ["os", "arch"],
-                        "type": "object"
-                    },
-                    "serverVersion": {
-                        "type": "string"
-                    }
-                },
-                "required": ["environmentId", "label", "platform", "serverVersion", "capabilities"],
-                "type": "object"
+            "type": "array"
+          },
+          "policy": {
+            "enum": [
+              "desktop-managed-local",
+              "loopback-browser",
+              "remote-reachable",
+              "unsafe-no-auth"
+            ],
+            "type": "string"
+          },
+          "sessionCookieName": {
+            "type": "string"
+          },
+          "sessionMethods": {
+            "items": {
+              "enum": ["browser-session-cookie", "bearer-access-token", "dpop-access-token"],
+              "type": "string"
             },
-            "protocolVersion": {
+            "type": "array"
+          }
+        },
+        "required": ["policy", "bootstrapMethods", "sessionMethods", "sessionCookieName"],
+        "type": "object"
+      },
+      "environment": {
+        "additionalProperties": true,
+        "properties": {
+          "capabilities": {
+            "additionalProperties": true,
+            "properties": {
+              "agentActivityPublishing": {
+                "type": "boolean"
+              },
+              "attachmentUploads": {
+                "type": "boolean"
+              },
+              "backgroundActivity": {
+                "type": "boolean"
+              },
+              "connectionProbe": {
+                "type": "boolean"
+              },
+              "desktopAppUpdate": {
+                "type": "boolean"
+              },
+              "environmentIcon": {
+                "type": "boolean"
+              },
+              "environmentThemes": {
+                "type": "boolean"
+              },
+              "executionSessions": {
+                "type": "boolean"
+              },
+              "fileAttachments": {
+                "additionalProperties": true,
+                "properties": {
+                  "maxUploadBytes": {
+                    "minimum": 1,
+                    "type": "integer"
+                  }
+                },
+                "required": ["maxUploadBytes"],
+                "type": "object"
+              },
+              "inlineMessageContext": {
+                "type": "boolean"
+              },
+              "portableClientProtocol": {
                 "enum": [1],
                 "type": "number"
-            },
-            "providers": {
-                "type": "array"
-            },
-            "shellResumeCompletionMarker": {
+              },
+              "projectCloneTracking": {
                 "type": "boolean"
-            },
-            "threadResumeCompletionMarker": {
+              },
+              "projectSettingsOverrides": {
                 "type": "boolean"
-            }
+              },
+              "projectWorktreeCleanup": {
+                "type": "boolean"
+              },
+              "pullRequests": {
+                "type": "boolean"
+              },
+              "pullRequestStackActions": {
+                "type": "boolean"
+              },
+              "questionAttachments": {
+                "type": "boolean"
+              },
+              "repositoryIdentity": {
+                "anyOf": [
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "requiredWorktreeBootstrap": {
+                "type": "boolean"
+              },
+              "serverSelfUpdate": {
+                "enum": ["boot-service", "respawn", "desktop-managed"],
+                "type": "string"
+              },
+              "serverSelfUpdateProgress": {
+                "type": "boolean"
+              },
+              "serverUpdateThreadContinuation": {
+                "type": "boolean"
+              },
+              "storageCleanup": {
+                "type": "boolean"
+              },
+              "threadActiveReorder": {
+                "type": "boolean"
+              },
+              "threadAutoSettlement": {
+                "type": "boolean"
+              },
+              "threadPinning": {
+                "type": "boolean"
+              },
+              "threadPinReorder": {
+                "type": "boolean"
+              },
+              "threadPullRequestLinking": {
+                "type": "boolean"
+              },
+              "threadPullRequests": {
+                "type": "boolean"
+              },
+              "threadRestartContinuation": {
+                "type": "boolean"
+              },
+              "threadSettlement": {
+                "type": "boolean"
+              },
+              "threadSnooze": {
+                "type": "boolean"
+              },
+              "threadTitleRegeneration": {
+                "type": "boolean"
+              },
+              "threadWorktrees": {
+                "type": "boolean"
+              },
+              "todos": {
+                "type": "boolean"
+              },
+              "usageLimitSources": {
+                "type": "boolean"
+              },
+              "usagePriceOverrides": {
+                "type": "boolean"
+              },
+              "workspaceFiles": {
+                "type": "boolean"
+              }
+            },
+            "type": "object"
+          },
+          "environmentId": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "orchestrationProtocolVersion": {
+            "type": "integer"
+          },
+          "platform": {
+            "additionalProperties": true,
+            "properties": {
+              "arch": {
+                "enum": ["arm64", "x64", "other"],
+                "type": "string"
+              },
+              "machine": {},
+              "os": {
+                "enum": ["darwin", "linux", "windows", "unknown"],
+                "type": "string"
+              }
+            },
+            "required": ["os", "arch"],
+            "type": "object"
+          },
+          "serverVersion": {
+            "type": "string"
+          }
         },
-        "required": [
-            "environment",
-            "auth",
-            "providers",
-            "shellResumeCompletionMarker",
-            "threadResumeCompletionMarker",
-            "protocolVersion"
-        ],
+        "required": ["environmentId", "label", "platform", "serverVersion", "capabilities"],
         "type": "object"
-    }
+      },
+      "protocolVersion": {
+        "enum": [1],
+        "type": "number"
+      },
+      "providers": {
+        "type": "array"
+      },
+      "shellResumeCompletionMarker": {
+        "type": "boolean"
+      },
+      "threadResumeCompletionMarker": {
+        "type": "boolean"
+      }
+    },
+    "required": [
+      "environment",
+      "auth",
+      "providers",
+      "shellResumeCompletionMarker",
+      "threadResumeCompletionMarker",
+      "protocolVersion"
+    ],
+    "type": "object"
+  }
 }

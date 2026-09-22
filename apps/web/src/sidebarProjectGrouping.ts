@@ -1,5 +1,13 @@
-import type { EnvironmentId, ScopedProjectRef } from "@t3tools/contracts";
-import { buildProjectGroups, type ProjectGroupingSettings } from "./logicalProject";
+import {
+  WORKSPACE_PROJECT_ID,
+  type EnvironmentId,
+  type ScopedProjectRef,
+} from "@t3tools/contracts";
+import {
+  buildProjectGroups,
+  derivePhysicalProjectKey,
+  type ProjectGroupingSettings,
+} from "./logicalProject";
 import type { Project } from "./types";
 
 export type EnvironmentPresence = "local-only" | "remote-only" | "mixed";
@@ -51,8 +59,9 @@ export function buildPhysicalToLogicalProjectKeyMap(input: {
   primaryEnvironmentId: EnvironmentId | null;
 }): Map<string, string> {
   const mapping = new Map<string, string>();
+  const workspaceProjects = input.projects.filter((project) => project.id === WORKSPACE_PROJECT_ID);
   const groups = buildProjectGroups({
-    projects: input.projects,
+    projects: input.projects.filter((project) => project.id !== WORKSPACE_PROJECT_ID),
     settings: input.settings,
     preferredEnvironmentId: input.primaryEnvironmentId,
   });
@@ -60,6 +69,10 @@ export function buildPhysicalToLogicalProjectKeyMap(input: {
     for (const member of group.members) {
       mapping.set(member.physicalProjectKey, group.key);
     }
+  }
+  for (const project of workspaceProjects) {
+    const physicalKey = derivePhysicalProjectKey(project);
+    mapping.set(physicalKey, physicalKey);
   }
   return mapping;
 }
@@ -76,8 +89,9 @@ export function buildSidebarProjectSnapshots(input: {
   isDesktopLocalEnvironment?: (environmentId: EnvironmentId) => boolean;
   isWslEnvironment?: (environmentId: EnvironmentId) => boolean;
 }): SidebarProjectSnapshot[] {
-  return buildProjectGroups({
-    projects: input.projects,
+  const workspaceProjects = input.projects.filter((project) => project.id === WORKSPACE_PROJECT_ID);
+  const groupedSnapshots = buildProjectGroups({
+    projects: input.projects.filter((project) => project.id !== WORKSPACE_PROJECT_ID),
     settings: input.settings,
     preferredEnvironmentId: input.primaryEnvironmentId,
   }).map((group): SidebarProjectSnapshot => {
@@ -131,6 +145,30 @@ export function buildSidebarProjectSnapshots(input: {
       remoteEnvironmentLabels,
     };
   });
+  const workspaceSnapshots = workspaceProjects.map((project): SidebarProjectSnapshot => {
+    const projectKey = derivePhysicalProjectKey(project);
+    const member = {
+      ...project,
+      physicalProjectKey: projectKey,
+      environmentLabel: input.resolveEnvironmentLabel(project.environmentId),
+    };
+    return {
+      ...project,
+      projectKey,
+      displayName: "Workspace",
+      groupedProjectCount: 1,
+      environmentPresence:
+        input.primaryEnvironmentId !== null && project.environmentId !== input.primaryEnvironmentId
+          ? "remote-only"
+          : "local-only",
+      allRemoteMembersAreDesktopLocal: false,
+      allRemoteMembersAreWsl: false,
+      memberProjects: [member],
+      memberProjectRefs: [{ environmentId: project.environmentId, projectId: project.id }],
+      remoteEnvironmentLabels: [],
+    };
+  });
+  return [...workspaceSnapshots, ...groupedSnapshots];
 }
 
 export function buildSidebarProjectPickerEntries(input: {

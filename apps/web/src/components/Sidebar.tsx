@@ -54,6 +54,7 @@ import {
   FolderIcon,
   GitBranchIcon,
   MessageCircleQuestionIcon,
+  ListTodoIcon,
   PinIcon,
   PinOffIcon,
   PlusIcon,
@@ -2402,7 +2403,10 @@ export default function Sidebar() {
   );
   const [projectScopeMenuState, dispatchProjectScopeMenu] = useReducer(
     reduceSidebarProjectScopeMenuState,
-    { open: false, query: "" },
+    {
+      open: false,
+      query: "",
+    },
   );
   const projectScopeFilter = useComboboxFilter();
   // Filtering derives from the same React state that controls the input, so
@@ -4396,6 +4400,14 @@ export default function Sidebar() {
           // Lifted above the stage backdrop, whose fade bleeds below the
           // header and would otherwise paint across the search row's outline.
           <SidebarGroup className="relative z-[1] p-[var(--sidebar-content-inset)] pt-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void router.navigate({ to: "/todos" })}
+            >
+              <ListTodoIcon />
+              To-dos
+            </Button>
             <SidebarThreadHeader
               searchFieldRef={headerSearchRef}
               hasProjects={projectGroups.length > 0}

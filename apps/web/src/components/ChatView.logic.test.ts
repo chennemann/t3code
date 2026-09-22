@@ -89,6 +89,7 @@ import {
   toolGroupConsumesUpwardNavigation,
   waitForRevertedMessage,
   prepareRevertedMessageAttachments,
+  workspaceThreadPath,
 } from "./ChatView.logic";
 
 describe("agent browser close confirmation", () => {
@@ -571,6 +572,16 @@ describe("toolGroupConsumesUpwardNavigation", () => {
     });
 
     expect(toolGroupConsumesUpwardNavigation(group)).toBe(false);
+  });
+});
+
+describe("workspaceThreadPath", () => {
+  it("creates isolated paths for POSIX and Windows workspaces", () => {
+    const threadId = ThreadId.make("thread-1");
+    expect(workspaceThreadPath("/tmp/workspace/", threadId)).toBe("/tmp/workspace/thread-1");
+    expect(workspaceThreadPath("C:\\T3\\workspace\\", threadId)).toBe(
+      "C:\\T3\\workspace\\thread-1",
+    );
   });
 });
 

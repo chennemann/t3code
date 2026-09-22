@@ -61,7 +61,7 @@ export function browseInputEndPaddingClass(input: {
 export type SearchOverlayMode = "command" | "files" | "content";
 
 export type CommandPaletteOpenIntent =
-  | { readonly kind: "add-project" | "new-thread-in" | "change-theme" }
+  | { readonly kind: "add-project" | "new-thread-in" | "new-thread-in-todos" | "change-theme" }
   | {
       readonly kind: "search";
       readonly query: string;
@@ -85,6 +85,7 @@ export type CommandPaletteUiAction =
   | { readonly _tag: "OpenAddProject" }
   | { readonly _tag: "OpenNewThreadIn" }
   | { readonly _tag: "OpenChangeTheme" }
+  | { readonly _tag: "OpenNewThreadInTodos" }
   | { readonly _tag: "ClearOpenIntent" };
 
 export function reduceCommandPaletteUiState(
@@ -116,6 +117,8 @@ export function reduceCommandPaletteUiState(
       return { open: true, mode: "command", openIntent: { kind: "new-thread-in" } };
     case "OpenChangeTheme":
       return { open: true, mode: "command", openIntent: { kind: "change-theme" } };
+    case "OpenNewThreadInTodos":
+      return { open: true, mode: "command", openIntent: { kind: "new-thread-in-todos" } };
     case "ClearOpenIntent":
       return state.openIntent ? { ...state, openIntent: null } : state;
   }
@@ -379,6 +382,7 @@ export function filterCommandPaletteGroups(input: {
   isInSubmenu: boolean;
   projectSearchItems: ReadonlyArray<CommandPaletteActionItem>;
   settingsSearchItems?: ReadonlyArray<CommandPaletteActionItem>;
+  todoSearchItems?: ReadonlyArray<CommandPaletteActionItem>;
   threadSearchItems: ReadonlyArray<CommandPaletteActionItem>;
 }): CommandPaletteGroup[] {
   const isActionsFilter = input.query.startsWith(">");
@@ -414,6 +418,13 @@ export function filterCommandPaletteGroups(input: {
         value: "settings-search",
         label: "Settings",
         items: input.settingsSearchItems,
+      });
+    }
+    if (input.todoSearchItems && input.todoSearchItems.length > 0) {
+      searchableGroups.push({
+        value: "todos-search",
+        label: "To-dos",
+        items: input.todoSearchItems,
       });
     }
     if (input.threadSearchItems.length > 0) {

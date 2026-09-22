@@ -37,7 +37,7 @@ import {
 import * as EnvironmentAuth from "../auth/EnvironmentAuth.ts";
 import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
 import * as ProviderRegistry from "../provider/Services/ProviderRegistry.ts";
-import type { PortableOrchestrationSource } from "../orchestration/Services/PortableOrchestrationSource.ts";
+import { make as makeOrchestrationSubscriptions } from "./orchestration/Subscriptions.ts";
 
 export const environmentClientHttpApiLayer = HttpApiBuilder.group(
   EnvironmentHttpApi,
@@ -158,9 +158,7 @@ const response = <E>(stream: Stream.Stream<string, E, never>, streamKind: "shell
     ),
     { headers: streamHeaders },
   );
-export const makeOrchestrationSseRouteLayer = (
-  subscriptions: PortableOrchestrationSource["Service"],
-) => Layer.mergeAll(
+export const orchestrationSseRouteLayer = Layer.mergeAll(
   HttpRouter.add(
     "GET",
     "/api/orchestration/shell/stream",
@@ -168,6 +166,7 @@ export const makeOrchestrationSseRouteLayer = (
       const request = yield* HttpServerRequest.HttpServerRequest;
       yield* authenticate(request);
       const input = toSubscriptionQuery(yield* parseQuery(request));
+      const subscriptions = yield* makeOrchestrationSubscriptions;
       const stream = yield* subscriptions
         .subscribeShell(input)
         .pipe(
@@ -193,6 +192,7 @@ export const makeOrchestrationSseRouteLayer = (
       const threadId = yield* decodeThreadId(params.threadId).pipe(
         Effect.catch(() => failEnvironmentInvalidRequest("invalid_stream_query")),
       );
+      const subscriptions = yield* makeOrchestrationSubscriptions;
       const query = toSubscriptionQuery(yield* parseQuery(request));
       const stream = yield* subscriptions
         .subscribeThread({ ...query, threadId })

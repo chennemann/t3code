@@ -31,6 +31,7 @@ import { ProjectionSnapshotQuery } from "../Services/ProjectionSnapshotQuery.ts"
 import { encodeThreadDetailPageCursor } from "../threadDetailCursor.ts";
 import { projectThreadDetailSnapshot } from "../ActivityPayloadProjection.ts";
 import { makeSqlStatementCounter } from "../../../integration/SqlStatementCounter.integration.ts";
+import * as ServerConfig from "../../config.ts";
 
 const asProjectId = (value: string): ProjectId => ProjectId.make(value);
 const asTurnId = (value: string): TurnId => TurnId.make(value);
@@ -62,6 +63,8 @@ it.effect("reads project shells without loading threads or resolving excluded pr
       }),
     ),
     Layer.provideMerge(SqlitePersistenceMemory),
+    Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "t3-snapshot-query-" })),
+    Layer.provideMerge(NodeServices.layer),
   );
   return Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;
@@ -105,6 +108,9 @@ const projectionSnapshotLayer = it.layer(
     Layer.provide(ThreadPlanProgress.layer),
     Layer.provideMerge(RepositoryIdentityResolver.layer),
     Layer.provideMerge(SqlitePersistenceMemory),
+    Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "t3-snapshot-query-" })),
+    Layer.provideMerge(NodeServices.layer),
+    Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "t3-snapshot-query-" })),
     Layer.provideMerge(NodeServices.layer),
   ),
 );
@@ -623,6 +629,7 @@ projectionSnapshotLayer("ProjectionSnapshotQuery", (it) => {
             updatedAt: "2026-02-24T00:00:07.000Z",
           },
           latestUserMessageAt: "2026-02-24T00:00:04.000Z",
+          recencyAnchorAt: null,
           hasPendingApprovals: true,
           hasPendingUserInput: false,
           hasActionableProposedPlan: false,
@@ -2422,6 +2429,10 @@ it.effect(
         }),
       ),
       Layer.provideMerge(SqlitePersistenceMemory),
+      Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "t3-snapshot-query-" })),
+      Layer.provideMerge(NodeServices.layer),
+      Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "t3-snapshot-dedupe-" })),
+      Layer.provideMerge(NodeServices.layer),
     );
 
     return Effect.gen(function* () {
@@ -3468,6 +3479,8 @@ it.effect("omits foreign-host PRs from legacy snapshots while preserving native 
       }),
     ),
     Layer.provideMerge(SqlitePersistenceMemory),
+    Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "t3-snapshot-query-" })),
+    Layer.provideMerge(NodeServices.layer),
   );
   return Effect.gen(function* () {
     const sql = yield* SqlClient.SqlClient;

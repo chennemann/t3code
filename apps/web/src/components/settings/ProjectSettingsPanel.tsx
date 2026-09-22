@@ -7,10 +7,14 @@ import {
 } from "@t3tools/client-runtime/state/runtime";
 import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime/environment";
 import { AsyncResult } from "effect/unstable/reactivity";
-import { type EnvironmentId, type ProjectIconOverride } from "@t3tools/contracts";
+import {
+  WORKSPACE_PROJECT_ID,
+  type EnvironmentId,
+  type ProjectIconOverride,
+} from "@t3tools/contracts";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import * as Cause from "effect/Cause";
-import { Trash2Icon } from "lucide-react";
+import { FolderOpenIcon, Trash2Icon } from "lucide-react";
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useComposerDraftStore } from "../../composerDraftStore";
@@ -392,6 +396,7 @@ function ProjectDetail({
             <Button
               size="sm"
               variant="outline"
+              disabled={member.id === WORKSPACE_PROJECT_ID}
               onClick={() => void removeMembers([member])}
               aria-label={`Remove checkout ${member.workspaceRoot}`}
             >
@@ -480,40 +485,69 @@ function ProjectDetail({
             }
           />
         </SettingsSection>
+        {representative.id === WORKSPACE_PROJECT_ID && window.desktopBridge ? (
+          <SettingsSection title="Workspace">
+            <SettingsRow
+              title="Directory"
+              description={representative.workspaceRoot}
+              control={
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const normalized = representative.workspaceRoot.replace(/\\/g, "/");
+                    void readLocalApi()?.shell.openExternal(
+                      encodeURI(
+                        normalized.startsWith("/")
+                          ? `file://${normalized}`
+                          : `file:///${normalized}`,
+                      ),
+                    );
+                  }}
+                >
+                  <FolderOpenIcon />
+                  Open directory
+                </Button>
+              }
+            />
+          </SettingsSection>
+        ) : null}
         <ProjectActionsSettings />
         {hasMultipleCheckouts ? checkoutChoices : null}
-        <SettingsSection title="Danger">
-          <SettingsRow
-            title={
-              hasOtherMembers
-                ? "Remove checkout"
-                : group.memberProjects.length > 1
-                  ? "Remove this project everywhere"
-                  : "Remove project"
-            }
-            description={
-              hasOtherMembers
-                ? "Deletes the selected machine's checkout entries and their threads. Other machines and files on disk are not touched."
-                : group.memberProjects.length > 1
-                  ? `Deletes all ${group.memberProjects.length} checkout entries and their threads on every machine. Files on disk are not touched.`
-                  : "Deletes the project entry and its threads. Files on disk are not touched."
-            }
-            control={
-              <Button
-                size="sm"
-                variant="destructive-outline"
-                onClick={() => void removeMembers(group.memberProjects)}
-              >
-                <Trash2Icon />
-                {hasOtherMembers
+        {group.memberProjects.some((member) => member.id === WORKSPACE_PROJECT_ID) ? null : (
+          <SettingsSection title="Danger">
+            <SettingsRow
+              title={
+                hasOtherMembers
                   ? "Remove checkout"
                   : group.memberProjects.length > 1
-                    ? "Remove all entries"
-                    : "Remove project"}
-              </Button>
-            }
-          />
-        </SettingsSection>
+                    ? "Remove this project everywhere"
+                    : "Remove project"
+              }
+              description={
+                hasOtherMembers
+                  ? "Deletes the selected machine's checkout entries and their threads. Other machines and files on disk are not touched."
+                  : group.memberProjects.length > 1
+                    ? `Deletes all ${group.memberProjects.length} checkout entries and their threads on every machine. Files on disk are not touched.`
+                    : "Deletes the project entry and its threads. Files on disk are not touched."
+              }
+              control={
+                <Button
+                  size="sm"
+                  variant="destructive-outline"
+                  onClick={() => void removeMembers(group.memberProjects)}
+                >
+                  <Trash2Icon />
+                  {hasOtherMembers
+                    ? "Remove checkout"
+                    : group.memberProjects.length > 1
+                      ? "Remove all entries"
+                      : "Remove project"}
+                </Button>
+              }
+            />
+          </SettingsSection>
+        )}
       </SettingsPageContainer>
 
       <ProjectFaviconPickerDialog
