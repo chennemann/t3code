@@ -712,9 +712,9 @@ describe("ServerSettings terminal shell policy", () => {
   });
 
   it("accepts a trimmed shell path through settings patches", () => {
-    expect(decodeServerSettingsPatch({ terminalShellPath: "  /bin/fish  " }).terminalShellPath).toBe(
-      "/bin/fish",
-    );
+    expect(
+      decodeServerSettingsPatch({ terminalShellPath: "  /bin/fish  " }).terminalShellPath,
+    ).toBe("/bin/fish");
   });
 });
 
@@ -928,6 +928,7 @@ describe("ServerSettingsPatch string normalization", () => {
   it("trims string settings while decoding patches", () => {
     const patch = decodeServerSettingsPatch({
       addProjectBaseDirectory: "  ~/Development  ",
+      terminalShellPath: "  /opt/homebrew/bin/fish  ",
       textGenerationModelSelection: { model: "  gpt-5.4-mini  " },
       observability: {
         otlpTracesUrl: "  http://localhost:4318/v1/traces  ",
@@ -949,6 +950,7 @@ describe("ServerSettingsPatch string normalization", () => {
     });
 
     expect(patch.addProjectBaseDirectory).toBe("~/Development");
+    expect(patch.terminalShellPath).toBe("/opt/homebrew/bin/fish");
     expect(patch.textGenerationModelSelection?.model).toBe("gpt-5.4-mini");
     expect(patch.observability?.otlpTracesUrl).toBe("http://localhost:4318/v1/traces");
     expect(patch.providers?.codex?.binaryPath).toBe("/opt/homebrew/bin/codex");

@@ -20,6 +20,8 @@ import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 
+import { aggregateIdSchema as DownstreamAggregateId } from "../../downstream/Orchestration.ts";
+
 import {
   toPersistenceDecodeError,
   toPersistenceSqlError,
@@ -38,7 +40,7 @@ const EventMetadataFromJsonString = Schema.fromJsonString(OrchestrationEventMeta
 const AppendEventRequestSchema = Schema.Struct({
   eventId: EventId,
   aggregateKind: OrchestrationAggregateKind,
-  streamId: Schema.Union([ProjectId, ThreadId]),
+  streamId: Schema.Union([ProjectId, ThreadId, DownstreamAggregateId]),
   type: OrchestrationEventType,
   causationEventId: Schema.NullOr(EventId),
   correlationId: Schema.NullOr(CommandId),
@@ -54,7 +56,7 @@ const OrchestrationEventPersistedRowSchema = Schema.Struct({
   eventId: EventId,
   type: OrchestrationEventType,
   aggregateKind: OrchestrationAggregateKind,
-  aggregateId: Schema.Union([ProjectId, ThreadId]),
+  aggregateId: Schema.Union([ProjectId, ThreadId, DownstreamAggregateId]),
   occurredAt: IsoDateTime,
   commandId: Schema.NullOr(CommandId),
   causationEventId: Schema.NullOr(EventId),

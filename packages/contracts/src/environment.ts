@@ -13,6 +13,8 @@ import {
 export const ORCHESTRATION_PROTOCOL_VERSION = 1;
 export const ORCHESTRATION_PROTOCOL_QUERY_PARAM = "orchestrationProtocol";
 
+import { capabilityFields as downstreamCapabilityFields } from "./downstream/environment.ts";
+
 export const ExecutionEnvironmentPlatformOs = Schema.Literals([
   "darwin",
   "linux",
@@ -133,6 +135,7 @@ export const ExecutionEnvironmentCapabilities = Schema.Struct({
   usageLimitSources: Schema.optionalKey(Schema.Boolean),
   /** Server persists custom model rates and applies them to usage summaries. */
   usagePriceOverrides: Schema.optionalKey(Schema.Boolean),
+  ...downstreamCapabilityFields,
   /** Server understands thread.pin / thread.unpin commands. Same
       version-skew contract as threadSettlement. */
   threadPinning: Schema.optionalKey(Schema.Boolean),

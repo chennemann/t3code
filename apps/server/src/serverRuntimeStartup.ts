@@ -48,6 +48,7 @@ import * as ProviderService from "./provider/Services/ProviderService.ts";
 import * as ProviderSessionDirectory from "./provider/Services/ProviderSessionDirectory.ts";
 import * as ProviderSessionReaper from "./provider/Services/ProviderSessionReaper.ts";
 import { forkParked } from "./serverActivation.ts";
+import { startup as downstreamStartup } from "./downstream/Runtime.ts";
 import * as ServiceLauncherClient from "./cloud/serviceLauncherClient.ts";
 import * as GitVcsDriver from "./vcs/GitVcsDriver.ts";
 import {
@@ -971,6 +972,8 @@ export const make = (options?: StartupOptions) =>
 
       yield* Effect.logDebug("startup phase: syncing clean projects");
       yield* runStartupPhase("projects.auto-pull", syncAutoPullProjects);
+
+      yield* runStartupPhase("downstream.start", downstreamStartup);
 
       const welcomeBase = yield* resolveWelcomeBase;
       const environment = yield* serverEnvironment.getDescriptor;

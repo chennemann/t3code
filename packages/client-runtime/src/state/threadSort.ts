@@ -124,12 +124,14 @@ export function getThreadSortTimestamp(
  * mobile so both render the same order. Malformed timestamps sink to 0.
  */
 function activeThreadAnchorTimestampMs(thread: {
+  readonly recencyAnchorAt?: string | null | undefined;
   readonly createdAt: string;
   readonly unsettledAt?: string | null | undefined;
 }): number {
   return Math.max(
     toSortableTimestamp(thread.createdAt) ?? 0,
     toSortableTimestamp(thread.unsettledAt ?? undefined) ?? 0,
+    toSortableTimestamp(thread.recencyAnchorAt ?? undefined) ?? 0,
   );
 }
 
@@ -343,6 +345,7 @@ export function sortActiveThreadsByOrderKey<
     readonly createdAt: string;
     readonly unsettledAt?: string | null | undefined;
     readonly activeOrderKey?: string | null | undefined;
+    readonly recencyAnchorAt?: string | null | undefined;
     readonly environmentId?: string | undefined;
   },
 >(threads: readonly T[]): T[] {

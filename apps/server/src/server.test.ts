@@ -41,6 +41,7 @@ import {
   ThreadId,
   TurnId,
   UsageLimitSourceId,
+  TodoId,
   WS_METHODS,
   WsRpcGroup,
   EditorId,
@@ -324,6 +325,7 @@ const testEnvironmentDescriptor = {
   serverVersion: "0.0.0-test",
   capabilities: {
     repositoryIdentity: true,
+    portableClientProtocol: 1 as const,
   },
 };
 const makeDefaultOrchestrationReadModel = () => {
@@ -9086,6 +9088,42 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
       assertTrue(result.failure._tag === "OrchestrationGetSnapshotError");
       assertTrue(result.failure.cause instanceof Error);
       assert.include(result.failure.cause.message, projectionError.message);
+    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
+  );
+
+  it.effect("subscribeShell replays downstream todo deletions", () =>
+    Effect.gen(function* () {
+      const todoId = TodoId.make("deleted-todo");
+      const event = {
+        sequence: 2,
+        eventId: EventId.make("event-todo-deleted"),
+        aggregateKind: "todo",
+        aggregateId: todoId,
+        occurredAt: "2026-01-01T00:00:01.000Z",
+        commandId: null,
+        causationEventId: null,
+        correlationId: null,
+        metadata: {},
+        type: "todo.deleted",
+        payload: { todoId },
+      } satisfies Extract<OrchestrationEvent, { type: "todo.deleted" }>;
+      yield* buildAppUnderTest({
+        layers: {
+          orchestrationEngine: {
+            latestSequence: Effect.succeed(2),
+            readEvents: () => Stream.make(event),
+          },
+        },
+      });
+      const wsUrl = yield* getWsServerUrl("/ws");
+      const first = yield* Effect.scoped(
+        withWsRpcClient(wsUrl, (client) =>
+          client[ORCHESTRATION_WS_METHODS.subscribeShell]({ afterSequence: 1 }).pipe(
+            Stream.runHead,
+          ),
+        ),
+      );
+      assert.deepEqual(Option.getOrThrow(first), { kind: "todo-removed", sequence: 2, todoId });
     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
   );
 

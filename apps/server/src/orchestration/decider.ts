@@ -50,6 +50,12 @@ import { threadHasQueuedTurnStart } from "./ThreadSettlementPolicy.ts";
 const monogramSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 
 const isScriptRunCommand = Schema.is(SCRIPT_RUN_COMMAND_PATTERN);
+import {
+  beforeProjectDelete as downstreamBeforeProjectDelete,
+  decideDownstreamCommand,
+  isDownstreamCommand,
+  turnStartPayload as downstreamTurnStartPayload,
+} from "../downstream/Orchestration.ts";
 
 const nowIso = Effect.map(DateTime.now, DateTime.formatIso);
 const decodeUserInputRequestedPayload = Schema.decodeUnknownOption(UserInputRequestedPayload);
@@ -221,6 +227,15 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
   OrchestrationCommandRejection | PlatformError.PlatformError,
   Crypto.Crypto
 > {
+  if (isDownstreamCommand(command)) {
+    const downstreamDecision = decideDownstreamCommand({ command, readModel });
+    if (downstreamDecision !== null) return yield* downstreamDecision;
+    return yield* new OrchestrationCommandInvariantError({
+      commandType: command.type,
+      detail: `Downstream command hook did not handle '${command.type}'.`,
+    });
+  }
+
   switch (command.type) {
     case "project.create": {
       yield* requireProjectAbsent({
@@ -333,13 +348,14 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
       const activeThreads = listThreadsByProjectId(readModel, command.projectId).filter(
         (thread) => thread.deletedAt === null,
       );
+      const downstreamCommands = downstreamBeforeProjectDelete(command, readModel);
       if (activeThreads.length > 0 && command.force !== true) {
         return yield* new OrchestrationCommandInvariantError({
           commandType: command.type,
           detail: `Project '${command.projectId}' is not empty and cannot be deleted without force=true.`,
         });
       }
-      if (activeThreads.length > 0) {
+      if (activeThreads.length > 0 || downstreamCommands.length > 0) {
         return yield* decideCommandSequence({
           readModel,
           commands: [
@@ -350,6 +366,7 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
                 threadId: thread.id,
               }),
             ),
+            ...downstreamCommands,
             {
               type: "project.delete",
               commandId: command.commandId,
@@ -1468,6 +1485,7 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
         payload: {
           threadId: command.threadId,
           messageId: command.message.messageId,
+          ...downstreamTurnStartPayload(command),
           ...(command.modelSelection !== undefined
             ? { modelSelection: command.modelSelection }
             : {}),

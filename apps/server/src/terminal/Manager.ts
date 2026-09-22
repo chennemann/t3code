@@ -2241,11 +2241,7 @@ export const makeWithOptions = Effect.fn("TerminalManager.makeWithOptions")(func
           Effect.gen(function* () {
             const configuredShell = (yield* shellResolver).trim();
             const requestedShell = configuredShell || defaultShellResolver(platform, baseEnv);
-            const shellCandidates = resolveShellCandidates(
-              () => requestedShell,
-              platform,
-              baseEnv,
-            );
+            const shellCandidates = resolveShellCandidates(() => requestedShell, platform, baseEnv);
             const terminalEnv = createTerminalSpawnEnv(baseEnv, session.runtimeEnv);
             const spawnResult = yield* trySpawn(shellCandidates, terminalEnv, session);
             ptyProcess = spawnResult.process;

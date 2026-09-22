@@ -31,6 +31,7 @@ import {
   PullRequestReviewDecision,
   PullRequestState,
 } from "./pullRequest.ts";
+import * as Downstream from "./downstream/orchestration.ts";
 
 export const ORCHESTRATION_WS_METHODS = {
   dispatchCommand: "orchestration.dispatchCommand",
@@ -860,6 +861,7 @@ export const OrchestrationReadModel = Schema.Struct({
   snapshotSequence: NonNegativeInt,
   projects: Schema.Array(OrchestrationProject),
   threads: Schema.Array(OrchestrationThread),
+  ...Downstream.readModelFields,
   updatedAt: IsoDateTime,
 });
 export type OrchestrationReadModel = typeof OrchestrationReadModel.Type;
@@ -917,6 +919,8 @@ export const OrchestrationThreadShell = Schema.Struct({
   titleState: Schema.optional(Schema.NullOr(ThreadTitleState)),
   session: Schema.NullOr(OrchestrationSession),
   latestUserMessageAt: Schema.NullOr(IsoDateTime),
+  // Optional on the wire so clients retain v2 creation order with older servers.
+  recencyAnchorAt: Schema.optional(Schema.NullOr(IsoDateTime)),
   hasPendingApprovals: Schema.Boolean,
   hasPendingUserInput: Schema.Boolean,
   hasActionableProposedPlan: Schema.Boolean,
@@ -947,6 +951,7 @@ export const OrchestrationShellSnapshot = Schema.Struct({
   snapshotSequence: NonNegativeInt,
   projects: Schema.Array(OrchestrationProjectShell),
   threads: Schema.Array(OrchestrationThreadShell),
+  ...Downstream.readModelFields,
   updatedAt: IsoDateTime,
 });
 export type OrchestrationShellSnapshot = typeof OrchestrationShellSnapshot.Type;
@@ -972,9 +977,15 @@ export const OrchestrationShellStreamEvent = Schema.Union([
     sequence: NonNegativeInt,
     threadId: ThreadId,
   }),
+  ...Downstream.shellStreamEventSchemas,
 ]);
 export type OrchestrationShellStreamEvent = typeof OrchestrationShellStreamEvent.Type;
 
+/**
+ * Stream kinds are a closed union for React Native compatibility. Additive fields on a known
+ * kind are compatible, while an unknown kind fails decoding so the subscription can recover
+ * from its last trusted projection instead of silently advancing past unknown semantics.
+ */
 export const OrchestrationShellStreamItem = Schema.Union([
   Schema.Struct({
     kind: Schema.Literal("synchronized"),
@@ -1327,6 +1338,7 @@ export const ThreadTurnStartCommand = Schema.Struct({
     attachments: Schema.Array(ChatAttachment),
     context: Schema.optional(OrchestrationMessageContext),
   }),
+  ...Downstream.commandFields,
   modelSelection: Schema.optional(ModelSelection),
   titleSeed: Schema.optional(TrimmedNonEmptyString),
   runtimeMode: RuntimeMode.pipe(Schema.withDecodingDefault(Effect.succeed(DEFAULT_RUNTIME_MODE))),
@@ -1349,6 +1361,7 @@ const ClientThreadTurnStartCommand = Schema.Struct({
     attachments: Schema.Array(Schema.Union([UploadChatAttachment, ChatAttachment])),
     context: Schema.optional(OrchestrationMessageContext),
   }),
+  ...Downstream.commandFields,
   modelSelection: Schema.optional(ModelSelection),
   titleSeed: Schema.optional(TrimmedNonEmptyString),
   runtimeMode: RuntimeMode,
@@ -1428,6 +1441,7 @@ const DispatchableClientOrchestrationCommand = Schema.Union([
   ProjectCreateCommand,
   ProjectMetaUpdateCommand,
   ProjectDeleteCommand,
+  ...Downstream.clientCommandSchemas,
   ThreadCreateCommand,
   ThreadDeleteCommand,
   ThreadArchiveCommand,
@@ -1462,6 +1476,7 @@ export const ClientOrchestrationCommand = Schema.Union([
   ProjectCreateCommand,
   ProjectMetaUpdateCommand,
   ProjectDeleteCommand,
+  ...Downstream.clientCommandSchemas,
   ThreadCreateCommand,
   ThreadDeleteCommand,
   ThreadArchiveCommand,
@@ -1662,6 +1677,7 @@ const InternalOrchestrationCommand = Schema.Union([
   ThreadAutoSettleCommand,
   ThreadPullRequestSyncCommand,
   ThreadPullRequestLinkSyncCommand,
+  ...Downstream.internalCommandSchemas,
   ThreadSessionSetCommand,
   ThreadMessageAssistantDeltaCommand,
   ThreadMessageAssistantCompleteCommand,
@@ -1691,6 +1707,7 @@ export const OrchestrationEventType = Schema.Literals([
   "project.created",
   "project.meta-updated",
   "project.deleted",
+  ...Downstream.eventTypes,
   "thread.created",
   "thread.deleted",
   "thread.archived",
@@ -1724,7 +1741,11 @@ export const OrchestrationEventType = Schema.Literals([
 ]);
 export type OrchestrationEventType = typeof OrchestrationEventType.Type;
 
-export const OrchestrationAggregateKind = Schema.Literals(["project", "thread"]);
+export const OrchestrationAggregateKind = Schema.Literals([
+  "project",
+  "thread",
+  ...Downstream.aggregateKinds,
+]);
 export type OrchestrationAggregateKind = typeof OrchestrationAggregateKind.Type;
 export const OrchestrationActorKind = Schema.Literals(["client", "server", "provider"]);
 
@@ -1926,6 +1947,7 @@ export const ThreadMessageSentPayload = Schema.Struct({
 export const ThreadTurnStartRequestedPayload = Schema.Struct({
   threadId: ThreadId,
   messageId: MessageId,
+  ...Downstream.commandFields,
   modelSelection: Schema.optional(ModelSelection),
   titleSeed: Schema.optional(TrimmedNonEmptyString),
   runtimeMode: RuntimeMode.pipe(Schema.withDecodingDefault(Effect.succeed(DEFAULT_RUNTIME_MODE))),
@@ -2033,7 +2055,7 @@ const EventBaseFields = {
   sequence: NonNegativeInt,
   eventId: EventId,
   aggregateKind: OrchestrationAggregateKind,
-  aggregateId: Schema.Union([ProjectId, ThreadId]),
+  aggregateId: Schema.Union([ProjectId, ThreadId, ...Downstream.aggregateIdSchemas]),
   occurredAt: IsoDateTime,
   commandId: Schema.NullOr(CommandId),
   causationEventId: Schema.NullOr(EventId),
@@ -2057,6 +2079,7 @@ export const OrchestrationEvent = Schema.Union([
     type: Schema.Literal("project.deleted"),
     payload: ProjectDeletedPayload,
   }),
+  ...Downstream.eventSchemas(EventBaseFields),
   Schema.Struct({
     ...EventBaseFields,
     type: Schema.Literal("thread.created"),
@@ -2210,6 +2233,7 @@ export const OrchestrationEvent = Schema.Union([
 ]);
 export type OrchestrationEvent = typeof OrchestrationEvent.Type;
 
+/** See {@link OrchestrationShellStreamItem} for the portable stream-evolution policy. */
 export const OrchestrationThreadStreamItem = Schema.Union([
   Schema.Struct({
     kind: Schema.Literal("synchronized"),

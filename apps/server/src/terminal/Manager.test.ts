@@ -407,14 +407,18 @@ it("preserves retained lines as older storage is compacted", () => {
 
 it.layer(
   Layer.merge(NodeServices.layer, ProcessRunner.layer.pipe(Layer.provide(NodeServices.layer))),
-  { excludeTestServices: true },
+  {
+    excludeTestServices: true,
+  },
 )("TerminalManager", (it) => {
   it.effect("spawns lazily and reuses running terminal per thread", () =>
     Effect.gen(function* () {
       const { manager, ptyAdapter } = yield* createManager();
       const [first, second] = yield* Effect.all(
         [manager.open(openInput()), manager.open(openInput())],
-        { concurrency: "unbounded" },
+        {
+          concurrency: "unbounded",
+        },
       );
       const third = yield* manager.open(openInput());
 
@@ -1913,7 +1917,7 @@ it.layer(
         ] as const) {
           const env = Object.freeze({ COLORTERM: parentColor });
           const { manager, ptyAdapter } = yield* createManager(5, {
-            shellResolver: () => "/bin/sh",
+            shellResolver: Effect.succeed("/bin/sh"),
             env,
           }).pipe(Effect.provide(withHostPlatform(platform)));
           yield* manager.open(
