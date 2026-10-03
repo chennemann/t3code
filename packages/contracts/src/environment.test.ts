@@ -61,24 +61,4 @@ describe("ExecutionEnvironmentDescriptor", () => {
       }).capabilities.fileAttachments,
     ).toEqual({ maxUploadBytes: 50 * 1024 * 1024 });
   });
-
-  it("treats missing workspace files as unsupported and preserves advertisement", () => {
-    expect(decodeDescriptor(descriptor).capabilities.workspaceFiles).toBeUndefined();
-    expect(
-      decodeDescriptor({
-        ...descriptor,
-        capabilities: { ...descriptor.capabilities, workspaceFiles: true },
-      }).capabilities.workspaceFiles,
-    ).toBe(true);
-  });
-
-  it("treats missing background activity as unsupported and preserves advertisement", () => {
-    expect(decodeDescriptor(descriptor).capabilities.backgroundActivity).toBeUndefined();
-    expect(
-      decodeDescriptor({
-        ...descriptor,
-        capabilities: { ...descriptor.capabilities, backgroundActivity: true },
-      }).capabilities.backgroundActivity,
-    ).toBe(true);
-  });
 });

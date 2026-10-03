@@ -39,10 +39,9 @@ precedent for adding feature migrations to the upstream registry.
 
 ## Transport and terminal interfaces
 
-HTTP SSE and WebSocket subscriptions must share the orchestration subscription engine; duplicating
-replay or buffering logic here would make upstream fixes diverge between transports. The downstream
-adapter supplies to-do event projection through a callback. The engine has no downstream imports;
-transport adapters retain their authentication and error framing.
+Clients use upstream HTTP snapshots and WebSocket RPC subscriptions. The downstream adapter supplies
+to-do event projection through a callback in the orchestration subscription engine. The engine has
+no downstream imports; authentication and error framing remain in the upstream transports.
 
 The terminal manager consumes `TerminalShellPolicy`. Its default implementation preserves upstream
 shell discovery; the downstream implementation reads environment settings when a terminal starts.

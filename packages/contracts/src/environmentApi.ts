@@ -1,6 +1,5 @@
 import * as HttpApi from "effect/unstable/httpapi/HttpApi";
 
-import { DownstreamEnvironmentHttpApi } from "./downstream/environmentHttp.ts";
 import {
   EnvironmentAuthHttpApi,
   EnvironmentConnectHttpApi,
@@ -12,7 +11,6 @@ import {
 export class EnvironmentHttpApi extends HttpApi.make("environment")
   .add(EnvironmentMetadataHttpApi)
   .add(EnvironmentAuthHttpApi)
-  .add(DownstreamEnvironmentHttpApi)
   .add(EnvironmentOrchestrationHttpApi)
   .add(EnvironmentPullRequestsHttpApi)
   .add(EnvironmentConnectHttpApi) {}

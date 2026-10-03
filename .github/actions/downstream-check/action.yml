@@ -3,12 +3,11 @@ description: Check the fork integration points and the behavior changed by the f
 runs:
   using: composite
   steps:
-    - name: Check integration points and generated contracts
+    - name: Check integration points and release state
       shell: bash
       run: |
         set -euo pipefail
         node scripts/check-downstream.ts
-        node packages/contracts/scripts/generatePortableClientArtifacts.ts --check
         node scripts/downstream-release-state.ts validate
 
     - name: Typecheck affected packages

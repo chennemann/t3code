@@ -2,8 +2,7 @@
   "ownedDirectories": [
     "apps/server/src/downstream",
     "packages/contracts/src/downstream",
-    "packages/shared/src/downstream",
-    "packages/contracts/portable"
+    "packages/shared/src/downstream"
   ],
   "ownedFiles": [
     ".github/actions/downstream-check/action.yml",
@@ -11,7 +10,6 @@
     ".github/upstream-release.json",
     ".github/workflows/downstream-check.yml",
     ".github/workflows/downstream-release.yml",
-    "apps/server/src/orchestration/Services/PortableOrchestrationSource.ts",
     "apps/server/src/orchestration/decider.todos.test.ts",
     "apps/server/src/orchestration/threadRecency.test.ts",
     "apps/server/src/orchestration/threadRecency.ts",
@@ -23,11 +21,9 @@
     "apps/web/src/routes/_chat.todos.tsx",
     "apps/web/src/state/todos.ts",
     "docs/internals/downstream-modules.md",
-    "docs/internals/portable-client-protocol.md",
     "docs/operations/downstream-sync.md",
     "docs/user/todos.md",
     "docs/user/workspace.md",
-    "packages/contracts/scripts/generatePortableClientArtifacts.ts",
     "packages/contracts/src/environmentApi.ts",
     "scripts/check-downstream.test.ts",
     "scripts/check-downstream.ts",

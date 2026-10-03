@@ -9,16 +9,16 @@ update both baselines.
 Neither baseline is inferred from a moving branch.
 
 Upstream updates are manual. Fetch upstream with `jj git fetch --remote upstream --branch main`,
-preserve a backup bookmark, and rebase the fork stack onto the chosen upstream commit. Regenerate
-portable artifacts, validate the integration policy, typecheck affected packages, and run focused
+preserve a backup bookmark, and rebase the fork stack onto the chosen upstream commit. Validate
+the integration policy, typecheck affected packages, and run focused
 tests before pushing the candidate. There is no scheduled rebase or automatic mirror update.
 
 The root `.editorconfig` isolates this checkout from formatting rules in parent directories and
 keeps the upstream two-space indentation. Whole-file formatting changes expand the conflict surface
 without adding behavior; keep formatting limited to the files being changed.
 
-Resolve generated conflicts in `packages/contracts/portable/` by regenerating the artifacts from
-the final sources. Resolve source conflicts manually, preserving upstream and fork behavior.
+Resolve source conflicts manually, preserving upstream and fork behavior. Android clients use
+the upstream HTTP and WebSocket RPC contracts; the fork no longer publishes a portable adapter.
 
 Package versions stay at their upstream values on the feature branch. The release workflow stamps
 the selected fork version into its build checkout, refreshes the lockfile, and validates all release
@@ -33,7 +33,6 @@ In a Jujutsu workspace:
 jj status
 jj log -r 'conflicts()'
 node scripts/check-downstream.ts
-node packages/contracts/scripts/generatePortableClientArtifacts.ts --check
 node scripts/downstream-release-state.ts validate
 ```
 

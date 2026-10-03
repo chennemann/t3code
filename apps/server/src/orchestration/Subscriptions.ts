@@ -16,7 +16,6 @@ import * as Queue from "effect/Queue";
 import * as Stream from "effect/Stream";
 import { projectActivityEvent, projectThreadDetailSnapshot } from "./ActivityPayloadProjection.ts";
 import { OrchestrationEngineService } from "./Services/OrchestrationEngine.ts";
-import type { PortableOrchestrationSource } from "./Services/PortableOrchestrationSource.ts";
 import { ProjectionSnapshotQuery } from "./Services/ProjectionSnapshotQuery.ts";
 
 import { makeThreadLiveEventCoalescer } from "./ThreadLiveEventCoalescer.ts";
@@ -660,5 +659,5 @@ export const make = Effect.fnUntraced(function* (projectShellEvent?: ShellEventP
         afterSnapshot,
       );
     }).pipe(Effect.map((stream) => keepMonotonic(Stream.scoped(stream), -1, threadItemSequence)));
-  return { subscribeShell, subscribeThread } satisfies PortableOrchestrationSource["Service"];
+  return { subscribeShell, subscribeThread };
 });

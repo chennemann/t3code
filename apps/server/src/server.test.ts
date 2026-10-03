@@ -328,7 +328,6 @@ const testEnvironmentDescriptor = {
   serverVersion: "0.0.0-test",
   capabilities: {
     repositoryIdentity: true,
-    portableClientProtocol: 1 as const,
   },
 };
 const makeDefaultOrchestrationReadModel = () => {
@@ -2290,45 +2289,22 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
   );
 
-  it.effect("serves bearer-authenticated portable client configuration", () =>
+  it.effect("retired portable endpoints are unavailable", () =>
     Effect.gen(function* () {
       yield* buildAppUnderTest();
       const { body: token } = yield* exchangeAccessToken();
-      const url = yield* getHttpServerUrl("/api/environment/client-config");
-      const response = yield* fetchEffect(url, {
-        headers: { authorization: `Bearer ${token.access_token ?? ""}` },
-      });
-      const body = yield* responseJsonEffect<{
-        readonly protocolVersion: number;
-        readonly shellResumeCompletionMarker: boolean;
-        readonly threadResumeCompletionMarker: boolean;
-      }>(response);
-
-      assert.equal(response.status, 200);
-      assert.equal(body.protocolVersion, 1);
-      assert.equal(body.shellResumeCompletionMarker, true);
-      assert.equal(body.threadResumeCompletionMarker, true);
-    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
-  );
-
-  it.effect("rejects an unauthenticated portable shell stream", () =>
-    Effect.gen(function* () {
-      yield* buildAppUnderTest();
-      const url = yield* getHttpServerUrl("/api/orchestration/shell/stream");
-      const response = yield* fetchEffect(url);
-      assert.equal(response.status, 401);
-    }).pipe(Effect.provide(NodeHttpServer.layerTest)),
-  );
-
-  it.effect("requires a portable stream resume cursor", () =>
-    Effect.gen(function* () {
-      yield* buildAppUnderTest();
-      const { body: token } = yield* exchangeAccessToken();
-      const url = yield* getHttpServerUrl("/api/orchestration/shell/stream");
-      const response = yield* fetchEffect(url, {
-        headers: { authorization: `Bearer ${token.access_token ?? ""}` },
-      });
-      assert.equal(response.status, 400);
+      for (const endpoint of [
+        "/api/environment/client-config",
+        "/api/orchestration/shell/stream?afterSequence=0",
+        "/api/orchestration/threads/thread-test/stream?afterSequence=0",
+      ]) {
+        const url = yield* getHttpServerUrl(endpoint);
+        const response = yield* fetchEffect(url, {
+          headers: { authorization: `Bearer ${token.access_token ?? ""}` },
+        });
+        // Unmatched GETs reach the existing frontend fallback, whose assets are absent here.
+        assert.equal(response.status, 503);
+      }
     }).pipe(Effect.provide(NodeHttpServer.layerTest)),
   );
 

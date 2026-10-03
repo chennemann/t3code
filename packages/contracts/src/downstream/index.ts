@@ -8,5 +8,4 @@ export {
   TodoPlanningSubtask,
   TodoUpdatedPayload,
 } from "./orchestration.ts";
-export * from "./portableClient.ts";
 export { DEFAULT_TODO_PLANNING_INSTRUCTIONS } from "./settings.ts";
