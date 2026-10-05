@@ -104,5 +104,5 @@
     "apps/server/src/orchestration/ThreadPullRequestReactor.test.ts",
     "apps/server/src/orchestration/ThreadSettlementReactor.test.ts"
   ],
-  "baseCommit": "451afcb22d93f06cb24f9bc16703404564952553"
+  "baseCommit": "6c8fed35dded9ff71c5b46807125457acbb76be6"
 }
