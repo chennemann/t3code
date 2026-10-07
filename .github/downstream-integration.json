@@ -30,7 +30,14 @@
     "scripts/downstream-release-state.test.ts",
     "scripts/downstream-release-state.ts",
     ".editorconfig",
-    "apps/server/src/orchestration/Subscriptions.ts"
+    "apps/server/src/orchestration/Subscriptions.ts",
+    "apps/server/src/provider/Drivers/DevinDriver.ts",
+    "apps/server/src/provider/Layers/DevinAdapter.test.ts",
+    "apps/server/src/provider/Layers/DevinAdapter.ts",
+    "apps/server/src/provider/Layers/DevinProvider.ts",
+    "apps/server/src/provider/acp/DevinAcpSupport.ts",
+    "apps/server/src/textGeneration/DevinTextGeneration.ts",
+    "docs/user/providers-devin.md"
   ],
   "upstreamFiles": [
     "apps/desktop/src/preview/BrowserImport/ChromiumCookies.ts",
@@ -102,7 +109,22 @@
     "scripts/build-desktop-artifact.ts",
     "apps/web/src/components/ui/input.tsx",
     "apps/server/src/orchestration/ThreadPullRequestReactor.test.ts",
-    "apps/server/src/orchestration/ThreadSettlementReactor.test.ts"
+    "apps/server/src/orchestration/ThreadSettlementReactor.test.ts",
+    "apps/mobile/src/components/ProviderIcon.tsx",
+    "apps/mobile/src/features/threads/ThreadSettingsSheet.tsx",
+    "apps/server/scripts/acp-mock-agent.ts",
+    "apps/server/src/provider/acp/AcpSessionRuntime.ts",
+    "apps/server/src/provider/builtInDrivers.ts",
+    "apps/server/src/serverSettings.ts",
+    "apps/web/src/components/Icons.tsx",
+    "apps/web/src/components/chat/ChatComposer.tsx",
+    "apps/web/src/components/chat/CompactComposerControlsMenu.tsx",
+    "apps/web/src/components/chat/providerIconUtils.ts",
+    "apps/web/src/components/settings/providerDriverMeta.ts",
+    "docs/README.md",
+    "docs/user/install.md",
+    "packages/contracts/src/model.ts",
+    "packages/contracts/src/server.ts"
   ],
   "baseCommit": "6c8fed35dded9ff71c5b46807125457acbb76be6"
 }

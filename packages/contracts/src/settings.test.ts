@@ -781,6 +781,7 @@ describe("provider enabled defaults", () => {
     expect(decoded.providers.claudeAgent.enabled).toBe(true);
     expect(decoded.providers.cursor.enabled).toBe(false);
     expect(decoded.providers.grok.enabled).toBe(false);
+    expect(decoded.providers.devin.enabled).toBe(false);
     expect(decoded.providers.opencode.enabled).toBe(false);
   });
 
@@ -803,6 +804,9 @@ describe("provider enabled defaults", () => {
     const codex = ProviderDriverKind.make("codex");
     // No flags anywhere: driver default applies.
     expect(resolveProviderInstanceEnabled({ driver: grok, config: {} })).toBe(false);
+    expect(
+      resolveProviderInstanceEnabled({ driver: ProviderDriverKind.make("devin"), config: {} }),
+    ).toBe(false);
     expect(resolveProviderInstanceEnabled({ driver: codex, config: {} })).toBe(true);
     // Unknown fork drivers stay enabled.
     expect(

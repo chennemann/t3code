@@ -939,6 +939,13 @@ function ThreadSettingsChoiceContent(props: {
 }) {
   const insets = useSafeAreaInsets();
   const session = useThreadSettingsSession();
+  const configs = useAtomValue(environmentServerConfigsAtom);
+  const unsupportedRuntimeModes = session.environmentId
+    ? configs
+        .get(session.environmentId)
+        ?.providers.find((provider) => provider.instanceId === session.providerInstanceId)
+        ?.unsupportedRuntimeModes
+    : undefined;
   const descriptorId = props.submenu.kind === "descriptor" ? props.submenu.id : null;
 
   const activeDescriptor =
@@ -951,7 +958,9 @@ function ThreadSettingsChoiceContent(props: {
   const submenuContent =
     props.submenu.kind === "runtime"
       ? {
-          rows: RUNTIME_MODE_CHOICES.map((choice) => ({
+          rows: RUNTIME_MODE_CHOICES.filter(
+            (choice) => !unsupportedRuntimeModes?.includes(choice.mode),
+          ).map((choice) => ({
             id: choice.mode,
             label: choice.label,
             description: choice.description,

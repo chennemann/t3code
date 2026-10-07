@@ -1084,6 +1084,7 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
   interactionMode: ProviderInteractionMode;
   runtimeMode: RuntimeMode;
   size?: "sm" | "xs";
+  unsupportedRuntimeModes?: ReadonlyArray<RuntimeMode> | undefined;
   hidden?: boolean;
   onToggleInteractionMode: () => void;
   onRuntimeModeChange: (mode: RuntimeMode) => void;
@@ -1164,7 +1165,13 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
               const option = runtimeModeConfig[mode];
               const OptionIcon = option.icon;
               return (
-                <SelectItem key={mode} value={mode} hideIndicator className="min-w-64">
+                <SelectItem
+                  key={mode}
+                  value={mode}
+                  disabled={props.unsupportedRuntimeModes?.includes(mode)}
+                  hideIndicator
+                  className="min-w-64"
+                >
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="grid min-w-0 flex-1 gap-0.5">
                       <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
@@ -1172,7 +1179,9 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
                         {option.label}
                       </span>
                       <span className="text-muted-foreground text-xs leading-4">
-                        {option.description}
+                        {props.unsupportedRuntimeModes?.includes(mode)
+                          ? "Unavailable for this provider"
+                          : option.description}
                       </span>
                     </div>
                   </div>
@@ -4992,6 +5001,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           interactionMode={interactionMode}
           runtimeMode={runtimeMode}
           size={composerControlsInStrip ? "xs" : "sm"}
+          unsupportedRuntimeModes={selectedProviderStatus?.unsupportedRuntimeModes}
           hidden={composerControlsHidden || restingHiddenBlockCount > 0}
           onToggleInteractionMode={toggleInteractionMode}
           onRuntimeModeChange={handleRuntimeModeChange}
@@ -5145,6 +5155,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           <CompactComposerControlsMenu
             interactionMode={interactionMode}
             runtimeMode={runtimeMode}
+            unsupportedRuntimeModes={selectedProviderStatus?.unsupportedRuntimeModes}
             size={composerControlsInStrip ? "xs" : "sm"}
             hidden={composerControlsHidden || hiddenRestingBlockIds.length === 0}
             showInteractionModeToggle={planModeUiEnabled && hiddenRestingBlockIds.includes("mode")}

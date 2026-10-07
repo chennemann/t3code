@@ -16,6 +16,18 @@ export function ProviderIcon(props: ProviderIconProps) {
   const size = props.size ?? 16;
   const mono = isDarkMode ? "#e5e5e5" : "#171717";
 
+  if (props.provider === "devin") {
+    return (
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill={mono}>
+        <Path
+          fillRule="evenodd"
+          d="M5 3h6a9 9 0 1 1 0 18H5V3Zm4 4v10h2a5 5 0 0 0 0-10H9Z"
+          clipRule="evenodd"
+        />
+      </Svg>
+    );
+  }
+
   if (props.provider?.trim().toLowerCase() === "antigravity") {
     return (
       <Image

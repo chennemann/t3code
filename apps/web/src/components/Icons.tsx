@@ -2,6 +2,16 @@ import React, { type SVGProps, useId } from "react";
 import { cn } from "~/lib/utils";
 export type Icon = React.FC<SVGProps<SVGSVGElement>>;
 
+export const DevinIcon: Icon = (props) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+    <path
+      fillRule="evenodd"
+      d="M5 3h6a9 9 0 1 1 0 18H5V3Zm4 4v10h2a5 5 0 0 0 0-10H9Z"
+      clipRule="evenodd"
+    />
+  </svg>
+);
+
 export const UltrafastIcon: Icon = (props) => (
   <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
     <path d="m17 2-10 12h7l-1 8 10-12h-7l1-8Z" opacity="0.4" />
