@@ -1,6 +1,7 @@
 import type { SnapShotSource } from "@t3tools/contracts";
+import type { ImageAnnotation } from "@t3tools/contracts";
 
-import type { ComposerFileAttachment } from "../../composerDraftStore";
+import type { ComposerFileAttachment, ComposerImageAttachment } from "../../composerDraftStore";
 import { type ChatFileAttachment, type ChatImageAttachment, isVideoAttachment } from "../../types";
 import type {
   AssetCreateUrlResult,
@@ -30,11 +31,17 @@ export interface ExpandedImageItem {
   originalUrl?: string;
   srcFragment?: string;
   actionsSource?: MediaActionSource;
+  /** Present only for an image in the current reply, never for a sent message or agent image. */
+  composerImageId?: string;
+  annotations?: ReadonlyArray<ImageAnnotation>;
+  burnedAnnotationCount?: number;
 }
 
 export interface ExpandedImagePreview {
   images: ExpandedImageItem[];
   index: number;
+  /** Question answers have a separate attachment draft and cannot receive reply comments. */
+  annotationDisabled?: boolean;
 }
 
 /** Wraps navigation in either direction, including offsets beyond a complete cycle. */
@@ -166,8 +173,9 @@ export function attachVideoThumbnail(video: HTMLVideoElement, file: File): () =>
 }
 
 export function buildExpandedImagePreview(
-  images: ReadonlyArray<ChatImageAttachment | ComposerFileAttachment>,
+  images: ReadonlyArray<ChatImageAttachment | ComposerImageAttachment | ComposerFileAttachment>,
   selectedImageId: string,
+  options?: { fromComposer: boolean },
 ): ExpandedImagePreview | null {
   const selected = images.find((image) => image.id === selectedImageId);
   if (selected?.type === "file" && selected.file && isVideoAttachment(selected)) {
@@ -178,7 +186,17 @@ export function buildExpandedImagePreview(
   }
   const previewableImages = images.flatMap((image) =>
     image.type === "image" && image.previewUrl
-      ? [{ id: image.id, src: image.previewUrl, name: image.name, source: image.source }]
+      ? [
+          {
+            id: image.id,
+            src: image.previewUrl,
+            name: image.name,
+            source: image.source,
+            ...(options?.fromComposer ? { composerImageId: image.id } : {}),
+            annotations: image.annotations,
+            burnedAnnotationCount: image.burnedAnnotationCount,
+          },
+        ]
       : [],
   );
   if (previewableImages.length === 0) {
@@ -192,6 +210,11 @@ export function buildExpandedImagePreview(
     images: previewableImages.map((image) => ({
       src: image.src,
       name: image.name,
+      ...(image.composerImageId ? { composerImageId: image.composerImageId } : {}),
+      ...(image.annotations?.length ? { annotations: image.annotations } : {}),
+      ...(image.burnedAnnotationCount
+        ? { burnedAnnotationCount: image.burnedAnnotationCount }
+        : {}),
       ...(image.source?.kind === "snap-shot" ? { source: image.source } : {}),
     })),
     index: selectedIndex,

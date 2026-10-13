@@ -3407,6 +3407,7 @@ function ChatMarkdown({
         <ExpandedImageDialog
           preview={localMediaPreview}
           onClose={() => setLocalMediaPreview(null)}
+          composerTarget={componentState.threadRef}
         />
       ) : null}
     </div>

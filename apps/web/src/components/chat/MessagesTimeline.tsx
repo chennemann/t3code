@@ -148,6 +148,7 @@ import {
   buildExpandedImagePreview,
   ExpandedImagePreview,
 } from "./ExpandedImagePreview";
+import { ImageAnnotationIndicator } from "./ImageAnnotationIndicator";
 import {
   SNAP_SHOT_ATTACHMENT_FRAME_CLASS,
   SnapShotAttachmentDetails,
@@ -1972,10 +1973,30 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
   }, [previewUrls, projectPreviews, resources, row.message]);
   // The attachment union has an open member, so guards (not literal type
   // comparisons) split it. Unknown types render as inert rows below the files.
-  const userImages = useMemo(
-    () => (messageWithPreviews.attachments ?? []).filter(isImageAttachment),
-    [messageWithPreviews.attachments],
-  );
+  const userImages = useMemo(() => {
+    const annotationsById = new Map(
+      resolveUserMessageContext(row.message).records.flatMap((record) => {
+        const known = asKnownContextRecord(record);
+        return known?.kind === "image" && known.annotations
+          ? [
+              [
+                known.attachmentId,
+                {
+                  annotations: known.annotations,
+                  ...(known.burnedAnnotationCount
+                    ? { burnedAnnotationCount: known.burnedAnnotationCount }
+                    : {}),
+                },
+              ] as const,
+            ]
+          : [];
+      }),
+    );
+    return (messageWithPreviews.attachments ?? []).filter(isImageAttachment).map((image) => {
+      const annotations = annotationsById.get(image.id);
+      return annotations ? { ...image, ...annotations } : image;
+    });
+  }, [messageWithPreviews.attachments, row.message]);
   const userFiles = useMemo(
     () => (row.message.attachments ?? []).filter(isFileAttachment),
     [row.message.attachments],
@@ -2118,7 +2139,7 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
               <div
                 key={image.id}
                 className={cn(
-                  "bg-background/70",
+                  "relative bg-background/70",
                   image.source?.kind === "snap-shot" && image.previewUrl
                     ? cn(SNAP_SHOT_ATTACHMENT_FRAME_CLASS, "col-span-2")
                     : "aspect-[4/3] overflow-hidden rounded-lg border border-border/80",
@@ -2146,6 +2167,7 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
                     {image.name}
                   </div>
                 )}
+                <ImageAnnotationIndicator count={image.annotations?.length ?? 0} />
                 {image.previewUrl && image.source?.kind === "snap-shot" ? (
                   <SnapShotAttachmentDetails source={image.source} />
                 ) : null}

@@ -323,6 +323,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["timestamp clock locale system browser os 12 hour 24 hour"],
   },
   {
+    id: "image-open-action",
+    title: "Image open action",
+    to: "/settings/general",
+    searchTerms: ["screenshot annotation circle comments zoom default click preview"],
+  },
+  {
     id: "response-streaming",
     title: "Response streaming",
     to: "/settings/general",

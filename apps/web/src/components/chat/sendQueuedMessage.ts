@@ -10,6 +10,8 @@ import { applyClaudePromptEffortPrefix } from "@t3tools/shared/model";
 
 import { buildMessageContext, terminalContextReference } from "../../lib/composerContextRecords";
 import { removeInlineContextReference } from "../../lib/composerContextReferences";
+import { prepareAnnotatedAttachmentsForSend } from "../../lib/prepareAnnotatedAttachmentsForSend";
+import { appendImageAnnotationComments } from "../../lib/appendImageAnnotationComments";
 import {
   awaitAttachmentUploads,
   getUploadedAttachments,
@@ -60,6 +62,7 @@ export async function sendQueuedMessage(
   if (!message) return;
   const { sendSettings } = message;
   const attachments = [...message.images, ...message.files];
+  let sendAttachments = attachments;
   const readConfig = () => appAtomRegistry.get(environmentServerConfigsAtom).get(environmentId);
   const assertFilesAllowed = () => {
     const config = readConfig();
@@ -95,20 +98,26 @@ export async function sendQueuedMessage(
       )
       .trim();
     const text = applyClaudePromptEffortPrefix(
-      prompt || ATTACHMENT_ONLY_BOOTSTRAP_PROMPT,
+      appendImageAnnotationComments(prompt, message.images) || ATTACHMENT_ONLY_BOOTSTRAP_PROMPT,
       sendSettings.promptEffort,
     );
 
     assertFilesAllowed();
+    if (
+      message.images.some(
+        (image) => (image.annotations?.length ?? 0) > (image.burnedAnnotationCount ?? 0),
+      )
+    )
+      sendAttachments = await prepareAnnotatedAttachmentsForSend(attachments);
     const useUploads = readConfig()?.environment.capabilities.attachmentUploads === true;
     if (useUploads && attachments.length > 0) {
-      for (const attachment of attachments) {
+      for (const attachment of sendAttachments) {
         startAttachmentUpload({ environmentId, image: attachment, draftTarget: threadRef });
       }
-      await awaitAttachmentUploads(attachments.map((attachment) => attachment.id));
+      await awaitAttachmentUploads(sendAttachments.map((attachment) => attachment.id));
     }
     const wireAttachments = await Promise.all(
-      attachments.map(async (attachment) => {
+      sendAttachments.map(async (attachment) => {
         if (useUploads) {
           const uploaded = getUploadedAttachments({ environmentId, images: [attachment] })?.[0];
           if (!uploaded) throw new Error(`Attachment '${attachment.name}' did not upload.`);
@@ -168,8 +177,8 @@ export async function sendQueuedMessage(
       terminalContexts: sendableTerminalContexts,
       reviewComments: message.reviewComments,
       previewAnnotations: message.previewAnnotations,
-      attachments: attachments.map((attachment, index) => ({
-        attachment,
+      attachments: sendAttachments.map((attachment, index) => ({
+        attachment: { ...attachment, id: attachments[index]!.id },
         attachmentId: wireAttachments[index]?.id ?? attachment.id,
       })),
     });
@@ -207,5 +216,9 @@ export async function sendQueuedMessage(
       title: title ? `Queued message not sent in "${title}"` : "Queued message not sent",
       description: error instanceof Error ? error.message : "Use Send now to try again.",
     });
+  } finally {
+    releaseDraftAttachments(
+      sendAttachments.filter((attachment, index) => attachment.id !== attachments[index]?.id),
+    );
   }
 }

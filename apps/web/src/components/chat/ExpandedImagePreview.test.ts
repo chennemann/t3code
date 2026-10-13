@@ -45,6 +45,35 @@ describe("resolveMarkdownMediaPreview", () => {
 });
 
 describe("buildExpandedImagePreview", () => {
+  it("restores image annotations and identifies reply attachments separately from sent images", () => {
+    const file = new File([new Uint8Array([1, 2, 3])], "screen.png", { type: "image/png" });
+    const attachment = {
+      type: "image" as const,
+      id: "screen-1",
+      name: file.name,
+      mimeType: file.type,
+      sizeBytes: file.size,
+      previewUrl: "blob:screen",
+      annotations: [
+        { id: "circle-1", x: 0.1, y: 0.2, width: 0.3, height: 0.4, comment: "Change this." },
+      ],
+    };
+    expect(
+      buildExpandedImagePreview([{ ...attachment, file }], attachment.id, { fromComposer: true })
+        ?.images[0]?.composerImageId,
+    ).toBe(attachment.id);
+    expect(
+      buildExpandedImagePreview([attachment], attachment.id)?.images[0]?.composerImageId,
+    ).toBeUndefined();
+    expect(buildExpandedImagePreview([attachment], attachment.id)?.images[0]).toMatchObject({
+      src: attachment.previewUrl,
+      annotations: attachment.annotations,
+    });
+    expect(
+      buildExpandedImagePreview([{ ...attachment, file }], attachment.id)?.images[0]
+        ?.composerImageId,
+    ).toBeUndefined();
+  });
   it("builds a signed-asset preview for a persisted video attachment", () => {
     const preview = buildAttachmentVideoPreview(EnvironmentId.make("environment-1"), {
       type: "file",

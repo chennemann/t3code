@@ -14,6 +14,15 @@ import {
 
 const decodeClientSettings = Schema.decodeUnknownSync(ClientSettingsSchema);
 const decodeClientSettingsPatch = Schema.decodeUnknownSync(ClientSettingsPatch);
+
+describe("image open action", () => {
+  it("keeps zoom as the default and persists the annotation preference", () => {
+    expect(decodeClientSettings({}).imageOpenAction).toBe("zoom");
+    expect(decodeClientSettings({ imageOpenAction: "annotate" }).imageOpenAction).toBe("annotate");
+    expect(decodeClientSettingsPatch({ imageOpenAction: "zoom" }).imageOpenAction).toBe("zoom");
+    expect(() => decodeClientSettingsPatch({ imageOpenAction: "other" })).toThrow();
+  });
+});
 const encodeClientSettings = Schema.encodeSync(ClientSettingsSchema);
 const decodeServerSettings = Schema.decodeUnknownSync(ServerSettings);
 const decodeServerSettingsPatch = Schema.decodeUnknownSync(ServerSettingsPatch);

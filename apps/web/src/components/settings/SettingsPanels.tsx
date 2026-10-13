@@ -599,6 +599,9 @@ export function useSettingsRestore(onRestored?: () => void) {
         ? ["Rich text composer"]
         : []),
       ...(settings.sendShortcut !== DEFAULT_UNIFIED_SETTINGS.sendShortcut ? ["Send shortcut"] : []),
+      ...(settings.imageOpenAction !== DEFAULT_UNIFIED_SETTINGS.imageOpenAction
+        ? ["Image open action"]
+        : []),
       ...(settings.followUpBehavior !== DEFAULT_UNIFIED_SETTINGS.followUpBehavior
         ? ["Follow-up behavior"]
         : []),
@@ -660,6 +663,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       settings.appearanceContrast,
       settings.diffColorScheme,
       settings.chatWidth,
+      settings.imageOpenAction,
       settings.enableAgentBrowserAccess,
       settings.confirmQuit,
       settings.confirmThreadArchive,
@@ -774,6 +778,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       appearanceContrast: DEFAULT_UNIFIED_SETTINGS.appearanceContrast,
       diffColorScheme: DEFAULT_UNIFIED_SETTINGS.diffColorScheme,
       chatWidth: DEFAULT_UNIFIED_SETTINGS.chatWidth,
+      imageOpenAction: DEFAULT_UNIFIED_SETTINGS.imageOpenAction,
       timestampFormat: DEFAULT_UNIFIED_SETTINGS.timestampFormat,
       notificationMode: DEFAULT_UNIFIED_SETTINGS.notificationMode,
       inAppNotificationsEnabled: DEFAULT_UNIFIED_SETTINGS.inAppNotificationsEnabled,
@@ -2466,6 +2471,39 @@ export function GeneralSettingsPanel() {
                 <SelectItem hideIndicator value="24-hour">
                   {TIMESTAMP_FORMAT_LABELS["24-hour"]}
                 </SelectItem>
+              </SelectPopup>
+            </Select>
+          }
+        />
+        <SettingsRow
+          {...searchableSetting("image-open-action")}
+          description="Choose whether clicking a chat image opens zoom controls or editable annotations. You can switch modes in the preview."
+          resetAction={
+            settings.imageOpenAction !== DEFAULT_UNIFIED_SETTINGS.imageOpenAction ? (
+              <SettingResetButton
+                label="image open action"
+                onClick={() =>
+                  updateSettings({ imageOpenAction: DEFAULT_UNIFIED_SETTINGS.imageOpenAction })
+                }
+              />
+            ) : null
+          }
+          control={
+            <Select
+              value={settings.imageOpenAction}
+              onValueChange={(value) => {
+                if (value === "zoom" || value === "annotate")
+                  updateSettings({ imageOpenAction: value });
+              }}
+            >
+              <SelectTrigger size="sm" className="w-full sm:w-56" aria-label="Image open action">
+                <SelectValue>
+                  {settings.imageOpenAction === "annotate" ? "Annotate" : "Zoom"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectPopup align="end" alignItemWithTrigger={false}>
+                <SelectItem value="zoom">Zoom</SelectItem>
+                <SelectItem value="annotate">Annotate</SelectItem>
               </SelectPopup>
             </Select>
           }

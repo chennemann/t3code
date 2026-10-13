@@ -8,6 +8,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test"
 import { useQueuedMessageStore, type QueuedComposerMessage } from "../queuedMessageStore";
 import { sendQueuedMessage } from "./chat/sendQueuedMessage";
 import { QueuedMessageSender } from "./QueuedMessageSender";
+import { renderImageAnnotations } from "../lib/renderImageAnnotations";
+import { ATTACHMENT_ONLY_BOOTSTRAP_PROMPT } from "./chat/composerPromptHistory";
+import {
+  startAttachmentUpload,
+  getUploadedAttachments,
+  releaseDraftAttachments,
+} from "../lib/attachmentUploadQueue";
 
 const io = vi.hoisted(() => ({
   run: vi.fn(),
@@ -49,11 +56,12 @@ vi.mock("./ui/toast", () => ({ toastManager: { add: (...args: unknown[]) => io.t
 vi.mock("../lib/attachmentUploadQueue", () => ({
   startAttachmentUpload: vi.fn(),
   awaitAttachmentUploads: (...args: unknown[]) => io.upload(...args),
-  getUploadedAttachments: () => [
+  getUploadedAttachments: vi.fn(() => [
     { type: "image", id: "uploaded", name: "a.png", mimeType: "image/png", sizeBytes: 4 },
-  ],
+  ]),
   releaseDraftAttachments: vi.fn(),
 }));
+vi.mock("../lib/renderImageAnnotations", () => ({ renderImageAnnotations: vi.fn() }));
 
 const threadRef = scopeThreadRef(EnvironmentId.make("env-a"), ThreadId.make("thread-a"));
 const threadKey = scopedThreadKey(threadRef);
@@ -89,6 +97,14 @@ beforeEach(() => {
   io.run.mockReset().mockResolvedValue({ _tag: "Success", value: undefined });
   io.upload.mockReset().mockResolvedValue(undefined);
   io.toast.mockReset();
+  vi.mocked(startAttachmentUpload).mockClear();
+  vi.mocked(releaseDraftAttachments).mockClear();
+  vi.mocked(renderImageAnnotations).mockReset();
+  vi.mocked(getUploadedAttachments)
+    .mockReset()
+    .mockReturnValue([
+      { type: "image", id: "uploaded", name: "a.png", mimeType: "image/png", sizeBytes: 4 },
+    ]);
   io.shell = {
     modelSelection,
     branch: null,
@@ -102,6 +118,163 @@ afterEach(() => {
 });
 
 describe("QueuedMessageSender", () => {
+  it("dispatches a rendered snapshot with comments while keeping the queued original editable until it succeeds", async () => {
+    const file = new File(["original"], "a.png", { type: "image/png" });
+    const marked = new File(["burned pixels"], "a-annotated.png", { type: "image/png" });
+    const annotation = {
+      id: "circle-1",
+      x: 0.1,
+      y: 0.2,
+      width: 0.3,
+      height: 0.4,
+      comment: "Make this larger.",
+    };
+    const original = {
+      type: "image" as const,
+      id: "image-1",
+      name: file.name,
+      mimeType: file.type,
+      sizeBytes: file.size,
+      previewUrl: "data:image/png;base64,AAAA",
+      file,
+      annotations: [annotation],
+    };
+    vi.mocked(renderImageAnnotations).mockResolvedValue(marked);
+    vi.mocked(getUploadedAttachments).mockImplementation(({ images }) =>
+      images.map((image) => ({
+        type: image.type,
+        id: "uploaded-rendered",
+        name: image.name,
+        mimeType: image.mimeType,
+        sizeBytes: image.sizeBytes,
+      })),
+    );
+    const message = enqueue({ images: [original] });
+    await sendQueuedMessage(threadRef, message.id);
+    const exported = vi.mocked(startAttachmentUpload).mock.calls[0]?.[0].image;
+    expect(exported?.file).toBe(marked);
+    expect(exported?.id).not.toBe(original.id);
+    expect(io.run.mock.calls.at(-1)?.[2]).toMatchObject({
+      input: {
+        message: {
+          text: "follow up\n\nannotations for a.png:\n1. Make this larger.",
+          attachments: [{ name: marked.name, sizeBytes: marked.size, id: "uploaded-rendered" }],
+          context: {
+            records: [
+              {
+                contextId: "image_image-1",
+                burnedAnnotationCount: 1,
+                annotations: [annotation],
+                attachmentId: "uploaded-rendered",
+              },
+            ],
+          },
+        },
+      },
+    });
+    expect(original.file).toBe(file);
+    expect(original.annotations).toEqual([annotation]);
+    expect(queue()).toBeUndefined();
+    expect(releaseDraftAttachments).toHaveBeenCalledWith([exported]);
+  });
+
+  it("keeps the original and editable comments queued when rendering fails", async () => {
+    const file = new File(["original"], "a.png", { type: "image/png" });
+    const original = {
+      type: "image" as const,
+      id: "image-1",
+      name: file.name,
+      mimeType: file.type,
+      sizeBytes: file.size,
+      previewUrl: "data:image/png;base64,AAAA",
+      file,
+      annotations: [
+        { id: "circle-1", x: 0.1, y: 0.2, width: 0.3, height: 0.4, comment: "Make this larger." },
+      ],
+    };
+    vi.mocked(renderImageAnnotations).mockRejectedValue(new Error("Cannot decode image."));
+    const message = enqueue({ images: [original] });
+    await sendQueuedMessage(threadRef, message.id);
+    expect(commandsRun()).toEqual([]);
+    expect(queue()?.[0]?.images[0]).toBe(original);
+    expect(queue()?.[0]?.holdUntilUserAction).toBe(true);
+    expect(io.toast).toHaveBeenCalledWith(
+      expect.objectContaining({ description: "Cannot decode image." }),
+    );
+    expect(queue()?.[0]?.prompt).toBe("follow up");
+
+    vi.mocked(renderImageAnnotations).mockResolvedValue(
+      new File(["marked"], "a-annotated.png", { type: "image/png" }),
+    );
+    await sendQueuedMessage(threadRef, message.id);
+    expect(io.run.mock.calls.at(-1)?.[2]).toMatchObject({
+      input: { message: { text: "follow up\n\nannotations for a.png:\n1. Make this larger." } },
+    });
+    expect(queue()).toBeUndefined();
+  });
+
+  it("sends grouped comments instead of the attachment-only placeholder without draft text", async () => {
+    const image = (name: string, comments: string[]) => ({
+      type: "image" as const,
+      id: name,
+      name,
+      mimeType: "image/png",
+      sizeBytes: 4,
+      previewUrl: "data:image/png;base64,AAAA",
+      file: new File(["AAAA"], name, { type: "image/png" }),
+      burnedAnnotationCount: comments.length,
+      annotations: comments.map((comment, index) => ({
+        id: `circle-${index}`,
+        x: 0.1,
+        y: 0.2,
+        width: 0.3,
+        height: 0.4,
+        comment,
+      })),
+    });
+    const message = enqueue({
+      prompt: "",
+      images: [
+        image("image1.png", ["annotation 1", "annotation 2"]),
+        image("image2.png", ["annotation 1", "annotation 2"]),
+      ],
+    });
+    await sendQueuedMessage(threadRef, message.id);
+    expect(io.run.mock.calls.at(-1)?.[2]).toMatchObject({
+      input: {
+        message: {
+          text: "annotations for image1.png:\n1. annotation 1\n2. annotation 2\n\nannotations for image2.png:\n1. annotation 1\n2. annotation 2",
+        },
+      },
+    });
+    expect(renderImageAnnotations).not.toHaveBeenCalled();
+  });
+
+  it("keeps the attachment-only placeholder when circles have no comment text", async () => {
+    const message = enqueue({
+      prompt: "",
+      images: [
+        {
+          type: "image",
+          id: "image-1",
+          name: "a.png",
+          mimeType: "image/png",
+          sizeBytes: 4,
+          previewUrl: "data:image/png;base64,AAAA",
+          file: new File(["AAAA"], "a.png", { type: "image/png" }),
+          burnedAnnotationCount: 1,
+          annotations: [
+            { id: "circle-1", x: 0.1, y: 0.2, width: 0.3, height: 0.4, comment: "  \n  " },
+          ],
+        },
+      ],
+    });
+    await sendQueuedMessage(threadRef, message.id);
+    expect(io.run.mock.calls.at(-1)?.[2]).toMatchObject({
+      input: { message: { text: ATTACHMENT_ONLY_BOOTSTRAP_PROMPT } },
+    });
+  });
+
   const thread = (
     status: string,
     { toolActivityIds = [] as string[], userMessageIds = [] as string[] } = {},
