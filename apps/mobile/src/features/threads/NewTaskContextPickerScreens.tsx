@@ -371,8 +371,10 @@ export function NewTaskBranchPickerRouteScreen() {
           if (mountedRef.current && navigation.isFocused() && !isAtomCommandInterrupted(result)) {
             const error = squashAtomCommandFailure(result);
             Alert.alert(
-              "Could not switch branch",
-              error instanceof Error ? error.message : "The branch could not be checked out.",
+              `Could not switch ${flow.vcsTerminology.refNoun}`,
+              error instanceof Error
+                ? error.message
+                : `The ${flow.vcsTerminology.refNoun} could not be checked out.`,
             );
           }
           return;
@@ -401,15 +403,17 @@ export function NewTaskBranchPickerRouteScreen() {
       flow.selectedProject,
       flow.setBranchQuery,
       flow.workspaceMode,
+      flow.vcsTerminology,
       navigation,
       switchRef,
     ],
   );
 
+  const terminology = flow.vcsTerminology;
   const renderBranch = useCallback(
     ({ item, index }: { readonly item: VcsRef; readonly index: number }) => (
       <BranchSelectionRow
-        badge={branchBadgeLabel({ branch: item, project: flow.selectedProject })}
+        badge={branchBadgeLabel({ branch: item, project: flow.selectedProject, terminology })}
         branch={item}
         disabled={switchingBranchName !== null}
         isFirst={index === 0}
@@ -419,6 +423,7 @@ export function NewTaskBranchPickerRouteScreen() {
       />
     ),
     [
+      terminology,
       flow.filteredBranches.length,
       flow.selectedProject,
       selectBranch,
@@ -464,12 +469,12 @@ export function NewTaskBranchPickerRouteScreen() {
           {flow.branchesLoading ? <ActivityIndicator /> : null}
           <Text className="text-center text-sm text-foreground-muted">
             {flow.branchesLoading
-              ? "Loading branches…"
+              ? `Loading ${terminology.refNounPlural}…`
               : flow.branchesError
                 ? flow.branchesError
                 : flow.branchQuery
-                  ? "No matching branches"
-                  : "No branches available"}
+                  ? `No matching ${terminology.refNounPlural}`
+                  : `No ${terminology.refNounPlural} available`}
           </Text>
           {!flow.branchesLoading && flow.branchesError ? (
             <Pressable
@@ -524,13 +529,13 @@ export function NewTaskBranchPickerRouteScreen() {
           <TextInput
             autoCapitalize="none"
             autoCorrect={false}
-            accessibilityLabel="Find a branch"
+            accessibilityLabel={`Find a ${terminology.refNoun}`}
             className="h-12 rounded-full border border-input-border bg-input px-4 font-sans text-base text-foreground"
             selectionColorClassName="accent-focus/32"
             cursorColorClassName="accent-focus"
             selectionHandleColorClassName="accent-focus"
             onChangeText={flow.setBranchQuery}
-            placeholder="Find a branch"
+            placeholder={`Find a ${terminology.refNoun}`}
             placeholderTextColorClassName="accent-placeholder"
             value={flow.branchQuery}
           />
@@ -550,7 +555,7 @@ export function NewTaskBranchPickerRouteScreen() {
             ? () => [
                 createNativeMailSearchToolbarItem({
                   onSearchTextChange: flow.setBranchQuery,
-                  placeholder: "Find a branch",
+                  placeholder: `Find a ${terminology.refNoun}`,
                   searchTextChangeId: "new-task-branch-search-text",
                   showsSearchDismissButton: true,
                 }),
@@ -563,7 +568,7 @@ export function NewTaskBranchPickerRouteScreen() {
                 autoCapitalize: "none",
                 hideNavigationBar: false,
                 obscureBackground: false,
-                placeholder: "Find a branch",
+                placeholder: `Find a ${terminology.refNoun}`,
                 onChangeText: (event) => {
                   flow.setBranchQuery(event.nativeEvent.text);
                 },

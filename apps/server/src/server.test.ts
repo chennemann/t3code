@@ -179,6 +179,7 @@ import * as VcsProvisioningService from "./vcs/VcsProvisioningService.ts";
 import * as GitHubCli from "./sourceControl/GitHubCli.ts";
 import * as VcsProcess from "./vcs/VcsProcess.ts";
 import * as GitWorkflowService from "./git/GitWorkflowService.ts";
+import * as JjWorkflow from "./jj/JjWorkflow.ts";
 import * as ReviewService from "./review/ReviewService.ts";
 import * as SourceControlRepositoryService from "./sourceControl/SourceControlRepositoryService.ts";
 import { REPLAY_MARKER_MAX_AGE } from "./auth/replayMarkers.ts";
@@ -661,6 +662,7 @@ const buildAppUnderTest = (options?: {
     };
     const vcsDriverRegistryLayer = Layer.mock(VcsDriverRegistry.VcsDriverRegistry)({
       get: () => Effect.succeed(defaultVcsDriver),
+      invalidate: () => Effect.void,
       detect: (input) =>
         defaultVcsDriver.detectRepository(input.cwd).pipe(
           Effect.filterOrElse(
@@ -736,6 +738,13 @@ const buildAppUnderTest = (options?: {
       NativeAppIconResolver.layer,
     );
     const gitWorkflowLayer = GitWorkflowService.layer.pipe(
+      Layer.provide(
+        Layer.mock(JjWorkflow.JjWorkflow)({
+          invalidateLocalStatus: () => Effect.void,
+          invalidateRemoteStatus: () => Effect.void,
+          invalidateStatus: () => Effect.void,
+        }),
+      ),
       Layer.provideMerge(vcsDriverRegistryLayer),
       Layer.provideMerge(gitVcsDriverLayer),
       Layer.provideMerge(gitManagerLayer),
@@ -8908,6 +8917,9 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
       let statusCalls = 0;
       yield* buildAppUnderTest({
         layers: {
+          vcsDriver: {
+            isInsideWorkTree: () => Effect.succeed(true),
+          },
           gitVcsDriver: {
             pullCurrentBranch: () => Effect.fail(gitError),
           },
@@ -8988,6 +9000,9 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
       let statusCalls = 0;
       yield* buildAppUnderTest({
         layers: {
+          vcsDriver: {
+            isInsideWorkTree: () => Effect.succeed(true),
+          },
           gitManager: {
             invalidateLocalStatus: () =>
               Effect.sync(() => {
@@ -9062,6 +9077,9 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
     Effect.gen(function* () {
       yield* buildAppUnderTest({
         layers: {
+          vcsDriver: {
+            isInsideWorkTree: () => Effect.succeed(true),
+          },
           gitVcsDriver: {
             pullCurrentBranch: () =>
               Effect.succeed({

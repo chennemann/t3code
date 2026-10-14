@@ -5,6 +5,12 @@ import type {
 } from "@t3tools/contracts";
 import { isTemporaryWorktreeBranch } from "@t3tools/shared/git";
 import {
+  DEFAULT_VCS_TERMINOLOGY,
+  resolveVcsTerminology,
+  resolveVcsUnsupportedReason,
+  type VcsTerminology,
+} from "@t3tools/shared/vcs";
+import {
   DEFAULT_CHANGE_REQUEST_TERMINOLOGY,
   getChangeRequestTerminology,
   type ChangeRequestTerminology,
@@ -59,9 +65,11 @@ export function buildGitActionProgressStages(input: {
   featureBranch?: boolean;
   shouldPushBeforePr?: boolean;
   terminology?: ChangeRequestTerminology;
+  vcsTerminology?: VcsTerminology;
 }): string[] {
   const terminology = input.terminology ?? DEFAULT_CHANGE_REQUEST_TERMINOLOGY;
-  const branchStages = input.featureBranch ? ["Preparing feature ref..."] : [];
+  const vcs = input.vcsTerminology ?? DEFAULT_VCS_TERMINOLOGY;
+  const branchStages = input.featureBranch ? [`Preparing feature ${vcs.refNoun}...`] : [];
   const pushStage = input.pushTarget ? `Pushing to ${input.pushTarget}...` : "Pushing...";
   const prStages = [
     `Preparing ${terminology.shortLabel}...`,
@@ -97,6 +105,7 @@ export function buildMenuItems(
   hasPrimaryRemote = true,
 ): GitActionMenuItem[] {
   if (!gitStatus) return [];
+  isBusy ||= resolveVcsUnsupportedReason(gitStatus) !== null;
   const terminology = resolveChangeRequestTerminology(gitStatus);
 
   const hasBranch = gitStatus.refName !== null;
@@ -169,6 +178,7 @@ export function resolveQuickAction(
   isBusy: boolean,
   isDefaultRef = false,
   hasPrimaryRemote = true,
+  canPublishRepository = false,
 ): GitQuickAction {
   if (isBusy) {
     return { label: "Commit", disabled: true, kind: "show_hint", hint: "Git action in progress." };
@@ -191,13 +201,19 @@ export function resolveQuickAction(
   const isBehind = gitStatus.behindCount > 0;
   const isDiverged = isAhead && isBehind;
   const terminology = resolveChangeRequestTerminology(gitStatus);
+  const vcs = resolveVcsTerminology(gitStatus);
+
+  const unsupportedReason = resolveVcsUnsupportedReason(gitStatus);
+  if (unsupportedReason !== null) {
+    return { label: "Commit", disabled: true, kind: "show_hint", hint: unsupportedReason };
+  }
 
   if (!hasBranch) {
     return {
       label: "Commit",
       disabled: true,
       kind: "show_hint",
-      hint: `Create and checkout a ref before pushing or opening a ${terminology.singular}.`,
+      hint: `Create and check out a ${vcs.refNoun} before pushing or opening a ${terminology.singular}.`,
     };
   }
 
@@ -218,14 +234,14 @@ export function resolveQuickAction(
 
   if (!gitStatus.hasUpstream) {
     if (!hasPrimaryRemote) {
-      if (hasOpenPr && !isAhead) {
-        return { label: `View ${terminology.shortLabel}`, disabled: false, kind: "open_pr" };
-      }
-      return {
-        label: "Publish repository",
-        disabled: false,
-        kind: "open_publish",
-      };
+      return canPublishRepository
+        ? { label: "Publish repository", disabled: false, kind: "open_publish" }
+        : {
+            label: "Publish repository",
+            disabled: true,
+            kind: "show_hint",
+            hint: "Publishing is unavailable here.",
+          };
     }
     if (!isAhead) {
       if (hasOpenPr) {
@@ -256,10 +272,10 @@ export function resolveQuickAction(
 
   if (isDiverged) {
     return {
-      label: "Sync ref",
+      label: `Sync ${vcs.refNoun}`,
       disabled: true,
       kind: "show_hint",
-      hint: "Branch has diverged from upstream. Rebase/merge first.",
+      hint: `${vcs.refNounTitle} has diverged from upstream. Rebase/merge first.`,
     };
   }
 
@@ -305,7 +321,7 @@ export function resolveQuickAction(
     label: "Commit",
     disabled: true,
     kind: "show_hint",
-    hint: "Branch is up to date. No action needed.",
+    hint: `${vcs.refNounTitle} is up to date. No action needed.`,
   };
 }
 
@@ -327,21 +343,23 @@ export function resolveDefaultBranchActionDialogCopy(input: {
   branchName: string;
   includesCommit: boolean;
   terminology?: ChangeRequestTerminology;
+  vcsTerminology?: VcsTerminology;
 }): DefaultBranchActionDialogCopy {
   const branchLabel = input.branchName;
-  const suffix = ` on "${branchLabel}". You can continue on this ref or create a feature ref and run the same action there.`;
+  const vcs = input.vcsTerminology ?? DEFAULT_VCS_TERMINOLOGY;
+  const suffix = ` on "${branchLabel}". You can continue on this ${vcs.refNoun} or create a feature ${vcs.refNoun} and run the same action there.`;
   const terminology = input.terminology ?? DEFAULT_CHANGE_REQUEST_TERMINOLOGY;
 
   if (input.action === "push" || input.action === "commit_push") {
     if (input.includesCommit) {
       return {
-        title: "Commit & push to default ref?",
+        title: `Commit & push to default ${vcs.refNoun}?`,
         description: `This action will commit and push changes${suffix}`,
         continueLabel: `Commit & push to ${branchLabel}`,
       };
     }
     return {
-      title: "Push to default ref?",
+      title: `Push to default ${vcs.refNoun}?`,
       description: `This action will push local commits${suffix}`,
       continueLabel: `Push to ${branchLabel}`,
     };
@@ -349,13 +367,13 @@ export function resolveDefaultBranchActionDialogCopy(input: {
 
   if (input.includesCommit) {
     return {
-      title: `Commit, push & create ${terminology.shortLabel} from default ref?`,
+      title: `Commit, push & create ${terminology.shortLabel} from default ${vcs.refNoun}?`,
       description: `This action will commit, push, and create a ${terminology.singular}${suffix}`,
       continueLabel: `Commit, push & create ${terminology.shortLabel}`,
     };
   }
   return {
-    title: `Push & create ${terminology.shortLabel} from default ref?`,
+    title: `Push & create ${terminology.shortLabel} from default ${vcs.refNoun}?`,
     description: `This action will push local commits and create a ${terminology.singular}${suffix}`,
     continueLabel: `Push & create ${terminology.shortLabel}`,
   };

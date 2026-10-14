@@ -71,6 +71,11 @@ import {
 import { useDebouncedValue, usePaginatedBranches } from "../../state/queries";
 import { vcsEnvironment } from "../../state/vcs";
 import {
+  DEFAULT_VCS_TERMINOLOGY,
+  resolveVcsTerminology,
+  type VcsTerminology,
+} from "@t3tools/shared/vcs";
+import {
   flattenQueuedThreadMessages,
   threadOutboxManager,
   type QueuedThreadMessage,
@@ -132,12 +137,13 @@ function findQueuedPendingTask(messageId: string): QueuedThreadMessage | null {
 export function branchBadgeLabel(input: {
   readonly branch: VcsRef;
   readonly project: EnvironmentProject | null;
+  readonly terminology?: VcsTerminology;
 }): string | null {
   if (input.branch.current) {
     return "current";
   }
   if (input.branch.worktreePath && input.branch.worktreePath !== input.project?.workspaceRoot) {
-    return "worktree";
+    return (input.terminology ?? DEFAULT_VCS_TERMINOLOGY).workspaceNoun;
   }
   if (input.branch.isRemote) {
     return "remote";
@@ -171,6 +177,7 @@ type NewTaskFlowContextValue = {
   readonly hasMoreBranches: boolean;
   readonly availableBranches: ReadonlyArray<VcsRef>;
   readonly currentCheckoutBranchName: string | null;
+  readonly vcsTerminology: VcsTerminology;
   readonly runtimeMode: RuntimeMode;
   readonly interactionMode: ProviderInteractionMode;
   readonly planModeEnabled: boolean;
@@ -718,6 +725,7 @@ export function NewTaskFlowProvider(props: React.PropsWithChildren) {
       : null,
   );
   const currentCheckoutBranchName = projectGitStatus.data?.refName ?? null;
+  const vcsTerminology = resolveVcsTerminology(projectGitStatus.data);
 
   const filteredBranches = useMemo(
     () => filterNewTaskBranches(allBranchRefs, branchQuery),
@@ -1230,6 +1238,7 @@ export function NewTaskFlowProvider(props: React.PropsWithChildren) {
       selectedProviderStatus,
       providerGroups,
       filteredBranches,
+      vcsTerminology,
       reset,
       setProject,
       openDraft,
@@ -1267,6 +1276,7 @@ export function NewTaskFlowProvider(props: React.PropsWithChildren) {
       buildPendingTaskMessage,
       cancelEditingPendingTask,
       currentCheckoutBranchName,
+      vcsTerminology,
       editingPendingTask,
       environments,
       expandedProvider,

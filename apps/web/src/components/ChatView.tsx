@@ -362,6 +362,7 @@ import { vcsEnvironment } from "../state/vcs";
 import { sourceControlEnvironment } from "../state/sourceControl";
 import { useProjectClone } from "../state/projectClones";
 import { projectCloneDisplayName, projectCloneProgressSummary } from "@t3tools/contracts";
+import { resolveVcsTerminology } from "@t3tools/shared/vcs";
 import { useEnvironments, usePrimaryEnvironment } from "../state/environments";
 import {
   useProject,
@@ -3658,6 +3659,7 @@ export default function ChatView(props: ChatViewProps) {
           input: { cwd: gitStatusCwd },
         }),
   );
+  const vcsTerminology = resolveVcsTerminology(gitStatusQuery.data);
   useWorkspaceMutationRefresh({
     enabled: gitStatusCwd !== null,
     mutationId: workspaceMutationId,
@@ -6564,7 +6566,9 @@ export default function ChatView(props: ChatViewProps) {
         icon: <GitBranchIcon />,
         title: (
           <span className="flex min-w-0 items-baseline gap-1.5">
-            <span className="shrink-0 font-normal text-muted-foreground">Branch changed — was</span>
+            <span className="shrink-0 font-normal text-muted-foreground">
+              {vcsTerminology.refNounTitle} changed — was
+            </span>
             <Tooltip>
               <TooltipTrigger
                 render={
@@ -6587,10 +6591,10 @@ export default function ChatView(props: ChatViewProps) {
             disabled={isRestoringThreadBranch}
             onClick={handleRestoreThreadBranch}
           >
-            {isRestoringThreadBranch ? "Restoring..." : "Restore branch"}
+            {isRestoringThreadBranch ? "Restoring..." : `Restore ${vcsTerminology.refNoun}`}
           </Button>
         ),
-        dismissLabel: "Dismiss branch change notice",
+        dismissLabel: `Dismiss ${vcsTerminology.refNoun} change notice`,
         onDismiss: () => {
           dismissBranchMismatchForSession(activeBranchMismatchKey);
           setBranchMismatchDismissTick((tick) => tick + 1);
@@ -6611,6 +6615,7 @@ export default function ChatView(props: ChatViewProps) {
     showBranchMismatchBanner,
     systemComposerBannerItems,
     usageLimitsBanner,
+    vcsTerminology,
     wokeThreadBannerItem,
   ]);
   useEffect(() => {
@@ -10083,6 +10088,7 @@ export default function ChatView(props: ChatViewProps) {
                       <ComposerSurface.Host>
                         <div ref={attachDraftHeroComposerAnchorRef} className="relative z-10">
                           <ChatComposer
+                            workspaceNoun={vcsTerminology.workspaceNoun}
                             multipleModelSelections={multipleModelSelections}
                             supportsMultipleModels={
                               serverConfig?.environment.capabilities.requiredWorktreeBootstrap ===
@@ -10298,8 +10304,8 @@ export default function ChatView(props: ChatViewProps) {
                     ?
                   </AlertDialogTitle>
                   <AlertDialogDescription>
-                    You have uncommitted changes. They'll carry over to the other branch, or block
-                    the switch if they conflict.
+                    You have uncommitted changes. They'll carry over to the other{" "}
+                    {vcsTerminology.refNoun}, or block the switch if they conflict.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -10311,7 +10317,7 @@ export default function ChatView(props: ChatViewProps) {
                       void handleSwitchCheckoutToThread();
                     }}
                   >
-                    Switch branch
+                    Switch {vcsTerminology.refNoun}
                   </Button>
                 </AlertDialogFooter>
               </AlertDialogPopup>

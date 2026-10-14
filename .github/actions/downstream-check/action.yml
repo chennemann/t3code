@@ -18,6 +18,9 @@ runs:
           vp run --filter "$package" typecheck
         done
 
+    - name: Install Jujutsu for compatibility tests
+      uses: ./.github/actions/setup-jj
+
     - name: Lint and test fork changes
       shell: bash
       run: |
