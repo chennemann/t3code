@@ -19,7 +19,7 @@ jobs:
   preflight:
     name: Validate downstream release
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 25
     outputs:
       status: ${{ steps.existing.outputs.status }}
       version: ${{ steps.release.outputs.version }}
@@ -38,6 +38,9 @@ jobs:
           node-version-file: package.json
           cache: true
           run-install: true
+
+      - name: Validate downstream compatibility before building a release
+        uses: ./.github/actions/downstream-check
 
       - id: commit
         name: Verify release commit and remotes
