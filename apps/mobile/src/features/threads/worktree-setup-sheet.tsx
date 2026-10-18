@@ -3,13 +3,14 @@ import { AppSheet } from "../../components/AppSheet";
 
 export interface WorktreeSetupSheetProps {
   children: ReactElement;
+  title: string;
   height: number;
   onClose: () => void;
 }
 
-export function WorktreeSetupSheet({ children, onClose }: WorktreeSetupSheetProps) {
+export function WorktreeSetupSheet({ children, onClose, title }: WorktreeSetupSheetProps) {
   return (
-    <AppSheet title="Worktree setup" onClose={onClose}>
+    <AppSheet title={title} onClose={onClose}>
       {children}
     </AppSheet>
   );

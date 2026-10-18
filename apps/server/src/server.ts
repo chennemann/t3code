@@ -1,3 +1,9 @@
+import * as JjVcsDriver from "./vcs/JjVcsDriver.ts";
+import * as WorkPlanningStore from "./downstream/features/workPlanning/Store.ts";
+import * as WorkPlanningService from "./downstream/features/workPlanning/Service.ts";
+import * as DownstreamDatabase from "./downstream/persistence/Database.ts";
+import * as TerminalShellPolicy from "./downstream/features/terminalShell/ShellPolicy.ts";
+import * as JjWorkflow from "./jj/JjWorkflow.ts";
 import * as ProviderEventLoggers from "@t3tools/provider-core/server/ProviderEventLoggers";
 import type { RelayManagedEndpointRuntimeConfig } from "@t3tools/contracts/relay";
 import * as Clock from "effect/Clock";
@@ -361,11 +367,19 @@ const layerGit = Layer.empty.pipe(
 );
 
 const layerGitWorkflow = GitWorkflowService.layer.pipe(
+  Layer.provideMerge(
+    JjWorkflow.layer.pipe(
+      Layer.provide(JjVcsDriver.layer),
+      Layer.provide(Layer.merge(ProjectionStoreV2.layer, ProjectStore.layer)),
+      Layer.provide(layerGitManager),
+    ),
+  ),
   Layer.provideMerge(layerVcsDriverRegistry),
   Layer.provideMerge(layerGit),
 );
 
 const layerSourceControlRepositoryService = SourceControlRepositoryService.layer.pipe(
+  Layer.provide(layerGitWorkflow),
   Layer.provideMerge(GitVcsDriver.layer),
   Layer.provideMerge(layerSourceControlProviderRegistry),
 );
@@ -405,7 +419,8 @@ const layerCheckpointStore = CheckpointStore.layer.pipe(Layer.provide(layerVcsDr
 
 const layerPortScanner = PortScanner.layer.pipe(Layer.provide(ProcessRunner.layer));
 
-const layerTerminal = TerminalManager.layer.pipe(
+const layerTerminal = TerminalManager.layerWithShellPolicy.pipe(
+  Layer.provide(TerminalShellPolicy.layer),
   Layer.provide(layerPtyAdapter),
   Layer.provide(layerPortScanner),
   Layer.provide(layerNativeTelemetry),
@@ -589,6 +604,8 @@ const layerRuntimeCoreDependenciesBase = Layer.mergeAll(
   Layer.effectDiscard(ProjectSettingsOverrideSweep.sweep),
 ).pipe(
   // Core Services
+  Layer.provideMerge(WorkPlanningService.layer),
+  Layer.provideMerge(WorkPlanningStore.layer.pipe(Layer.provide(DownstreamDatabase.layer))),
   Layer.provideMerge(layerOrchestrationApplication),
   Layer.provideMerge(RuntimeLayer.layerEventInfrastructure),
   Layer.provideMerge(Layer.merge(ProjectStore.layer, ThreadSearch.layer)),

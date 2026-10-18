@@ -1,3 +1,4 @@
+import * as FileSystem from "effect/FileSystem";
 import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import { expect, it } from "@effect/vitest";
 import { DEFAULT_SERVER_SETTINGS, EnvironmentId, ProjectId } from "@t3tools/contracts";
@@ -137,7 +138,10 @@ it.effect("parks automatic pull until activation without delaying command readin
         Layer.mock(ProjectStore.ProjectStoreV2)({
           listShells: () => Effect.succeed(snapshot.projects),
         }),
-        Layer.mock(ProjectService.ProjectService)({ snapshot: Effect.succeed(snapshot) }),
+        Layer.mock(ProjectService.ProjectService)({
+          snapshot: Effect.succeed(snapshot),
+          getById: () => Effect.succeedSome({ ...snapshot.projects[0]!, title: "Workspace" }),
+        }),
         Layer.mock(ThreadManagement.ThreadManagementService)({
           getShellSnapshot: () =>
             Effect.succeed({
@@ -164,6 +168,7 @@ it.effect("parks automatic pull until activation without delaying command readin
         }),
         Layer.mock(AnalyticsService.AnalyticsService)({ record: () => Effect.void }),
         NodeCrypto.layer,
+        FileSystem.layerNoop({ makeDirectory: () => Effect.void }),
         Layer.mock(EnvironmentAuth.EnvironmentAuth)({}),
         Layer.mock(ExternalLauncher.ExternalLauncher)({}),
         Layer.mock(HttpServer.HttpServer)({

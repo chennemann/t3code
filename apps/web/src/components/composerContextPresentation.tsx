@@ -203,7 +203,14 @@ function ImageContextChip(props: {
             name={props.record.name}
             previewUrl={props.record.previewUrl}
             size={formatAttachmentSize(props.record.sizeBytes)}
-            suffix={uploadStatusSuffix(props.upload)}
+            suffix={[
+              uploadStatusSuffix(props.upload),
+              props.record.annotations?.length
+                ? `${props.record.annotations.length} annotations`
+                : "",
+            ]
+              .filter(Boolean)
+              .join(" · ")}
             onClick={() => actions.expandImage(props.record.id)}
           />
         }

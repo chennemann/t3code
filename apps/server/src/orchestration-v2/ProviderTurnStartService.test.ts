@@ -953,6 +953,36 @@ effectIt.effect("does not mistake a failed state read for a superseded run", () 
   }),
 );
 
+effectIt.effect(
+  "sends persisted planning instructions only to the provider, including retries",
+  () =>
+    Effect.gen(function* () {
+      for (const retry of [false, true]) {
+        const harness = makeLocalCommandHarness({
+          text: "Help me plan this",
+          failReadsAfterRunning: true,
+        });
+        const projection = harness.projection();
+        harness.setProjection({
+          ...projection,
+          messages: projection.messages.map((message) => ({
+            ...message,
+            context: {
+              version: 1,
+              records: [],
+              agentInstructions: "Do not implement; finalize the plan.",
+            },
+          })),
+        });
+        yield* retry ? harness.startWithRetry : harness.start;
+        expect(harness.startRootRun.mock.calls[0]?.[0].message.text).toBe(
+          "<agent_instructions>\nDo not implement; finalize the plan.\n</agent_instructions>\n\n<user_message>\nHelp me plan this\n</user_message>",
+        );
+        expect(harness.projection().messages.at(-1)?.text).toBe("Help me plan this");
+      }
+    }),
+);
+
 effectIt.effect("does not overwrite a run interrupted while its thread loads", () =>
   Effect.gen(function* () {
     const harness = makeLocalCommandHarness({

@@ -383,7 +383,7 @@ function migrateLegacySourceControlSettings(
 // Drivers that start disabled, so a session in the history means the user
 // turned them on before the instance kept an explicit flag.
 const HISTORY_RESTORED_DRIVERS: ReadonlySet<ProviderDriverKind> = new Set(
-  ["cursor", "grok", "opencode"].map((driver) => ProviderDriverKind.make(driver)),
+  ["cursor", "grok", "devin", "opencode"].map((driver) => ProviderDriverKind.make(driver)),
 );
 
 /**

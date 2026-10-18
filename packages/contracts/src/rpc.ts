@@ -1,3 +1,4 @@
+import { TodoClientCommand } from "./downstream/orchestration.ts";
 import {
   OrchestrationV2SearchThreadError,
   OrchestrationV2SearchThreadInput,
@@ -370,6 +371,7 @@ import { VcsError } from "./vcs.ts";
 import { Project, ProjectMutation, ProjectMutationError } from "./project.ts";
 
 export const WS_METHODS = {
+  todosDispatch: "todos.dispatch",
   // Project registry methods
   projectsList: "projects.list",
   projectsAdd: "projects.add",
@@ -1876,6 +1878,11 @@ export class RpcScopeAuthorization extends RpcMiddleware.Service<RpcScopeAuthori
 ) {}
 
 export const WsRpcGroup = RpcGroup.make(
+  Rpc.make(WS_METHODS.todosDispatch, {
+    payload: TodoClientCommand,
+    success: Schema.Struct({ sequence: NonNegativeInt }),
+    error: Schema.Union([OrchestrationDispatchCommandError, EnvironmentAuthorizationError]),
+  }),
   WsServerProbeRpc,
   WsServerGetConfigRpc,
   WsServerRefreshProvidersRpc,

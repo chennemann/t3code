@@ -26,7 +26,7 @@ const TEMP_WORKTREE_BRANCH_PATTERN = new RegExp(
 );
 
 /**
- * Sanitize an arbitrary string into a valid, lowercase git refName fragment.
+ * Sanitize an arbitrary string into a valid, lowercase git branch fragment.
  * Strips quotes, collapses separators, limits to 64 chars.
  */
 export function sanitizeBranchFragment(raw: string): string {
@@ -388,6 +388,7 @@ function toRemoteStatusPart(status: VcsStatusResult): VcsStatusRemoteResult {
 function toLocalStatusPart(status: VcsStatusResult): VcsStatusLocalResult {
   return {
     isRepo: status.isRepo,
+    ...(status.vcs ? { vcs: status.vcs } : {}),
     ...(status.sourceControlProvider
       ? { sourceControlProvider: status.sourceControlProvider }
       : {}),

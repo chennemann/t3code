@@ -1,3 +1,4 @@
+import { prepareCoreDatabase } from "../downstream/persistence/prepareCoreDatabase.ts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as FileSystem from "effect/FileSystem";
@@ -32,6 +33,7 @@ const layerSetup = Layer.effectDiscard(
     // PASSIVE checkpoints never shrink the -wal file, so it otherwise keeps its
     // largest size until the last connection closes.
     yield* sql.unsafe(`PRAGMA journal_size_limit = ${WAL_SIZE_LIMIT_BYTES};`);
+    yield* prepareCoreDatabase();
     yield* runMigrations();
     // Without sqlite_stat1 the planner guesses at index selectivity. 0x10012
     // analyzes tables whose indexes lack stats or whose row count changed 10x,

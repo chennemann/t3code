@@ -160,6 +160,13 @@ export function applyShellStreamEvent(
       return {
         ...snapshot,
         projects: snapshot.projects.filter((project) => project.id !== event.projectId),
+        ...(snapshot.todos === undefined
+          ? {}
+          : {
+              todos: snapshot.todos.map((todo) =>
+                todo.projectId === event.projectId ? { ...todo, projectId: null } : todo,
+              ),
+            }),
         snapshotSequence: event.sequence,
       };
     case "thread.updated": {
@@ -192,6 +199,22 @@ export function applyShellStreamEvent(
         ...snapshot,
         threads: snapshot.threads.filter((thread) => thread.id !== event.threadId),
         archivedThreads: snapshot.archivedThreads.filter((thread) => thread.id !== event.threadId),
+        snapshotSequence: event.sequence,
+      };
+    case "todo-upserted": {
+      const todos = snapshot.todos ?? [];
+      return {
+        ...snapshot,
+        todos: todos.some((todo) => todo.id === event.todo.id)
+          ? todos.map((todo) => (todo.id === event.todo.id ? event.todo : todo))
+          : [...todos, event.todo],
+        snapshotSequence: event.sequence,
+      };
+    }
+    case "todo-removed":
+      return {
+        ...snapshot,
+        todos: (snapshot.todos ?? []).filter((todo) => todo.id !== event.todoId),
         snapshotSequence: event.sequence,
       };
     default:

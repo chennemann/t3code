@@ -2,6 +2,8 @@ import { remapComposerContextAttachments } from "@t3tools/shared/composerContext
 import {
   type ThreadLinkedPullRequest,
   CommandId,
+  TodoId,
+  type TodoClientCommand,
   CheckpointId,
   CheckpointScopeId,
   ORCHESTRATION_V2_WS_METHODS,
@@ -167,6 +169,7 @@ interface StartThreadBootstrap {
 }
 
 export interface StartThreadTurnInput extends ThreadCommandInput {
+  readonly agentInstructions?: string;
   readonly manualContinuationOfRunId?: RunId;
   readonly message: {
     readonly messageId: MessageId;
@@ -249,6 +252,7 @@ export interface RetryWorkspacePreparationInput extends ThreadCommandInput {
 export interface EditQueuedRunInput extends ThreadCommandInput {
   readonly runId: RunId;
   readonly text: string;
+  readonly agentInstructions?: string;
   /**
    * Full replacement attachment list for the queued message. Omitted =
    * text-only edit that leaves attachments untouched. `dataUrl` entries are
@@ -638,7 +642,14 @@ export const startThreadTurn = Effect.fn("EnvironmentCommands.startThreadTurn")(
     input.message.attachments,
   );
   const context = remapComposerContextAttachments(
-    input.message.context,
+    input.agentInstructions === undefined
+      ? input.message.context
+      : {
+          version: 1,
+          records: [],
+          ...input.message.context,
+          agentInstructions: input.agentInstructions,
+        },
     input.message.attachments,
     attachments,
   );
@@ -1043,6 +1054,19 @@ export const editQueuedRun = Effect.fn("EnvironmentCommands.editQueuedRun")(func
     input.edit === undefined
       ? undefined
       : yield* persistAttachments(input.threadId, input.edit.messageId, input.edit.attachments);
+  const editedContext =
+    input.edit?.context && attachments
+      ? remapComposerContextAttachments(input.edit.context, input.edit.attachments, attachments)
+      : undefined;
+  const context =
+    input.agentInstructions === undefined
+      ? editedContext
+      : {
+          version: 1 as const,
+          records: [],
+          ...editedContext,
+          agentInstructions: input.agentInstructions,
+        };
   return yield* dispatch({
     type: "queued-run.edit",
     commandId: yield* allocateCommandId(input),
@@ -1050,15 +1074,7 @@ export const editQueuedRun = Effect.fn("EnvironmentCommands.editQueuedRun")(func
     runId: input.runId,
     text: input.text,
     ...(attachments === undefined ? {} : { attachments }),
-    ...(input.edit?.context && attachments
-      ? {
-          context: remapComposerContextAttachments(
-            input.edit.context,
-            input.edit.attachments,
-            attachments,
-          ),
-        }
-      : {}),
+    ...(context === undefined ? {} : { context }),
   });
 });
 
@@ -1104,3 +1120,15 @@ export const unlinkThreadPullRequest = Effect.fn("EnvironmentCommands.unlinkThre
     });
   },
 );
+
+type TodoInput<T extends TodoClientCommand["type"]> = Omit<
+  Extract<TodoClientCommand, { type: T }>,
+  "type" | "commandId"
+> &
+  CommandMetadata;
+export type CreateTodoInput = Omit<TodoInput<"todo.create">, "todoId" | "createdAt"> & {
+  readonly todoId?: TodoId;
+  readonly createdAt?: string;
+};
+export type UpdateTodoInput = TodoInput<"todo.update">;
+export type DeleteTodoInput = TodoInput<"todo.delete">;

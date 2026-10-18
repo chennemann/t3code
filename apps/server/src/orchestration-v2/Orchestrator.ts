@@ -4708,6 +4708,26 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
         projection = yield* getProjectionWithPendingEvents(command.threadId, events);
       }
       const userMessages = projection.messages.filter((message) => message.role === "user");
+      const lastUserMessage = userMessages.at(-1);
+      const recencyNow = yield* DateTime.now;
+      if (
+        command.createdBy === "user" &&
+        lastUserMessage !== undefined &&
+        DateTime.toEpochMillis(recencyNow) - DateTime.toEpochMillis(lastUserMessage.createdAt) >=
+          36 * 60 * 60 * 1_000
+      ) {
+        yield* emit(
+          events,
+          command,
+        )({
+          type: "thread.metadata-updated",
+          threadId: command.threadId,
+          occurredAt: recencyNow,
+          payload: { ...projection.thread, recencyAnchorAt: recencyNow, activeOrderKey: null },
+        });
+        projection = yield* getProjectionWithPendingEvents(command.threadId, events);
+      }
+
       const onlyMaintenanceHistory =
         userMessages.length > 0 && userMessages.every(isNativeMaintenanceCommand);
       if (
@@ -7997,6 +8017,18 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
       const emitEvent = emit(events, command);
       const editedAttachments =
         command.attachments === undefined ? {} : { attachments: command.attachments };
+      // Editors on other clients may replace visible context without knowing the
+      // planning directive. Keep it until an editor explicitly replaces it.
+      const editedContext =
+        command.context === undefined
+          ? undefined
+          : {
+              ...command.context,
+              ...(command.context.agentInstructions === undefined &&
+              queuedMessage.context?.agentInstructions !== undefined
+                ? { agentInstructions: queuedMessage.context.agentInstructions }
+                : {}),
+            };
       yield* emitEvent({
         type: "message.updated",
         threadId: command.threadId,
@@ -8008,7 +8040,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
           ...queuedMessage,
           text: command.text,
           ...editedAttachments,
-          ...(command.context ? { context: command.context } : {}),
+          ...(editedContext ? { context: editedContext } : {}),
           updatedAt: now,
         },
       });
@@ -8024,7 +8056,7 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
             ...queuedTurnItem,
             text: command.text,
             ...editedAttachments,
-            ...(command.context ? { context: command.context } : {}),
+            ...(editedContext ? { context: editedContext } : {}),
             updatedAt: now,
           },
         });

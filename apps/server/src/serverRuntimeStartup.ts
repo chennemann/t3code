@@ -1,3 +1,4 @@
+import { startup as downstreamStartup } from "./downstream/Runtime.ts";
 import {
   CommandId,
   DEFAULT_MODEL,
@@ -463,6 +464,7 @@ const make = (options?: StartupOptions) =>
     );
 
     const startup = Effect.gen(function* () {
+      yield* runStartupPhase("workspace.ensure", downstreamStartup);
       yield* Effect.logDebug("startup phase: starting keybindings runtime");
       yield* runStartupPhase(
         "keybindings.start",

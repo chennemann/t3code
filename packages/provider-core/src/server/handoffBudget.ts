@@ -10,6 +10,7 @@ import type {
 } from "@t3tools/contracts";
 
 import * as Config from "effect/Config";
+import { decorateUserMessage } from "@t3tools/shared/composerContextReferences";
 
 export const DEFAULT_HANDOFF_TOKEN_CAP = 16_000;
 const HANDOFF_BYTE_CAP = 64_000;
@@ -143,6 +144,13 @@ export function historicalMessage(
   let text: string;
   switch (item.type) {
     case "user_message":
+      text = decorateUserMessage({
+        message: item.text,
+        ...(item.context?.agentInstructions === undefined
+          ? {}
+          : { agentInstructions: item.context.agentInstructions }),
+      });
+      break;
     case "assistant_message":
       text = item.text;
       break;

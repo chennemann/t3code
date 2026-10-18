@@ -1,5 +1,6 @@
 import type {
   ApplicationStoredEvent,
+  OrchestrationTodo,
   OrchestrationProjectShell,
   OrchestrationV2ArchivedShellStreamItem,
   OrchestrationV2ShellSnapshot,
@@ -22,6 +23,7 @@ import * as Stream from "effect/Stream";
 /** Build the regular navigation shell without duplicating the archive dataset. */
 export function buildActiveShellSnapshot(input: {
   readonly projects: ReadonlyArray<OrchestrationProjectShell>;
+  readonly todos?: ReadonlyArray<OrchestrationTodo>;
   readonly threads: OrchestrationV2ThreadShellSnapshot;
   readonly snapshotSequence: number;
 }): OrchestrationV2ShellSnapshot {
@@ -29,6 +31,7 @@ export function buildActiveShellSnapshot(input: {
     schemaVersion: input.threads.schemaVersion,
     snapshotSequence: input.snapshotSequence,
     projects: input.projects,
+    ...(input.todos === undefined ? {} : { todos: input.todos }),
     threads: input.threads.threads,
     archivedThreads: [],
   };
@@ -40,11 +43,12 @@ export function buildActiveShellSnapshot(input: {
  * after it commits, because the server shares one SQLite connection and
  * decoding a large shell takes longer than reading it.
  */
-export const loadShellSnapshotParts = <E1, E2, E3, E4>(input: {
+export const loadShellSnapshotParts = <E1, E2, E3, E4, E5 = never>(input: {
   readonly sql: SqlClient.SqlClient;
   readonly readThreads: Effect.Effect<Effect.Effect<OrchestrationV2ThreadShellSnapshot, E2>, E1>;
   readonly listProjects: Effect.Effect<ReadonlyArray<OrchestrationProjectShell>, E3>;
   readonly latestSequence: Effect.Effect<number, E4>;
+  readonly listTodos?: Effect.Effect<ReadonlyArray<OrchestrationTodo>, E5>;
 }) =>
   Effect.gen(function* () {
     // Read on the reader worker, off the event loop and the writer.
@@ -53,12 +57,14 @@ export const loadShellSnapshotParts = <E1, E2, E3, E4>(input: {
         Effect.all({
           decodeThreads: input.readThreads,
           projects: input.listProjects,
+          todos: input.listTodos ?? Effect.succeed(undefined),
           snapshotSequence: input.latestSequence,
         }),
       )
       .pipe(NodeSqliteClient.readOnly);
     return {
       projects: read.projects,
+      ...(read.todos === undefined ? {} : { todos: read.todos }),
       threads: yield* read.decodeThreads,
       snapshotSequence: read.snapshotSequence,
     };
@@ -69,6 +75,10 @@ export type ShellApplicationEvent =
       Extract<ApplicationStoredEvent, { readonly aggregateKind: "project" }>,
       "aggregateKind" | "aggregateId" | "type" | "sequence"
     >
+  | Pick<
+      Extract<ApplicationStoredEvent, { readonly aggregateKind: "todo" }>,
+      "aggregateKind" | "aggregateId" | "type" | "sequence"
+    >
   | {
       readonly sequence: number;
       readonly event: Pick<OrchestrationV2StoredEvent["event"], "threadId">;
@@ -76,6 +86,13 @@ export type ShellApplicationEvent =
 
 /** Shell updates refetch an aggregate; drop transcript bodies before retaining an event. */
 export function toShellApplicationEvent(stored: ApplicationStoredEvent): ShellApplicationEvent {
+  if ("aggregateKind" in stored && stored.aggregateKind === "todo")
+    return {
+      aggregateKind: "todo",
+      aggregateId: stored.aggregateId,
+      type: stored.type,
+      sequence: stored.sequence,
+    };
   return "aggregateKind" in stored
     ? {
         aggregateKind: stored.aggregateKind,
@@ -94,7 +111,7 @@ export function coalesceShellApplicationEvents<A extends ShellApplicationEvent>(
   for (const stored of events) {
     const key =
       "aggregateKind" in stored
-        ? `project:${stored.aggregateId}`
+        ? `${stored.aggregateKind}:${stored.aggregateId}`
         : `thread:${stored.event.threadId}`;
     latestByAggregate.set(key, stored);
   }

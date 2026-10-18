@@ -61,6 +61,23 @@ update it with `git pull` and a rebuild.
 
 ## Desktop app
 
+For this fork, download the Windows x64 `.exe` installer or Linux x64 `.AppImage`
+from [the fork's releases](https://github.com/chennemann/t3code/releases/latest).
+Use the AppImage on Omarchy and other Arch-based distributions; the `.deb` is for
+Debian and Ubuntu. Package-manager commands below install the upstream app.
+
+On Omarchy, install FUSE support, make the downloaded AppImage executable, and
+launch it from a directory where you want to keep it:
+
+```bash
+sudo pacman -S --needed fuse2
+chmod +x ./T3-Code-*.AppImage
+./T3-Code-*.AppImage
+```
+
+Keep one AppImage in that directory so the wildcard selects a single file.
+The desktop app checks this fork for subsequent updates.
+
 Download a release from [GitHub Releases](https://github.com/pingdotgg/t3code/releases),
 or use a package manager:
 
@@ -139,6 +156,7 @@ computer.
 | Claude      | Install [Claude Code](https://claude.com/product/claude-code), then run `claude auth login`.                                                              |
 | Cursor      | Install [Cursor CLI](https://cursor.com/cli), then run `agent login`.                                                                                     |
 | Grok Build  | Install [Grok Build CLI](https://x.ai/cli), then run `grok login`.                                                                                        |
+| Devin       | Install [Devin CLI](https://docs.devin.ai/cli), then run `devin auth login`.                                                                              |
 | OpenCode    | Install [OpenCode](https://opencode.ai), then run `opencode auth login`.                                                                                  |
 | Antigravity | Install and sign in with Google from T3 Code's provider settings.                                                                                         |
 | Pi          | Install [Pi](./providers-pi.md#set-up-pi) with Node.js 22.19 or newer, then run `pi` and `/login`.                                                        |
@@ -170,7 +188,7 @@ base URL. Mark secret values as sensitive; after saving, T3 Code does not displa
 their original values.
 
 For provider-specific setup and accounts, see [Codex](./providers-codex.md),
-[Claude](./providers-claude.md), [OpenCode](./providers-opencode.md),
+[Claude](./providers-claude.md), [Devin](./providers-devin.md), [OpenCode](./providers-opencode.md),
 [Antigravity](./providers-antigravity.md), [Pi](./providers-pi.md), and
 [Muse Code](./providers-muse.md).
 

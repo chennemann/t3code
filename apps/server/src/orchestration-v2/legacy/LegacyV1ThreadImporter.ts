@@ -60,6 +60,7 @@ interface LegacyThreadRow {
   readonly linked_pull_request_json: string | null;
   readonly branch_pull_request_json: string | null;
   readonly active_order_key: string | null;
+  readonly recency_anchor_at?: string | null;
   readonly deleted_at: string | null;
 }
 
@@ -218,6 +219,7 @@ function importedThread(row: LegacyThreadRow): OrchestrationV2AppThread {
     pullRequests: importedPullRequests,
     branchPullRequest: branchPullRequestFor(row),
     activeOrderKey: row.active_order_key?.trim() || null,
+    recencyAnchorAt: nullableDateTime(row.recency_anchor_at ?? null),
     activeProviderThreadId: null,
     historyOrigin: "v1_import",
     lineage: {

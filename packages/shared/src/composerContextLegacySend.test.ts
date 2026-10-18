@@ -5,6 +5,30 @@ import { upgradeLegacyContextMessage } from "./composerContextLegacy.ts";
 import { formatComposerContextReference } from "./composerContextReferences.ts";
 import { serializeLegacyContextMessage } from "./composerContextLegacySend.ts";
 
+it("sends image annotation comments and their regions to servers without inline context", () => {
+  const result = serializeLegacyContextMessage({
+    text: "Please change this.",
+    records: [
+      {
+        version: 1,
+        contextId: ComposerContextId.make("image_pic"),
+        kind: "image",
+        label: "original.png",
+        name: "original.png",
+        attachmentId: "att_original",
+        mimeType: "image/png",
+        sizeBytes: 10,
+        annotations: [
+          { id: "circle-1", x: 0.1, y: 0.2, width: 0.3, height: 0.4, comment: "Larger checkbox." },
+        ],
+      },
+    ],
+  });
+  expect(result).toContain("Image: original.png");
+  expect(result).toContain("1. x=0.1, y=0.2, width=0.3, height=0.4");
+  expect(result).toContain("Larger checkbox.");
+});
+
 const terminal = {
   version: 1,
   contextId: ComposerContextId.make("terminal_t1"),

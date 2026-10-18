@@ -466,6 +466,8 @@ const make = Effect.gen(function* () {
       yield* Effect.gen(function* () {
         if (!(yield* fs.exists(worktreePath))) return;
         if (deleted && !settings.worktreeOnDelete) return keep("no rules apply");
+        if (yield* fs.exists(path.join(worktreePath, ".jj")))
+          return keep("Jujutsu workspace requires explicit cleanup");
         const shared = groups.get(worktreePath)?.length ?? 0;
         if (shared > 1) return keep(`shared by ${shared} threads`);
         if (project === undefined) return keep("project is unavailable");

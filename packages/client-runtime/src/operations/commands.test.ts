@@ -285,6 +285,7 @@ describe("V2 environment commands", () => {
 
       yield* startThreadTurn({
         commandId: CommandId.make("implement-plan"),
+        agentInstructions: "Plan only; finalize through the planning tool.",
         threadId: v2ThreadId,
         message: {
           messageId: MessageId.make("message-implementation"),
@@ -312,6 +313,12 @@ describe("V2 environment commands", () => {
         threadId: v2ThreadId,
         titleSeed: "Implement the plan",
         sourcePlanRef: { threadId: "thread-plan", planId: "plan-1" },
+        text: "Implement the plan",
+        context: {
+          version: 1,
+          records: [],
+          agentInstructions: "Plan only; finalize through the planning tool.",
+        },
         deliveryIntent: "auto",
         dispatchMode: { type: "start_immediately" },
       });
@@ -325,6 +332,7 @@ describe("V2 environment commands", () => {
 
       yield* startThreadTurn({
         commandId: CommandId.make("launch-existing-worktree"),
+        agentInstructions: "Keep this planning directive hidden.",
         threadId: v2ThreadId,
         message: {
           messageId: MessageId.make("message-existing-worktree"),
@@ -353,6 +361,14 @@ describe("V2 environment commands", () => {
         threadId: v2ThreadId,
         title: "Continue here",
         generateTitle: true,
+        initialMessage: {
+          text: "Continue here",
+          context: {
+            version: 1,
+            records: [],
+            agentInstructions: "Keep this planning directive hidden.",
+          },
+        },
         workspaceStrategy: {
           type: "existing_worktree",
           worktreePath: "/workspace/project-worktrees/feature",
@@ -681,6 +697,7 @@ describe("V2 environment commands", () => {
         }).pipe(provide);
         yield* editQueuedRun({
           commandId: CommandId.make("edit-attachments"),
+          agentInstructions: "Updated planning directive.",
           threadId: v2ThreadId,
           runId: RunId.make("run-3"),
           text: "updated queued text with attachments",
@@ -713,6 +730,7 @@ describe("V2 environment commands", () => {
             type: "queued-run.edit",
             runId: "run-3",
             text: "updated queued text with attachments",
+            context: { version: 1, records: [], agentInstructions: "Updated planning directive." },
             attachments: [{ id: "attachment-kept" }],
           },
         ]);

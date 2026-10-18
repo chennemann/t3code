@@ -21,6 +21,7 @@ function importedItem(
   input:
     | {
         readonly role: "user";
+        readonly agentInstructions?: string;
         readonly id: string;
         readonly text: string;
         readonly ordinal: number;
@@ -59,6 +60,11 @@ function importedItem(
         type: "user_message",
         inputIntent: "turn_start",
         attachments: [],
+        ...(input.agentInstructions === undefined
+          ? {}
+          : {
+              context: { version: 1, records: [], agentInstructions: input.agentInstructions },
+            }),
       }
     : {
         ...base,
@@ -77,7 +83,13 @@ it.layer(layerTest)("ContextHandoffService legacy import", (it) => {
         toProviderThreadId: ProviderThreadId.make("provider-thread:first-v2"),
         toProviderInstanceId: ProviderInstanceId.make("codex"),
         items: [
-          importedItem({ role: "user", id: "one", text: "What did we decide?", ordinal: 1 }),
+          importedItem({
+            role: "user",
+            id: "one",
+            text: "What did we decide?",
+            ordinal: 1,
+            agentInstructions: "Keep planning; do not implement.",
+          }),
           importedItem({
             role: "assistant",
             id: "two",
@@ -91,6 +103,11 @@ it.layer(layerTest)("ContextHandoffService legacy import", (it) => {
       assert.equal(handoff.strategy, "manual_context");
       assert.deepStrictEqual(handoff.fromProviderThreadIds, []);
       assert.include(handoff.summaryText, "What did we decide?");
+      assert.include(handoff.summaryText, "<agent_instructions>\nKeep planning; do not implement.");
+      assert.include(
+        handoff.history!.messages[0]!.text,
+        "<agent_instructions>\nKeep planning; do not implement.",
+      );
       assert.include(handoff.summaryText, "keep the migration lightweight");
       const providerMessage = ContextHandoffService.providerMessageWithContextHandoff({
         handoff,

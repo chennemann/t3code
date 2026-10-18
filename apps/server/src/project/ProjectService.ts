@@ -1,5 +1,6 @@
 import {
   CommandId,
+  WORKSPACE_PROJECT_ID,
   type OrchestrationProjectShell,
   ProjectId,
   type Project,
@@ -507,6 +508,13 @@ export const make = Effect.gen(function* () {
   const deleteProject: ProjectService["Service"]["delete"] = Effect.fn("ProjectService.delete")(
     function* (input) {
       const { projectId } = input;
+      if (projectId === WORKSPACE_PROJECT_ID) {
+        return yield* new ProjectOperationError({
+          operation: "dispatch-project-command",
+          projectId,
+          cause: new Error("The managed Workspace cannot be deleted."),
+        });
+      }
       // A deleted row still reaches commit, so a retried command id replays its
       // receipt and any other command id is rejected as not found.
       const existing = yield* readRow(projectId, { includeDeleted: true });

@@ -1,3 +1,4 @@
+import { WorkPlanningStore } from "./downstream/features/workPlanning/Store.ts";
 import { assert, it } from "@effect/vitest";
 import {
   ORCHESTRATION_PROTOCOL_VERSION,
@@ -327,6 +328,10 @@ it.live.each(["thread", "shell"] as const)(
             }).pipe(Effect.flatMap(consume));
       });
       const items = yield* subscription.pipe(
+        Effect.provideService(WorkPlanningStore, {
+          list: Effect.succeed([]),
+          applyEvent: () => Effect.void,
+        }),
         Effect.provideService(ThreadManagement.ThreadManagementService, {
           ensureLegacyTranscript: () => Effect.void,
           streamStoredEventsFrom: (

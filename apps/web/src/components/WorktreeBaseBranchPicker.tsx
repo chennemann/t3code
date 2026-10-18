@@ -4,7 +4,7 @@ import { useDeferredValue, useMemo, useState } from "react";
 
 import { usePaginatedBranches } from "../state/queries";
 import { useEnvironmentQuery } from "../state/query";
-import { vcsEnvironment } from "../state/vcs";
+import { useVcsTerminology, vcsEnvironment } from "../state/vcs";
 import { BranchPicker, BranchPickerRefItem } from "./BranchPicker";
 import { resolveBranchTriggerLabel, sanitizeNewRefName } from "./BranchToolbar.logic";
 import { MiddleTruncate } from "./ui/middle-truncate";
@@ -50,7 +50,9 @@ export function WorktreeBaseBranchPicker({
   const selectedRef =
     branches.refs.find((branch) => branch.name === value) ??
     selectedRefQuery.data?.refs.find((branch) => branch.name === value);
+  const terminology = useVcsTerminology(environmentId, cwd);
   const label = resolveBranchTriggerLabel({
+    terminology,
     activeWorktreePath: null,
     effectiveEnvMode: "worktree",
     resolvedActiveBranch: value || null,

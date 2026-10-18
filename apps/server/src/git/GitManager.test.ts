@@ -1,3 +1,4 @@
+import * as JjWorkflow from "../jj/JjWorkflow.ts";
 import { SourceControlProviderKind } from "@t3tools/contracts";
 // @effect-diagnostics nodeBuiltinImport:off
 import * as NodeFS from "node:fs";
@@ -726,7 +727,7 @@ function makeManager(input?: {
   ghScenario?: FakeGhScenario;
   sourceControlProvider?: SourceControlProvider["Service"];
   textGeneration?: Partial<FakeGitTextGeneration>;
-  serverSettings?: Parameters<typeof ServerSettings.layerTest>[0];
+  serverSettings?: Parameters<typeof ServerSettings.ServerSettingsService.layerTest>[0];
   setupScriptRunner?: ProjectSetupScriptRunner.ProjectSetupScriptRunner["Service"];
   gitConfigReads?: string[];
   /** Records the arguments of every git process the manager starts. */
@@ -895,6 +896,13 @@ it.layer(layerGitManagerTest)("GitManager", (it) => {
       let remoteReads = 0;
       const workflowContext = yield* Layer.build(
         GitWorkflowService.layer.pipe(
+          Layer.provide(
+            Layer.mock(JjWorkflow.JjWorkflow)({
+              invalidateLocalStatus: () => Effect.void,
+              invalidateRemoteStatus: () => Effect.void,
+              invalidateStatus: () => Effect.void,
+            }),
+          ),
           Layer.provide(
             Layer.succeed(GitManager.GitManager, {
               ...manager,

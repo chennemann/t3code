@@ -1,3 +1,4 @@
+import { WorkPlanningStore } from "../downstream/features/workPlanning/Store.ts";
 import {
   AuthSessionId,
   type AuthEnvironmentScope,
@@ -130,6 +131,7 @@ it.effect("exports full history with size, scope, and missing-thread checks", ()
     });
     const routes = HttpApiBuilder.layer(TranscriptTestApi).pipe(
       Layer.provide(OrchestrationHttp.layer),
+      Layer.provide(Layer.mock(WorkPlanningStore)({ list: Effect.succeed([]) })),
       Layer.provide(
         Layer.succeed(ServerEnvironment.ServerEnvironmentIdentity, {
           getEnvironmentId: Effect.succeed(environmentId),

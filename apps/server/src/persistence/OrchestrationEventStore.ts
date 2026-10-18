@@ -12,6 +12,7 @@
  */
 import {
   ApplicationEventMetadata,
+  ApplicationTodoEvent,
   ApplicationProjectEvent,
   type ApplicationStoredEvent,
   CommandId,
@@ -59,6 +60,10 @@ export class OrchestrationEventStore extends Context.Service<
     readonly appendProjectEvent: (
       event: UnsequencedProjectEvent,
     ) => Effect.Effect<ApplicationProjectEvent, OrchestrationEventStoreError>;
+
+    readonly appendTodoEvent: (
+      event: Omit<ApplicationTodoEvent, "sequence">,
+    ) => Effect.Effect<ApplicationTodoEvent, OrchestrationEventStoreError>;
 
     /** Append V2 agent events to the same globally ordered application log. */
     readonly appendAgentEvents: (input: {
@@ -155,6 +160,7 @@ export class OrchestrationEventStore extends Context.Service<
 >()("t3/persistence/OrchestrationEventStore") {}
 
 const encodeProjectIcon = Schema.encodeSync(StoredProjectIcon);
+const decodeTodoEvent = Schema.decodeUnknownEffect(ApplicationTodoEvent);
 const decodeProjectEvent = Schema.decodeUnknownEffect(ApplicationProjectEvent);
 const UnknownFromJsonString = Schema.fromJsonString(Schema.Unknown);
 const EventMetadataFromJsonString = Schema.fromJsonString(ApplicationEventMetadata);
@@ -198,7 +204,7 @@ interface ApplicationEventRow {
   readonly sequence: number;
   readonly event_id: string;
   readonly command_id: string | null;
-  readonly aggregate_kind: "project" | "thread";
+  readonly aggregate_kind: "project" | "thread" | "todo";
   readonly stream_id: string;
   readonly event_type: string;
   readonly occurred_at: string;
@@ -276,7 +282,25 @@ const rowToProjectEvent = Effect.fn("OrchestrationEventStore.rowToProjectEvent")
 function rowToApplicationStoredEvent(
   row: ApplicationEventRow,
 ): Effect.Effect<ApplicationStoredEvent, Schema.SchemaError> {
-  return row.aggregate_kind === "project" ? rowToProjectEvent(row) : rowToV2StoredEvent(row);
+  return row.aggregate_kind === "project"
+    ? rowToProjectEvent(row)
+    : row.aggregate_kind === "todo"
+      ? Effect.gen(function* () {
+          return yield* decodeTodoEvent({
+            sequence: row.sequence,
+            eventId: row.event_id,
+            type: row.event_type,
+            aggregateKind: "todo",
+            aggregateId: row.stream_id,
+            occurredAt: row.occurred_at,
+            commandId: row.command_id,
+            causationEventId: row.causation_event_id,
+            correlationId: row.correlation_id,
+            payload: yield* decodeJson(row.payload_json),
+            metadata: yield* decodeJson(row.metadata_json),
+          });
+        })
+      : rowToV2StoredEvent(row);
 }
 
 const isKnownProjectEventType = Schema.is(ProjectEventType);
@@ -284,9 +308,11 @@ const isKnownProjectEventType = Schema.is(ProjectEventType);
 /** Filter only unknown discriminants; known types still undergo strict payload decoding. */
 const keepReplayRow = (row: ApplicationEventRow, skipUnknownEventTypes?: boolean) =>
   skipUnknownEventTypes !== true ||
-  (row.aggregate_kind === "project"
-    ? isKnownProjectEventType(row.event_type)
-    : isKnownOrchestrationV2EventType(row.event_type))
+  (row.aggregate_kind === "todo"
+    ? ["todo.created", "todo.updated", "todo.deleted"].includes(row.event_type)
+    : row.aggregate_kind === "project"
+      ? isKnownProjectEventType(row.event_type)
+      : isKnownOrchestrationV2EventType(row.event_type))
     ? Effect.succeed(true)
     : Effect.logWarning("Skipping an application event row with an unknown event type", {
         aggregateKind: row.aggregate_kind,
@@ -425,6 +451,25 @@ const makeEventStore = Effect.gen(function* () {
       ),
     );
 
+  const appendTodoEvent: OrchestrationEventStore["Service"]["appendTodoEvent"] = Effect.fn(
+    "OrchestrationEventStore.appendTodoEvent",
+  )(
+    function* (event) {
+      const rows = yield* sql<{ readonly sequence: number }>`
+      INSERT INTO orchestration_events (event_id, aggregate_kind, stream_id, stream_version, event_type,
+        occurred_at, command_id, causation_event_id, correlation_id, actor_kind, payload_json, metadata_json, application_event_version)
+      VALUES (${event.eventId}, 'todo', ${event.aggregateId},
+        COALESCE((SELECT MAX(stream_version) + 1 FROM orchestration_events WHERE aggregate_kind = 'todo' AND stream_id = ${event.aggregateId}), 0),
+        ${event.type}, ${event.occurredAt}, ${event.commandId}, ${event.causationEventId}, ${event.correlationId},
+        'client', ${yield* Schema.encodeEffect(UnknownFromJsonString)(event.payload)}, ${yield* Schema.encodeEffect(UnknownFromJsonString)(event.metadata)}, 2)
+      RETURNING sequence`;
+      return yield* decodeTodoEvent({ ...event, sequence: rows[0]!.sequence });
+    },
+    Effect.mapError(
+      toPersistenceSqlOrDecodeError("appendTodoEvent:insert", "appendTodoEvent:decode"),
+    ),
+  );
+
   const readApplicationRows = (input: {
     readonly afterSequence: number;
     readonly throughSequence?: number;
@@ -464,7 +509,7 @@ const makeEventStore = Effect.gen(function* () {
           ${
             input.onlyAgentEvents === true
               ? sql`application_event_version = 2 AND aggregate_kind = 'thread'`
-              : sql`aggregate_kind = 'project'
+              : sql`aggregate_kind IN ('project', 'todo')
                     OR (application_event_version = 2 AND aggregate_kind = 'thread')`
           }
         )
@@ -670,7 +715,7 @@ const makeEventStore = Effect.gen(function* () {
       WHERE sequence > ${input.afterSequence}
         AND sequence <= ${input.throughSequence}
         AND (
-          aggregate_kind = 'project'
+          aggregate_kind IN ('project', 'todo')
           OR (application_event_version = 2 AND aggregate_kind = 'thread')
         )
     `.pipe(
@@ -704,7 +749,7 @@ const makeEventStore = Effect.gen(function* () {
   const latestApplicationSequence = sql<{ readonly sequence: number | null }>`
     SELECT MAX(sequence) AS sequence
     FROM orchestration_events INDEXED BY idx_orchestration_events_application_high_water
-    WHERE aggregate_kind = 'project'
+    WHERE aggregate_kind IN ('project', 'todo')
       OR (application_event_version = 2 AND aggregate_kind = 'thread')
   `.pipe(
     Effect.map((rows) => rows[0]?.sequence ?? 0),
@@ -777,6 +822,7 @@ const makeEventStore = Effect.gen(function* () {
 
   return {
     appendProjectEvent,
+    appendTodoEvent,
     appendAgentEvents,
     readAgentEvents,
     getAgentReplayStats,

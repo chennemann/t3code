@@ -145,7 +145,7 @@ function makeLegacyImportSummary(items: ReadonlyArray<OrchestrationV2TurnItem>):
   const sections = items.flatMap((item) => {
     switch (item.type) {
       case "user_message":
-        return [{ label: "User", body: item.text }];
+        return [{ label: "User", body: historicalMessage(item)!.text }];
       case "assistant_message":
         return [{ label: "Assistant", body: item.text }];
       default:

@@ -1,3 +1,5 @@
+import { TodoPlanningToolkit } from "../downstream/features/workPlanning/mcp/tools.ts";
+import { TodoPlanningToolkitHandlersLive } from "../downstream/features/workPlanning/mcp/handlers.ts";
 import * as Cause from "effect/Cause";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
@@ -815,6 +817,10 @@ export const layerOrchestratorToolkit = toolkitRegistration(
 ).pipe(Layer.provide(OrchestratorMcpService.layer), Layer.provide(ThreadMetadataMcpService.layer));
 
 export const layerThreadToolkit = toolkitRegistration(ThreadToolkit, ThreadHandlers.layer);
+const layerPlanningToolkit = toolkitRegistration(
+  TodoPlanningToolkit,
+  TodoPlanningToolkitHandlersLive,
+);
 
 const layerWorktreeToolkitRegistration = toolkitRegistration(
   WorktreeToolkit,
@@ -867,6 +873,7 @@ export const layerMcpTransport = McpServer.layerHttp({
 }).pipe(Layer.provide(layerMcpAuthMiddleware));
 
 export const layer = Layer.mergeAll(
+  layerPlanningToolkit,
   layerPreviewToolkit,
   layerOrchestratorToolkit,
   layerThreadToolkit,

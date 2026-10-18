@@ -4339,6 +4339,7 @@ it.layer(layerTest)("OrchestrationV2LayerLive lifecycle", (it) => {
         threadId,
         messageId: MessageId.make("runtime-layer-queued-edit-queued-message"),
         text: "Original queued text.",
+        context: { version: 1, records: [], agentInstructions: "Plan only, then finalize." },
         attachments: [],
         modelSelection,
         dispatchMode: { type: "queue_after_active" },
@@ -4354,9 +4355,15 @@ it.layer(layerTest)("OrchestrationV2LayerLive lifecycle", (it) => {
         threadId,
         runId: queuedRun.id,
         text: "Updated queued text.",
+        context: { version: 1, records: [] },
       });
 
       const afterEdit = yield* orchestrator.getThreadProjection(threadId);
+      assert.equal(
+        afterEdit.messages.find((message) => message.id === queuedRun.userMessageId)?.context
+          ?.agentInstructions,
+        "Plan only, then finalize.",
+      );
       assert.equal(
         afterEdit.messages.find((message) => message.id === queuedRun.userMessageId)?.text,
         "Updated queued text.",

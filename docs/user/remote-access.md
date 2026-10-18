@@ -3,6 +3,36 @@
 Connect a phone, browser, or another desktop app to T3 Code running on a different
 machine. That machine must stay running and reachable while you work.
 
+## Client certificates
+
+The desktop app can authenticate to servers that require a TLS client certificate
+(mTLS), including sites opened in its Browser panel. Install your `.p12` or `.pfx`
+certificate on the computer first:
+
+- **Windows:** open the file and import it into **Current User → Personal**.
+- **Omarchy / Arch Linux:** install `nss` with `sudo pacman -S --needed nss`, then
+  import it into your user's NSS database:
+
+  ```bash
+  nss_db="$HOME/.local/share/pki/nssdb"
+  if [ -d "$HOME/.pki/nssdb" ]; then
+    nss_db="$HOME/.pki/nssdb"
+  fi
+  mkdir -p "$nss_db"
+  pk12util -d "sql:$nss_db" -i /path/to/laptop-client.p12
+  ```
+
+Restart T3 Code after importing. When a server requests a certificate, choose it
+from the dialog. Leave **Remember for this server in T3 Code** checked to reuse
+that choice for the same HTTPS server and port. Other domains and ports ask
+separately. Your private key stays in the platform certificate store.
+
+Review remembered choices under **Settings → Connections → Client certificates**.
+Choose **Forget** to select a different certificate; this restarts the app to
+clear existing TLS sessions. Replacing an installed certificate also prompts you
+to choose again. These choices apply to the desktop app's connections, not to
+provider CLIs or a standalone web or mobile client.
+
 ## T3 Connect
 
 T3 Connect makes an environment available to your other devices without setting

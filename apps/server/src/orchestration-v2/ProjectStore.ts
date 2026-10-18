@@ -236,6 +236,12 @@ export const make = Effect.gen(function* () {
       if (Option.isNone(existing)) return;
       const row = existing.value;
       if (event.type === "project.deleted") {
+        // The project event also invalidates these references in remote shell clients.
+        yield* sql`
+          UPDATE work_planning_todos
+          SET project_id = NULL
+          WHERE project_id = ${event.payload.projectId}
+        `.pipe(mapError("apply"));
         return yield* upsertRow({
           ...row,
           deletedAt: event.payload.deletedAt,

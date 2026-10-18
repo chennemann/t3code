@@ -11,6 +11,7 @@
  */
 import {
   CommandId,
+  WORKSPACE_PROJECT_ID,
   type GitManagerServiceError,
   ProjectId,
   type ThreadId,
@@ -106,7 +107,8 @@ export class ManagedProjectFolders extends Context.Service<
     readonly ensureScratchProject: Effect.Effect<{ readonly projectId: ProjectId }, ScratchError>;
     /**
      * Claims a fresh folder for a new thread in the Scratch project, named from
-     * the date, its first message, and its id. None for every other project.
+     * the date, its first message, and its id. The managed Workspace retains
+     * its existing per-thread-id folders. None for unmanaged projects.
      */
     readonly folderForThread: (input: {
       readonly projectId: ProjectId;
@@ -358,6 +360,17 @@ const make = Effect.gen(function* () {
   const folderForThread: ManagedProjectFolders["Service"]["folderForThread"] = Effect.fn(
     "ManagedProjectFolders.folderForThread",
   )(function* (input) {
+    if (input.projectId === WORKSPACE_PROJECT_ID) {
+      const workspace = yield* projects
+        .getById(input.projectId)
+        .pipe(
+          Effect.mapError((cause) => new ScratchFolderError({ folder: config.baseDir, cause })),
+        );
+      if (Option.isNone(workspace)) return Option.none();
+      const folder = path.join(workspace.value.workspaceRoot, input.threadId);
+      yield* makeScratchFolder(folder);
+      return Option.some(folder);
+    }
     const root = yield* scratchRoot;
     if (Option.isNone(root)) return Option.none();
     if (!(yield* isScratchProject(input.projectId, root.value))) return Option.none();

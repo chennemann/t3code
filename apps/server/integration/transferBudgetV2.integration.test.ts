@@ -1,3 +1,4 @@
+import { WorkPlanningStore } from "../src/downstream/features/workPlanning/Store.ts";
 // @effect-diagnostics nodeBuiltinImport:off - Measures real local HTTP/WebSocket sockets.
 import * as NodeHttp from "node:http";
 import { assert, it } from "@effect/vitest";
@@ -121,6 +122,7 @@ const layerServices = layerManagement.pipe(
   Layer.provideMerge(ProjectStore.layer),
   Layer.provideMerge(Layer.mock(ProjectService.ProjectService)({})),
   Layer.provideMerge(layerEnrichment),
+  Layer.provideMerge(Layer.mock(WorkPlanningStore)({ list: Effect.succeed([]) })),
   Layer.provideMerge(layerPersistence),
 );
 class TransferApi extends HttpApi.make("environment").add(
@@ -159,6 +161,7 @@ const layerHandlers = group.toLayer({
 const layerRoutes = Layer.mergeAll(
   HttpApiBuilder.layer(TransferApi).pipe(
     Layer.provide(OrchestrationHttp.layer),
+    Layer.provide(Layer.mock(WorkPlanningStore)({ list: Effect.succeed([]) })),
     Layer.provide(layerAuth),
   ),
   RpcServer.layerHttp({ group, path: "/ws", protocol: "websocket" }).pipe(

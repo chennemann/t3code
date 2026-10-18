@@ -2,6 +2,7 @@ import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
 import {
   CommandId,
+  WORKSPACE_PROJECT_ID,
   EventId,
   type OrchestrationV2AppThread,
   ProjectId,
@@ -12,6 +13,7 @@ import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
+import * as Result from "effect/Result";
 import * as Schema from "effect/Schema";
 import { TestClock } from "effect/testing";
 import * as SqlClient from "effect/sql/SqlClient";
@@ -523,4 +525,47 @@ it.effect(
         assert.isUndefined(settingsAfterDelete.projectSettingsOverrides[projectId]);
       }).pipe(Effect.provide(layerServices));
     }).pipe(Effect.provide(layerDatabase)),
+);
+
+it.effect("rejects managed Workspace deletion before touching its threads", () =>
+  Effect.gen(function* () {
+    const projectId = WORKSPACE_PROJECT_ID;
+    yield* seedProject(projectId);
+    yield* Effect.gen(function* () {
+      const service = yield* ProjectService.make;
+      const sink = yield* EventSink.EventSinkV2;
+      const projections = yield* ProjectionStore.ProjectionStoreV2;
+      const threadId = ThreadId.make("workspace-preserved");
+      yield* sink.write({ events: [nativeThreadCreated(projectId, threadId)] });
+      const result = yield* service
+        .delete({
+          commandId: CommandId.make("workspace-delete"),
+          projectId,
+          force: true,
+        })
+        .pipe(Effect.result);
+      assert.isTrue(Result.isFailure(result));
+      assert.isTrue(Option.isSome(yield* service.getById(projectId)));
+      assert.equal((yield* projections.getThreadProjection(threadId)).thread.deletedAt, null);
+    }).pipe(Effect.provide(layerServices));
+  }).pipe(Effect.provide(layerDatabase)),
+);
+
+it.effect("detaches todos when their project is deleted", () =>
+  Effect.gen(function* () {
+    const projectId = ProjectId.make("project:todo-cleanup");
+    yield* seedProject(projectId);
+    const sql = yield* SqlClient.SqlClient;
+    yield* sql`INSERT INTO work_planning_todos
+      (todo_id, title, project_id, created_at, updated_at)
+      VALUES ('todo:preserved', 'Keep this plan', ${projectId},
+        '2026-01-01T00:00:00.000Z', '2026-01-01T00:00:00.000Z')`;
+    yield* Effect.gen(function* () {
+      const service = yield* ProjectService.make;
+      yield* service.delete({ commandId: CommandId.make("todo-project-delete"), projectId });
+    }).pipe(Effect.provide(layerServices));
+    const rows = yield* sql<{ projectId: string | null; title: string }>`
+      SELECT project_id AS "projectId", title FROM work_planning_todos WHERE todo_id = 'todo:preserved'`;
+    assert.deepEqual(rows, [{ projectId: null, title: "Keep this plan" }]);
+  }).pipe(Effect.provide(layerDatabase)),
 );

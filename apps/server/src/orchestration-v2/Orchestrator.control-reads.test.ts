@@ -1,3 +1,4 @@
+import * as TestClock from "effect/testing/TestClock";
 import { assert, it } from "@effect/vitest";
 import {
   CommandId,
@@ -959,4 +960,65 @@ it.effect("wakes the parent once when its delegated task asks a question", () =>
       childThreadId: task.childThreadId!,
     });
   }).pipe(Effect.provide(DelegatedTaskQuestionReactor.layer.pipe(Layer.provideMerge(layerTest)))),
+);
+
+it.effect(
+  "reengagement moves a manually ordered thread only after 36 hours of user inactivity",
+  () =>
+    Effect.gen(function* () {
+      const orchestrator = yield* Orchestrator.OrchestratorV2;
+      const projections = yield* ProjectionStore.ProjectionStoreV2;
+      const threadId = ThreadId.make("thread:reengagement");
+      yield* orchestrator.dispatch({
+        type: "thread.create",
+        commandId: CommandId.make("recency-create"),
+        threadId,
+        projectId: ProjectId.make("project:recency"),
+        title: "Recency",
+        modelSelection,
+        runtimeMode: "full-access",
+        interactionMode: "default",
+        branch: null,
+        worktreePath: null,
+        createdBy: "user",
+        creationSource: "web",
+      });
+      const send = (id: string) =>
+        orchestrator.dispatch({
+          type: "message.dispatch",
+          commandId: CommandId.make(id),
+          threadId,
+          messageId: MessageId.make(id),
+          text: "Continue",
+          attachments: [],
+          createdBy: "user",
+          creationSource: "web",
+          dispatchMode: { type: "queue_after_active" },
+        });
+      yield* send("recency-first");
+      yield* orchestrator.dispatch({
+        type: "thread.active.reorder",
+        commandId: CommandId.make("recency-order"),
+        threadId,
+        orderKey: "m",
+      });
+      yield* TestClock.adjust("35 hours");
+      yield* send("recency-second");
+      const near = yield* projections.getThreadProjection(threadId);
+      assert.equal(near.thread.activeOrderKey, "m");
+      assert.equal(near.thread.recencyAnchorAt ?? null, null);
+      yield* TestClock.adjust("37 hours");
+      yield* send("recency-third");
+      const far = yield* projections.getThreadProjection(threadId);
+      assert.equal(far.thread.activeOrderKey, null);
+      assert.equal(
+        DateTime.toEpochMillis(far.thread.recencyAnchorAt!),
+        DateTime.toEpochMillis(yield* DateTime.now),
+      );
+      const shell = yield* projections.getThreadShell(threadId);
+      assert.equal(
+        DateTime.toEpochMillis(shell!.recencyAnchorAt!),
+        DateTime.toEpochMillis(far.thread.recencyAnchorAt!),
+      );
+    }).pipe(Effect.provide(layerTest)),
 );

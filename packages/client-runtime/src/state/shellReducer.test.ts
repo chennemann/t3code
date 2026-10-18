@@ -1,4 +1,10 @@
-import { ProjectId, ThreadId, type ThreadPullRequestLink } from "@t3tools/contracts";
+import {
+  ProjectId,
+  ThreadId,
+  TodoId,
+  type OrchestrationTodo,
+  type ThreadPullRequestLink,
+} from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { v2Project, v2ShellSnapshot, v2ThreadShell } from "./orchestrationV2TestFixtures.ts";
@@ -502,4 +508,38 @@ describe("reuseUnchangedThreadShells", () => {
       incoming,
     );
   });
+});
+
+it("keeps a todo visible in Inbox when its project is removed remotely", () => {
+  const todo: OrchestrationTodo = {
+    id: TodoId.make("todo-detached"),
+    title: "Keep plan",
+    projectId: v2Project.id,
+    summary: "",
+    specificationSummary: "",
+    contextSummary: "",
+    glossarySummary: "",
+    planSummary: "",
+    specification: "",
+    context: "",
+    glossary: "",
+    plan: "",
+    notes: "",
+    parentTodoId: null,
+    planningThreadId: null,
+    plannedAt: null,
+    completedAt: null,
+    createdAt: "2026-01-01T00:00:00.000Z",
+    updatedAt: "2026-01-01T00:00:00.000Z",
+  };
+  const next = applyShellStreamEvent(
+    { ...v2ShellSnapshot, todos: [todo] },
+    {
+      kind: "project.removed",
+      projectId: v2Project.id,
+      sequence: 5,
+    },
+  );
+  expect(next.todos).toEqual([{ ...todo, projectId: null }]);
+  expect(next.projects.some((project) => project.id === v2Project.id)).toBe(false);
 });

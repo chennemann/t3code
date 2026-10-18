@@ -31,6 +31,7 @@ export function GitConfirmSheet(props: GitConfirmSheetProps) {
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const gitState = useSelectedThreadGitState();
+  const vcsTerminology = gitState.vcsTerminology;
   const gitActions = useSelectedThreadGitActions();
   const { canWriteSourceControl, canChangeThreadBranch } = gitActions;
 
@@ -54,9 +55,10 @@ export function GitConfirmSheet(props: GitConfirmSheetProps) {
             action: confirmAction,
             branchName,
             includesCommit,
+            vcsTerminology,
           })
         : null,
-    [branchName, confirmAction, includesCommit],
+    [branchName, confirmAction, includesCommit, vcsTerminology],
   );
 
   const continuePendingAction = useCallback(async () => {
@@ -181,7 +183,7 @@ export function GitConfirmSheet(props: GitConfirmSheetProps) {
             />
             <SheetActionButton
               icon="arrow.branch"
-              label="Feature branch & continue"
+              label={`Feature ${vcsTerminology.refNoun} & continue`}
               disabled={!canChangeThreadBranch}
               tone="primary"
               onPress={() => void movePendingActionToFeatureBranch()}

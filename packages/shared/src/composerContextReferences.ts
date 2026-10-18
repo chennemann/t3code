@@ -5,6 +5,7 @@ import {
   type ComposerContextRecord,
   type ElementContextDetails,
   type KnownComposerContextRecord,
+  type ImageAnnotation,
 } from "@t3tools/contracts";
 
 /**
@@ -234,6 +235,19 @@ function formatElementDetails(element: ElementContextDetails): string[] {
 }
 
 /** Body lines for one payload, including authoritative paths and names behind display labels. */
+/** The original image accompanies these normalized ellipse bounds; numbers match its overlay. */
+export function formatImageAnnotationContext(annotations: ReadonlyArray<ImageAnnotation>): string {
+  return annotations.length === 0
+    ? ""
+    : [
+        "Image annotations (ellipse bounds, fractions of the original image; origin is top-left):",
+        ...annotations.map(
+          (mark, index) =>
+            `${index + 1}. x=${mark.x}, y=${mark.y}, width=${mark.width}, height=${mark.height}\n${mark.comment.trim()}`,
+        ),
+      ].join("\n");
+}
+
 function formatComposerContextProviderPayload(record: KnownComposerContextRecord): string {
   switch (record.kind) {
     case "image":
@@ -243,6 +257,9 @@ function formatComposerContextProviderPayload(record: KnownComposerContextRecord
         `mimeType: ${record.mimeType}`,
         `sizeBytes: ${record.sizeBytes}`,
         `attachmentId: ${record.attachmentId}`,
+        ...(record.kind === "image" && record.annotations?.length
+          ? [formatImageAnnotationContext(record.annotations)]
+          : []),
       ].join("\n");
     case "terminal": {
       const lines = record.text
@@ -322,7 +339,13 @@ export function projectComposerContextForProvider(input: {
   records: ReadonlyArray<ComposerContextRecord>;
 }): string {
   const occurrences = collectComposerContextReferences(input.text);
-  if (occurrences.length === 0) return input.text;
+  if (
+    occurrences.length === 0 &&
+    !input.records.some(
+      (record) => record.kind === "image" && "annotations" in record && record.annotations?.length,
+    )
+  )
+    return input.text;
   const recordsById = new Map<ComposerContextId, ComposerContextRecord | undefined>();
   for (const record of input.records) {
     // Even callers that bypass the wire schema must not silently select an ambiguous payload.
@@ -348,8 +371,32 @@ export function projectComposerContextForProvider(input: {
     );
     entries.push(entry);
   }
+  // Attachment annotations live beside the image, without requiring a chip in the prose.
+  for (const record of input.records) {
+    if (
+      record.kind !== "image" ||
+      !("annotations" in record) ||
+      !record.annotations?.length ||
+      seen.has(record.contextId)
+    )
+      continue;
+    seen.add(record.contextId);
+    entries.push(
+      formatEnvelopeEntry(record.kind, record.contextId, recordsById.get(record.contextId)),
+    );
+  }
   if (entries.length === 0) return body;
   return `${body}\n\n<${CONTEXT_ENVELOPE_TAG} version="1">\n${entries.join("\n")}\n</${CONTEXT_ENVELOPE_TAG}>`;
+}
+
+/** Add persisted, provider-only directives after resolving visible message context. */
+export function decorateUserMessage(input: {
+  readonly message: string;
+  readonly agentInstructions?: string;
+}): string {
+  return input.agentInstructions
+    ? `<agent_instructions>\n${input.agentInstructions}\n</agent_instructions>\n\n<user_message>\n${input.message}\n</user_message>`
+    : input.message;
 }
 
 /** Preserve context bindings when uploads become thread-owned attachments. */

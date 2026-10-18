@@ -1,3 +1,4 @@
+import * as WorkPlanningStore from "../downstream/features/workPlanning/Store.ts";
 import {
   AuthOrchestrationReadScope,
   EnvironmentHttpApi,
@@ -57,6 +58,7 @@ export const layer = HttpApiBuilder.group(
   "orchestration",
   Effect.fnUntraced(function* (handlers) {
     const sql = yield* SqlClient.SqlClient;
+    const planning = yield* WorkPlanningStore.WorkPlanningStore;
     const environment = yield* ServerEnvironment.ServerEnvironmentIdentity;
     const threadManagement = yield* ThreadManagementService.ThreadManagementService;
     const applicationEvents = yield* OrchestrationEventStore.OrchestrationEventStore;
@@ -88,6 +90,7 @@ export const layer = HttpApiBuilder.group(
           sql,
           readThreads: threadManagement.readShellSnapshot({ location: "active" }),
           listProjects: projectStore.listShells(),
+          listTodos: planning.list,
           latestSequence: applicationEvents.latestApplicationSequence,
         }),
       );

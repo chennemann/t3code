@@ -33,7 +33,7 @@ it.effect("identifies a failed source read and preserves its cause", () => {
         readFileString: () => Effect.fail(cause),
       }),
     ),
-    Effect.provide(NodeServices.layer),
+    Effect.provide(Path.layer),
   );
 });
 

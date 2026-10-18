@@ -1049,6 +1049,11 @@ it.layer(NodeServices.layer)("server settings", (it) => {
             claudeAgent: { enabled: false },
             cursor: { enabled: false },
             grok: { enabled: false },
+            devin: {
+              enabled: true,
+              binaryPath: "/opt/guard/bin/devin",
+              customModels: ["swe-2-high"],
+            },
             opencode: { enabled: false },
           },
         }),
@@ -1057,6 +1062,11 @@ it.layer(NodeServices.layer)("server settings", (it) => {
       const settings = yield* serverSettings.getSettings;
 
       assert.deepEqual(settings.providerInstances, {
+        [ProviderInstanceId.make("devin")]: {
+          driver: ProviderDriverKind.make("devin"),
+          enabled: true,
+          config: { binaryPath: "/opt/guard/bin/devin", customModels: ["swe-2-high"] },
+        },
         [ProviderInstanceId.make("codex")]: {
           driver: ProviderDriverKind.make("codex"),
           config: { binaryPath: "/opt/guard/bin/codex" },

@@ -1,3 +1,4 @@
+import type { ApplicationTodoEvent } from "./downstream/orchestration.ts";
 import * as Schema from "effect/Schema";
 
 import {
@@ -121,4 +122,7 @@ export const ApplicationProjectEvent = Schema.Union([
 export type ApplicationProjectEvent = typeof ApplicationProjectEvent.Type;
 
 /** Events exposed by the retained application event source. */
-export type ApplicationStoredEvent = ApplicationProjectEvent | OrchestrationV2StoredEvent;
+export type ApplicationStoredEvent =
+  | ApplicationProjectEvent
+  | ApplicationTodoEvent
+  | OrchestrationV2StoredEvent;

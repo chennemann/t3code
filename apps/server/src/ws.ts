@@ -1,3 +1,5 @@
+import * as WorkPlanningService from "./downstream/features/workPlanning/Service.ts";
+import * as WorkPlanningStore from "./downstream/features/workPlanning/Store.ts";
 import { OrchestrationDispatchCommandError } from "@t3tools/contracts";
 import * as Crypto from "effect/Crypto";
 import * as Orchestrator from "./orchestration-v2/Orchestrator.ts";
@@ -962,6 +964,7 @@ export const subscribeOrchestrationV2Shell = Effect.fn("ws.orchestrationV2.subsc
     const projectService = yield* ProjectService.ProjectService;
     const projectEnrichment = yield* ProjectEnrichmentService.ProjectEnrichmentService;
 
+    const planning = yield* WorkPlanningStore.WorkPlanningStore;
     const enrichmentChanges = yield* projectEnrichment.subscribeChanges;
     const loadProjectMetadataSnapshot = Effect.fn("ws.orchestrationV2.loadProjectMetadataSnapshot")(
       function* (snapshotSequence: number) {
@@ -984,6 +987,7 @@ export const subscribeOrchestrationV2Shell = Effect.fn("ws.orchestrationV2.subsc
           sql,
           readThreads: threadManagement.readShellSnapshot({ location: "active" }),
           listProjects: projects.listShells(),
+          listTodos: planning.list,
           latestSequence: applicationEvents.latestApplicationSequence,
         }),
       );
@@ -1030,6 +1034,16 @@ export const subscribeOrchestrationV2Shell = Effect.fn("ws.orchestrationV2.subsc
         (stored) =>
           Effect.gen(function* () {
             if ("aggregateKind" in stored) {
+              if (stored.aggregateKind === "todo") {
+                const todo = (yield* planning.list).find((todo) => todo.id === stored.aggregateId);
+                return todo === undefined
+                  ? {
+                      kind: "todo-removed" as const,
+                      sequence: stored.sequence,
+                      todoId: stored.aggregateId,
+                    }
+                  : { kind: "todo-upserted" as const, sequence: stored.sequence, todo };
+              }
               return yield* projectItem(stored);
             }
             const shell = yield* threadManagement.getThreadShell(stored.event.threadId);
@@ -1833,6 +1847,10 @@ const layerWsRpc = (
       });
 
       const handlers = ServerWsRpcGroup.of({
+        [WS_METHODS.todosDispatch]: (command) =>
+          Effect.flatMap(WorkPlanningService.WorkPlanningService, (service) =>
+            service.dispatch(command),
+          ),
         [ORCHESTRATION_V2_WS_METHODS.dispatchCommand]: (command) =>
           Effect.annotateCurrentSpan({
             "orchestration_v2.command_id": command.commandId,

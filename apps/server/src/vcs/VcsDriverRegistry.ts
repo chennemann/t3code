@@ -10,6 +10,8 @@ import * as Path from "effect/Path";
 import type { VcsDriverKind, VcsError, VcsRepositoryIdentity } from "@t3tools/contracts";
 import { VcsUnsupportedOperationError } from "@t3tools/contracts";
 import * as GitVcsDriver from "./GitVcsDriver.ts";
+import * as JjVcsDriver from "./JjVcsDriver.ts";
+import { findVcsMarkerRoot } from "./JjRepo.ts";
 import * as VcsProjectConfig from "./VcsProjectConfig.ts";
 import * as VcsDriver from "./VcsDriver.ts";
 
@@ -38,6 +40,7 @@ export class VcsDriverRegistry extends Context.Service<
       input: VcsDriverResolveInput,
     ) => Effect.Effect<VcsDriverHandle | null, VcsError>;
     readonly resolve: (input: VcsDriverResolveInput) => Effect.Effect<VcsDriverHandle, VcsError>;
+    readonly invalidate: (cwd: string) => Effect.Effect<void>;
   }
 >()("t3/vcs/VcsDriverRegistry") {}
 
@@ -70,8 +73,10 @@ export const make = Effect.gen(function* () {
   const path = yield* Path.Path;
   const projectConfig = yield* VcsProjectConfig.VcsProjectConfig;
   const git = yield* GitVcsDriver.makeVcsDriver;
+  const jj = yield* JjVcsDriver.JjVcsDriver;
   const drivers: Partial<Record<VcsDriverKind, VcsDriver.VcsDriver["Service"]>> = {
     git,
+    jj,
   };
 
   const get: VcsDriverRegistry["Service"]["get"] = (kind) => {
@@ -115,6 +120,11 @@ export const make = Effect.gen(function* () {
       return yield* detectWithDriver(requestedKind, driver, input.cwd);
     }
 
+    // jj is probed first because a colocated repo answers yes to both probes, and probing git first would write git worktrees into a jj repo.
+    const jjDetected = yield* detectWithDriver("jj", jj, input.cwd);
+    if (jjDetected) {
+      return jjDetected;
+    }
     return yield* detectWithDriver("git", git, input.cwd);
   });
 
@@ -174,7 +184,12 @@ export const make = Effect.gen(function* () {
       const cached = yield* Cache.get(detectionCache, key);
       if (cached === null) return null;
       const disk = yield* readDiskState(input.cwd, cached.handle.repository);
+      const marker = yield* findVcsMarkerRoot(fileSystem, path, input.cwd);
       if (
+        marker !== null &&
+        path.resolve(marker.root) === path.resolve(cached.handle.repository.rootPath) &&
+        (!(requestedKind === "auto" || requestedKind === "unknown") ||
+          marker.marker === cached.handle.kind) &&
         disk?.repositoryOnDisk &&
         disk.gitEntries.length === cached.gitEntries.length &&
         disk.gitEntries.every((exists, index) => exists === cached.gitEntries[index])
@@ -209,9 +224,16 @@ export const make = Effect.gen(function* () {
     get,
     detect,
     resolve,
+    invalidate: (cwd) =>
+      Effect.all([
+        Cache.invalidate(detectionCache, detectionCacheKey({ cwd, requestedKind: "auto" })),
+        Cache.invalidate(detectionCache, detectionCacheKey({ cwd, requestedKind: "git" })),
+        Cache.invalidate(detectionCache, detectionCacheKey({ cwd, requestedKind: "jj" })),
+      ]).pipe(Effect.asVoid),
   });
 });
 
 export const layer = Layer.effect(VcsDriverRegistry, make).pipe(
+  Layer.provide(JjVcsDriver.layer),
   Layer.provide(VcsProjectConfig.layer),
 );

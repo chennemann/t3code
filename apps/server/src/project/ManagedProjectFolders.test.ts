@@ -2,6 +2,7 @@ import { assert, it } from "@effect/vitest";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import {
   CommandId,
+  WORKSPACE_PROJECT_ID,
   GitCommandError,
   ProjectId,
   ThreadId,
@@ -19,6 +20,7 @@ import * as Scope from "effect/Scope";
 
 import * as ServerConfig from "../config.ts";
 import * as GitManager from "../git/GitManager.ts";
+import * as JjWorkflow from "../jj/JjWorkflow.ts";
 import * as GitWorkflow from "../git/GitWorkflowService.ts";
 import * as RuntimeLayer from "../orchestration-v2/runtimeLayer.ts";
 import * as SqlitePersistence from "../persistence/Sqlite.ts";
@@ -38,6 +40,7 @@ import * as ManagedProjectFolders from "./ManagedProjectFolders.ts";
 // since the service only asks whether the data dir is inside a checkout.
 const layerGitWorkflow = (vcsProcess?: Layer.Layer<VcsProcess.VcsProcess>) =>
   GitWorkflow.layer.pipe(
+    Layer.provide(Layer.mock(JjWorkflow.JjWorkflow)({})),
     Layer.provide(VcsDriverRegistry.layer.pipe(Layer.provide(vcsProcess ?? VcsProcess.layer))),
     Layer.provide(Layer.mock(GitManager.GitManager)({})),
   );
@@ -88,7 +91,7 @@ const layer = (baseDir: string, options?: HarnessOptions) =>
     Layer.provideMerge(layerGitWorkflow(options?.vcsProcess)),
     Layer.provideMerge(options?.git ?? layerRealGit),
     Layer.provideMerge(SqlitePersistence.layerMemory),
-    Layer.provideMerge(ServerSettings.layerTest()),
+    Layer.provideMerge(ServerSettings.ServerSettingsService.layerTest()),
     Layer.provideMerge(ServerConfig.layerTest(baseDir, baseDir)),
     Layer.provideMerge(NodeServices.layer),
   );
@@ -601,5 +604,39 @@ it.effect("removes the folder when the repository cannot be made", () =>
           ),
       }),
     },
+  ),
+);
+
+it.effect("keeps managed Workspace threads in stable individual folders", () =>
+  withScratch(({ baseDir }) =>
+    Effect.gen(function* () {
+      const path = yield* Path.Path;
+      const fs = yield* FileSystem.FileSystem;
+      const projects = yield* ProjectService.ProjectService;
+      const folders = yield* ManagedProjectFolders.ManagedProjectFolders;
+      const workspaceRoot = path.join(baseDir, "workspace");
+      yield* fs.makeDirectory(workspaceRoot, { recursive: true });
+      yield* projects.create({
+        commandId: CommandId.make("workspace-create"),
+        projectId: WORKSPACE_PROJECT_ID,
+        title: "Workspace",
+        workspaceRoot,
+      });
+      const input = {
+        projectId: WORKSPACE_PROJECT_ID,
+        threadId: ThreadId.make("workspace-thread"),
+        text: "Plan",
+      };
+      const first = Option.getOrThrow(yield* folders.folderForThread(input));
+      const retry = Option.getOrThrow(yield* folders.folderForThread(input));
+      const second = Option.getOrThrow(
+        yield* folders.folderForThread({ ...input, threadId: ThreadId.make("another-thread") }),
+      );
+      assert.equal(first, path.join(workspaceRoot, input.threadId));
+      assert.equal(retry, first);
+      assert.notEqual(second, first);
+      assert.isTrue(yield* fs.exists(first));
+      assert.isTrue(yield* fs.exists(second));
+    }),
   ),
 );

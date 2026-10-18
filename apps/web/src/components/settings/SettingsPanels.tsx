@@ -9,6 +9,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type BackgroundActivityProfile,
+  DEFAULT_TODO_PLANNING_INSTRUCTIONS,
   type DesktopUpdateChannel,
   ProviderDriverKind,
   type ProviderInstanceId,
@@ -117,6 +118,7 @@ import {
 } from "../ui/dialog";
 import { DraftInput } from "../ui/draft-input";
 import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
 import {
   DEFAULT_CODE_FONT_STACK,
   DEFAULT_SANS_FONT_STACK,
@@ -153,6 +155,7 @@ import {
   hasChangedBackgroundActivitySettings,
   isProjectGroupingEnabled,
   projectGroupingModeFromToggle,
+  normalizeTerminalShellPath,
   readLastEnabledProjectGroupingMode,
   rememberEnabledProjectGroupingMode,
   resolveBackgroundActivityProfileOption,
@@ -621,6 +624,9 @@ export function useSettingsRestore(onRestored?: () => void) {
         ? ["Rich text composer"]
         : []),
       ...(settings.sendShortcut !== DEFAULT_UNIFIED_SETTINGS.sendShortcut ? ["Send shortcut"] : []),
+      ...(settings.imageOpenAction !== DEFAULT_UNIFIED_SETTINGS.imageOpenAction
+        ? ["Image open action"]
+        : []),
       ...(settings.followUpBehavior !== DEFAULT_UNIFIED_SETTINGS.followUpBehavior
         ? ["Follow-up behavior"]
         : []),
@@ -648,6 +654,9 @@ export function useSettingsRestore(onRestored?: () => void) {
         : []),
       ...(settings.addProjectBaseDirectory !== DEFAULT_UNIFIED_SETTINGS.addProjectBaseDirectory
         ? ["Add project base directory"]
+        : []),
+      ...(settings.terminalShellPath !== DEFAULT_UNIFIED_SETTINGS.terminalShellPath
+        ? ["Terminal shell"]
         : []),
       ...(settings.confirmThreadUnpin !== DEFAULT_UNIFIED_SETTINGS.confirmThreadUnpin
         ? ["Unpin confirmation"]
@@ -680,6 +689,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       settings.appearanceContrast,
       settings.diffColorScheme,
       settings.chatWidth,
+      settings.imageOpenAction,
       settings.enableAgentBrowserAccess,
       settings.confirmQuit,
       settings.confirmThreadArchive,
@@ -690,6 +700,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       settings.sendShortcut,
       settings.followUpBehavior,
       settings.addProjectBaseDirectory,
+      settings.terminalShellPath,
       settings.defaultThreadEnvMode,
       settings.newWorktreesStartFromOrigin,
       settings.diffFilesCollapsed,
@@ -798,6 +809,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       appearanceContrast: DEFAULT_UNIFIED_SETTINGS.appearanceContrast,
       diffColorScheme: DEFAULT_UNIFIED_SETTINGS.diffColorScheme,
       chatWidth: DEFAULT_UNIFIED_SETTINGS.chatWidth,
+      imageOpenAction: DEFAULT_UNIFIED_SETTINGS.imageOpenAction,
       timestampFormat: DEFAULT_UNIFIED_SETTINGS.timestampFormat,
       notificationMode: DEFAULT_UNIFIED_SETTINGS.notificationMode,
       inAppNotificationsEnabled: DEFAULT_UNIFIED_SETTINGS.inAppNotificationsEnabled,
@@ -835,6 +847,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       defaultThreadEnvMode: DEFAULT_UNIFIED_SETTINGS.defaultThreadEnvMode,
       newWorktreesStartFromOrigin: DEFAULT_UNIFIED_SETTINGS.newWorktreesStartFromOrigin,
       addProjectBaseDirectory: DEFAULT_UNIFIED_SETTINGS.addProjectBaseDirectory,
+      terminalShellPath: DEFAULT_UNIFIED_SETTINGS.terminalShellPath,
       confirmThreadArchive: DEFAULT_UNIFIED_SETTINGS.confirmThreadArchive,
       confirmThreadDelete: DEFAULT_UNIFIED_SETTINGS.confirmThreadDelete,
       confirmThreadUnpin: DEFAULT_UNIFIED_SETTINGS.confirmThreadUnpin,
@@ -2281,6 +2294,30 @@ export function GeneralSettingsPanel() {
       <ProjectDefaultsSettings category="general" />
       <SettingsSection id="organization" title="Organization">
         <SettingsRow
+          title="To-do planning instructions"
+          description="Hidden instructions injected into planning sessions."
+          resetAction={
+            settings.todoPlanningInstructions !== DEFAULT_TODO_PLANNING_INSTRUCTIONS ? (
+              <SettingResetButton
+                label="to-do planning instructions"
+                onClick={() =>
+                  updateSettings({ todoPlanningInstructions: DEFAULT_TODO_PLANNING_INSTRUCTIONS })
+                }
+              />
+            ) : null
+          }
+          control={
+            <Textarea
+              className="min-h-28 w-[min(32rem,60vw)]"
+              value={settings.todoPlanningInstructions}
+              onChange={(event) =>
+                updateSettings({ todoPlanningInstructions: event.currentTarget.value })
+              }
+              aria-label="To-do planning instructions"
+            />
+          }
+        />
+        <SettingsRow
           {...searchableSetting("project-grouping")}
           description="Combine matching repositories across environments."
           resetAction={
@@ -2566,6 +2603,39 @@ export function GeneralSettingsPanel() {
                 <SelectItem hideIndicator value="24-hour">
                   {TIMESTAMP_FORMAT_LABELS["24-hour"]}
                 </SelectItem>
+              </SelectPopup>
+            </Select>
+          }
+        />
+        <SettingsRow
+          {...searchableSetting("image-open-action")}
+          description="Choose whether clicking a chat image opens zoom controls or editable annotations. You can switch modes in the preview."
+          resetAction={
+            settings.imageOpenAction !== DEFAULT_UNIFIED_SETTINGS.imageOpenAction ? (
+              <SettingResetButton
+                label="image open action"
+                onClick={() =>
+                  updateSettings({ imageOpenAction: DEFAULT_UNIFIED_SETTINGS.imageOpenAction })
+                }
+              />
+            ) : null
+          }
+          control={
+            <Select
+              value={settings.imageOpenAction}
+              onValueChange={(value) => {
+                if (value === "zoom" || value === "annotate")
+                  updateSettings({ imageOpenAction: value });
+              }}
+            >
+              <SelectTrigger size="sm" className="w-full sm:w-56" aria-label="Image open action">
+                <SelectValue>
+                  {settings.imageOpenAction === "annotate" ? "Annotate" : "Zoom"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectPopup align="end" alignItemWithTrigger={false}>
+                <SelectItem value="zoom">Zoom</SelectItem>
+                <SelectItem value="annotate">Annotate</SelectItem>
               </SelectPopup>
             </Select>
           }
@@ -3141,6 +3211,36 @@ export function GeneralSettingsPanel() {
       </SettingsSection>
 
       <SettingsSection id="confirmations" title="Confirmations">
+        <SettingsRow
+          title="Terminal shell"
+          description="Pick the shell used for newly created terminal sessions. Leave empty for the platform default."
+          resetAction={
+            settings.terminalShellPath !== DEFAULT_UNIFIED_SETTINGS.terminalShellPath ? (
+              <SettingResetButton
+                label="terminal shell"
+                onClick={() =>
+                  updateSettings({
+                    terminalShellPath: DEFAULT_UNIFIED_SETTINGS.terminalShellPath,
+                  })
+                }
+              />
+            ) : null
+          }
+          control={
+            <DraftInput
+              className="w-full sm:w-72"
+              font="mono"
+              value={settings.terminalShellPath}
+              onCommit={(next) =>
+                updateSettings({ terminalShellPath: normalizeTerminalShellPath(next) })
+              }
+              placeholder="System default"
+              spellCheck={false}
+              aria-label="Terminal shell path"
+            />
+          }
+        />
+
         <SettingsRow
           {...searchableSetting("unpin-confirmation")}
           description="Ask before unpinning a thread from the pinned section."

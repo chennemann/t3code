@@ -5,11 +5,16 @@ import {
   getGitActionDisabledReason,
   requiresDefaultBranchConfirmation,
 } from "@t3tools/client-runtime/state/vcs";
+import { resolveVcsTerminology } from "@t3tools/shared/vcs";
 import {
   resolveThreadPullRequestChains,
   threadPullRequestKeyOf,
 } from "@t3tools/shared/threadPullRequests";
 import { EnvironmentId, ThreadId } from "@t3tools/contracts";
+import {
+  isAtomCommandInterrupted,
+  squashAtomCommandFailure,
+} from "@t3tools/client-runtime/state/runtime";
 import {
   CommonActions,
   StackActions,
@@ -42,6 +47,7 @@ import { useSelectedThreadGitActions } from "../../../state/use-selected-thread-
 import { useSelectedThreadGitState } from "../../../state/use-selected-thread-git-state";
 import { useSelectedThreadWorktree } from "../../../state/use-selected-thread-worktree";
 import { vcsEnvironment } from "../../../state/vcs";
+import { useAtomCommand } from "../../../state/use-atom-command";
 import { resolveGitOverviewReviewNavigationAction } from "./git-overview-navigation";
 import { MetaCard, SheetListRow, menuItemIconName, statusSummary } from "./gitSheetComponents";
 
@@ -90,6 +96,8 @@ function GitOverviewSheetContent(props: GitOverviewSheetProps) {
   const gitState = useSelectedThreadGitState();
   const gitActions = useSelectedThreadGitActions();
   const { canWriteSourceControl, canChangeThreadBranch } = gitActions;
+  const initRepository = useAtomCommand(vcsEnvironment.init, { reportFailure: false });
+  const [isConverting, setIsConverting] = useState(false);
   const theme = useUniwindTheme();
   const foregroundColor = theme["--color-foreground"];
   const sheetColor = theme["--color-sheet"];
@@ -103,8 +111,10 @@ function GitOverviewSheetContent(props: GitOverviewSheetProps) {
       : null,
   );
 
-  const currentBranchLabel = gitStatus.data?.refName ?? selectedThread?.branch ?? "Detached HEAD";
-  const currentStatusSummary = statusSummary(gitStatus.data);
+  const vcsTerminology = resolveVcsTerminology(gitStatus.data);
+  const currentBranchLabel =
+    gitStatus.data?.refName ?? selectedThread?.branch ?? `No ${vcsTerminology.refNoun}`;
+  const currentStatusSummary = statusSummary(gitStatus.data, vcsTerminology);
   const currentWorktreePath = selectedThreadWorktreePath;
   const gitOperationLabel = gitState.gitOperationLabel;
   const busy = gitOperationLabel !== null;
@@ -122,31 +132,19 @@ function GitOverviewSheetContent(props: GitOverviewSheetProps) {
       menuItems.map((item) => ({
         item: {
           ...item,
-          disabled: item.disabled || (!canWriteSourceControl && item.kind !== "open_pr"),
+          disabled: item.disabled || !canWriteSourceControl,
         },
-        disabledReason:
-          !canWriteSourceControl && item.kind !== "open_pr"
-            ? "This connection cannot change source control."
-            : getGitActionDisabledReason({
-                item,
-                gitStatus: gitStatus.data,
-                isBusy: busy,
-                hasOriginRemote: hasPrimaryRemote,
-              }),
+        disabledReason: !canWriteSourceControl
+          ? "This connection cannot change source control."
+          : getGitActionDisabledReason({
+              item,
+              gitStatus: gitStatus.data,
+              isBusy: busy,
+              hasPrimaryRemote,
+            }),
       })),
     [busy, canWriteSourceControl, gitStatus.data, hasPrimaryRemote, menuItems],
   );
-
-  const openExistingPr = useCallback(async () => {
-    const prUrl = gitStatus.data?.pr?.state === "open" ? gitStatus.data.pr.url : null;
-    if (!prUrl) {
-      Alert.alert("No open PR", "This branch does not have an open pull request.");
-      return;
-    }
-    if (!(await openPullRequest(prUrl))) {
-      Alert.alert("Unable to open PR", "The pull request could not be opened.");
-    }
-  }, [gitStatus.data, openPullRequest]);
 
   const runActionWithPrompt = useCallback(
     async (input: GitActionRequestInput) => {
@@ -197,10 +195,6 @@ function GitOverviewSheetContent(props: GitOverviewSheetProps) {
   const onPressMenuItem = useCallback(
     async (item: (typeof menuItems)[number]) => {
       if (item.disabled) return;
-      if (item.kind === "open_pr") {
-        await openExistingPr();
-        return;
-      }
       if (!canWriteSourceControl) return;
       if (item.dialogAction === "commit") {
         navigation.navigate("GitCommit", {
@@ -217,14 +211,7 @@ function GitOverviewSheetContent(props: GitOverviewSheetProps) {
         await runActionWithPrompt({ action: "create_pr" });
       }
     },
-    [
-      canWriteSourceControl,
-      environmentId,
-      openExistingPr,
-      navigation,
-      runActionWithPrompt,
-      threadId,
-    ],
+    [canWriteSourceControl, environmentId, navigation, runActionWithPrompt, threadId],
   );
 
   // Status facts live on the relevant rows instead of crowding the header
@@ -243,15 +230,55 @@ function GitOverviewSheetContent(props: GitOverviewSheetProps) {
         const ahead = status.aheadCount ?? 0;
         return `${ahead} commit${ahead === 1 ? "" : "s"} ahead`;
       }
-      if (item.kind === "open_pr" && status.pr?.number != null) {
-        return `PR #${status.pr.number} ${status.pr.state ?? "open"}`;
-      }
       return undefined;
     },
     [gitStatus.data, menuItems],
   );
 
   const behindCount = gitStatus.data?.behindCount ?? 0;
+  const canConvertToJj =
+    canWriteSourceControl &&
+    gitStatus.data?.isRepo === true &&
+    (gitStatus.data.vcs?.kind === undefined || gitStatus.data.vcs.kind === "git") &&
+    selectedThreadWorktreePath === null;
+  const convertToJj = useCallback(() => {
+    if (!canWriteSourceControl || !selectedThreadCwd || !selectedThread || isConverting) return;
+    Alert.alert(
+      "Enable Jujutsu?",
+      "Jujutsu will use this repository's Git store. Commits, branches, remotes, and uncommitted files stay in place. Existing Git worktrees continue to use Git.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Enable Jujutsu",
+          onPress: () => {
+            setIsConverting(true);
+            void initRepository({
+              environmentId: selectedThread.environmentId,
+              input: { cwd: selectedThreadCwd, kind: "jj" },
+            }).then(async (result) => {
+              setIsConverting(false);
+              if (result._tag === "Success") {
+                await gitActions.refreshSelectedThreadGitStatus();
+              } else if (!isAtomCommandInterrupted(result)) {
+                const error = squashAtomCommandFailure(result);
+                Alert.alert(
+                  "Jujutsu initialization failed",
+                  error instanceof Error ? error.message : "An error occurred.",
+                );
+              }
+            });
+          },
+        },
+      ],
+    );
+  }, [
+    canWriteSourceControl,
+    gitActions,
+    initRepository,
+    isConverting,
+    selectedThread,
+    selectedThreadCwd,
+  ]);
 
   // Deterministic refresh state. Tying RefreshControl to the query's
   // isPending flag left the spinner stuck (the status query reports pending
@@ -320,6 +347,18 @@ function GitOverviewSheetContent(props: GitOverviewSheetProps) {
             />
           </>
         ) : null}
+        {canConvertToJj ? (
+          <>
+            {Platform.OS !== "android" ? <View className="ml-12 h-px bg-border" /> : null}
+            <SheetListRow
+              icon="arrow.triangle.branch"
+              title="Enable Jujutsu"
+              subtitle="Use Jujutsu with this Git repository"
+              disabled={busy || isConverting}
+              onPress={convertToJj}
+            />
+          </>
+        ) : null}
         {Platform.OS !== "android" ? <View className="ml-12 h-px bg-border" /> : null}
         <SheetListRow
           icon="text.bubble"
@@ -338,11 +377,11 @@ function GitOverviewSheetContent(props: GitOverviewSheetProps) {
         {Platform.OS !== "android" ? <View className="ml-12 h-px bg-border" /> : null}
         <SheetListRow
           icon="point.topleft.down.curvedto.point.bottomright.up"
-          title="Branches & worktrees"
+          title={`${vcsTerminology.refNounPlural} & ${vcsTerminology.workspaceNounPlural}`}
           subtitle={
             canChangeThreadBranch
-              ? "Switch branch, create branch, or move to a worktree"
-              : "View branches and worktrees"
+              ? `Switch ${vcsTerminology.refNoun}, create ${vcsTerminology.refNoun}, or move to a ${vcsTerminology.workspaceNoun}`
+              : `View ${vcsTerminology.refNounPlural} and ${vcsTerminology.workspaceNounPlural}`
           }
           disabled={busy || !isRepo}
           onPress={() =>
@@ -372,8 +411,8 @@ function GitOverviewSheetContent(props: GitOverviewSheetProps) {
                     tintColorClassName="accent-foreground-muted"
                   />
                   <Text className="text-xs text-foreground-muted">
-                    {chain.kind === "native" ? "Stack" : "Branch stack"} · {chain.layers.length} PRs
-                    · bottom to top
+                    {chain.kind === "native" ? "Stack" : `${vcsTerminology.refNounTitle} stack`} ·{" "}
+                    {chain.layers.length} PRs · bottom to top
                   </Text>
                 </View>
               ) : null}
@@ -400,7 +439,9 @@ function GitOverviewSheetContent(props: GitOverviewSheetProps) {
         </View>
       ) : null}
 
-      {currentWorktreePath ? <MetaCard label="Worktree" value={currentWorktreePath} /> : null}
+      {currentWorktreePath ? (
+        <MetaCard label={vcsTerminology.workspaceNounTitle} value={currentWorktreePath} />
+      ) : null}
     </ScrollView>
   );
 

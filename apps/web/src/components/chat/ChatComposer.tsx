@@ -323,6 +323,7 @@ import {
   buildExpandedImagePreview,
   type ExpandedImagePreview,
 } from "./ExpandedImagePreview";
+import { ImageAnnotationIndicator } from "./ImageAnnotationIndicator";
 import {
   SNAP_SHOT_ATTACHMENT_FRAME_CLASS,
   SnapShotAttachmentDetails,
@@ -1386,6 +1387,7 @@ const ComposerFooterPrimaryActions = memo(function ComposerFooterPrimaryActions(
   reserveContextWindowMeter: boolean;
   activeThreadModelDisplayName: string | null;
   isPreparingWorktree: boolean;
+  workspaceNoun: string;
   pendingAction: {
     questionIndex: number;
     isLastQuestion: boolean;
@@ -1447,6 +1449,7 @@ const ComposerFooterPrimaryActions = memo(function ComposerFooterPrimaryActions(
         isConnecting={props.isConnecting}
         isEnvironmentUnavailable={props.isEnvironmentUnavailable}
         isPreparingWorktree={props.isPreparingWorktree}
+        workspaceNoun={props.workspaceNoun}
         hasSendableContent={props.hasSendableContent}
         canResume={props.canResume}
         preserveComposerFocusOnPointerDown={props.preserveComposerFocusOnPointerDown ?? false}
@@ -1547,6 +1550,7 @@ export interface ChatComposerProps {
   supportsQuestionAttachments: boolean;
   maxFileAttachmentBytes: number | null;
   routeKind: "server" | "draft";
+  workspaceNoun: string;
   routeThreadRef: ScopedThreadRef;
   draftId: DraftId | null;
   multipleModelSelections: ReadonlyArray<ModelSelection> | null;
@@ -1740,6 +1744,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     composerDraftTarget,
     environmentId,
     canOperateThread,
+    workspaceNoun,
     attachmentUploadsCapabilityKnown,
     supportsAttachmentUploads,
     supportsQuestionAttachments,
@@ -1835,7 +1840,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     focusComposer,
     scheduleComposerFocus,
     setThreadError,
-    onExpandImage,
+    onExpandImage: expandImage,
     onFileOpen,
     editingQueuedAttachments,
     onRemoveEditingQueuedAttachment,
@@ -1888,6 +1893,11 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           activePendingProgress.activeQuestion.id,
         )
       : null;
+  const onExpandImage = useCallback(
+    (preview: ExpandedImagePreview) =>
+      expandImage({ ...preview, annotationDisabled: questionAttachmentTarget !== null }),
+    [expandImage, questionAttachmentTarget],
+  );
   const attachmentDraftTarget = questionAttachmentTarget ?? composerDraftTarget;
   const attachmentDraft = useComposerThreadDraft(attachmentDraftTarget);
   const attachmentTargetKey = composerTargetKey(attachmentDraftTarget);
@@ -1951,7 +1961,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
       environmentId,
       cwd: gitCwd ?? undefined,
       expandImage: (imageId: string) => {
-        const preview = buildExpandedImagePreview(composerImages, imageId);
+        const preview = buildExpandedImagePreview(composerImages, imageId, { fromComposer: true });
         if (preview) onExpandImage(preview);
       },
       openFile: setPreviewFileId,
@@ -3304,6 +3314,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
         sizeBytes: file.size,
         previewUrl: URL.createObjectURL(file),
         file,
+        ...(record.annotations ? { annotations: record.annotations } : {}),
+        ...(record.burnedAnnotationCount
+          ? { burnedAnnotationCount: record.burnedAnnotationCount }
+          : {}),
       });
       if (!accepted.includes(localId))
         fail("The draft rejected this attachment (duplicate or attachment limit reached).");
@@ -3676,6 +3690,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                 sizeBytes: image.sizeBytes,
                 dataUrl,
                 ...(image.source ? { source: image.source } : {}),
+                ...(image.annotations ? { annotations: image.annotations } : {}),
+                ...(image.burnedAnnotationCount
+                  ? { burnedAnnotationCount: image.burnedAnnotationCount }
+                  : {}),
               });
             } catch {
               const existingPersisted = existingPersistedById.get(image.id);
@@ -4994,6 +5012,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           mimeType: result.image.mimeType,
           sizeBytes: result.image.sizeBytes,
           dataUrl: result.image.dataUrl,
+          ...(image.annotations ? { annotations: image.annotations } : {}),
+          ...(image.burnedAnnotationCount
+            ? { burnedAnnotationCount: image.burnedAnnotationCount }
+            : {}),
           ...(image.source
             ? { source: resizeSnapShotSource(image.source, result.image.imageSize) }
             : {}),
@@ -5155,7 +5177,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
             aria-label={`Preview ${image.name}`}
             onPointerDown={(event) => event.preventDefault()}
             onClick={() => {
-              const preview = buildExpandedImagePreview(composerImages, image.id);
+              const preview = buildExpandedImagePreview(composerImages, image.id, {
+                fromComposer: true,
+              });
               if (preview) onExpandImage(preview);
             }}
           >
@@ -5181,6 +5205,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                 className="m-auto size-3.5"
               />
             )}
+            <ImageAnnotationIndicator count={image.annotations?.length ?? 0} />
           </button>
         ))}
         {restingImagePreviewCounts.overflowCount > 0 ? (
@@ -6813,6 +6838,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                                 projectSelectionRequired
                               }
                               isPreparingWorktree={false}
+                              workspaceNoun={workspaceNoun}
                               hasSendableContent={false}
                               preserveComposerFocusOnPointerDown
                               onPreviousPendingQuestion={onPreviousActivePendingUserInputQuestion}
@@ -7088,6 +7114,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                                   const preview = buildExpandedImagePreview(
                                     composerImages,
                                     image.id,
+                                    { fromComposer: true },
                                   );
                                   if (!preview) return;
                                   onExpandImage(preview);
@@ -7109,6 +7136,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                                 {image.name}
                               </div>
                             )}
+                            <ImageAnnotationIndicator count={image.annotations?.length ?? 0} />
                             {image.source?.kind === "snap-shot" ? (
                               <SnapShotAttachmentDetails
                                 source={image.source}
@@ -7504,6 +7532,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                         projectSelectionRequired
                       }
                       isPreparingWorktree={false}
+                      workspaceNoun={workspaceNoun}
                       hasSendableContent={false}
                       preserveComposerFocusOnPointerDown
                       onPreviousPendingQuestion={onPreviousActivePendingUserInputQuestion}
@@ -7630,6 +7659,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                       projectSelectionRequired
                     }
                     isPreparingWorktree={isPreparingWorktree}
+                    workspaceNoun={workspaceNoun}
                     hasSendableContent={composerSendState.hasSendableContent}
                     canResume={showResumeAction}
                     preserveComposerFocusOnPointerDown={isMobileViewport || isComposerResting}

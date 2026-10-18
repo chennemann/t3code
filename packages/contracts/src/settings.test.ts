@@ -17,6 +17,15 @@ import {
 
 const decodeClientSettings = Schema.decodeUnknownSync(ClientSettingsSchema);
 const decodeClientSettingsPatch = Schema.decodeUnknownSync(ClientSettingsPatch);
+
+describe("image open action", () => {
+  it("keeps zoom as the default and persists the annotation preference", () => {
+    expect(decodeClientSettings({}).imageOpenAction).toBe("zoom");
+    expect(decodeClientSettings({ imageOpenAction: "annotate" }).imageOpenAction).toBe("annotate");
+    expect(decodeClientSettingsPatch({ imageOpenAction: "zoom" }).imageOpenAction).toBe("zoom");
+    expect(() => decodeClientSettingsPatch({ imageOpenAction: "other" })).toThrow();
+  });
+});
 const encodeClientSettings = Schema.encodeSync(ClientSettingsSchema);
 const decodeServerSettings = Schema.decodeUnknownSync(ServerSettings);
 const decodeServerSettingsPatch = Schema.decodeUnknownSync(ServerSettingsPatch);
@@ -780,6 +789,18 @@ describe("ClientSettings pull request merge methods", () => {
   });
 });
 
+describe("ServerSettings terminal shell policy", () => {
+  it("defaults to the platform-selected shell", () => {
+    expect(decodeServerSettings({}).terminalShellPath).toBe("");
+  });
+
+  it("accepts a trimmed shell path through settings patches", () => {
+    expect(
+      decodeServerSettingsPatch({ terminalShellPath: "  /bin/fish  " }).terminalShellPath,
+    ).toBe("/bin/fish");
+  });
+});
+
 describe("ServerSettings.providerInstances (slice-2 invariant)", () => {
   it("defaults to an empty record so legacy configs without the key still decode", () => {
     expect(DEFAULT_SERVER_SETTINGS.providerInstances).toEqual({});
@@ -858,6 +879,9 @@ describe("provider enabled defaults", () => {
     const codex = ProviderDriverKind.make("codex");
     // No flags anywhere: driver default applies.
     expect(resolveProviderInstanceEnabled({ driver: grok, config: {} })).toBe(false);
+    expect(
+      resolveProviderInstanceEnabled({ driver: ProviderDriverKind.make("devin"), config: {} }),
+    ).toBe(false);
     expect(resolveProviderInstanceEnabled({ driver: codex, config: {} })).toBe(true);
     // Unknown fork drivers stay enabled.
     expect(
@@ -983,6 +1007,7 @@ describe("ServerSettingsPatch string normalization", () => {
   it("trims string settings while decoding patches", () => {
     const patch = decodeServerSettingsPatch({
       addProjectBaseDirectory: "  ~/Development  ",
+      terminalShellPath: "  /opt/homebrew/bin/fish  ",
       textGenerationModelSelection: { model: "  gpt-5.4-mini  " },
       observability: {
         otlpTracesUrl: "  http://localhost:4318/v1/traces  ",
@@ -997,6 +1022,7 @@ describe("ServerSettingsPatch string normalization", () => {
     });
 
     expect(patch.addProjectBaseDirectory).toBe("~/Development");
+    expect(patch.terminalShellPath).toBe("/opt/homebrew/bin/fish");
     expect(patch.textGenerationModelSelection?.model).toBe("gpt-5.4-mini");
     expect(patch.observability?.otlpTracesUrl).toBe("http://localhost:4318/v1/traces");
     expect(patch.providerInstances?.[ProviderInstanceId.make("codex_personal")]?.driver).toBe(
