@@ -117,6 +117,8 @@ contextBridge.exposeInMainWorld("desktopBridge", {
     ipcRenderer.invoke(IpcChannels.SET_LOCAL_ENVIRONMENT_ENABLED_CHANNEL, enabled),
   getClientSettings: () => ipcRenderer.invoke(IpcChannels.GET_CLIENT_SETTINGS_CHANNEL),
   getClientCertificates: () => ipcRenderer.invoke(IpcChannels.GET_CLIENT_CERTIFICATES_CHANNEL),
+  prepareClientCertificate: (url) =>
+    ipcRenderer.invoke(IpcChannels.PREPARE_CLIENT_CERTIFICATE_CHANNEL, url),
   forgetClientCertificate: (origin) =>
     ipcRenderer.invoke(IpcChannels.FORGET_CLIENT_CERTIFICATE_CHANNEL, origin),
   setClientSettings: (settings) =>

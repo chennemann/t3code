@@ -8,6 +8,10 @@ import type * as Electron from "electron";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
+import { vi } from "vite-plus/test";
+
+const { netFetch } = vi.hoisted(() => ({ netFetch: vi.fn() }));
+vi.mock("electron", () => ({ net: { fetch: netFetch } }));
 
 import * as DesktopEnvironment from "../app/DesktopEnvironment.ts";
 import * as ElectronApp from "../electron/ElectronApp.ts";
@@ -71,6 +75,75 @@ const setup = Effect.gen(function* () {
 });
 
 describe("client certificate selection", () => {
+  it.effect("chooses a certificate before pairing without sending a pairing code", () =>
+    Effect.gen(function* () {
+      const fixture = yield* setup;
+      const service = yield* fixture.create;
+      yield* service.register;
+      netFetch.mockImplementationOnce((url: string, options: RequestInit) => {
+        assert.equal(url, "https://work.test/");
+        assert.equal(options.method, "HEAD");
+        assert.equal(options.redirect, "manual");
+        assert.equal(options.credentials, "include");
+        return new Promise<Response>((resolve, reject) => {
+          fixture.events.emit(
+            "select-client-certificate",
+            { preventDefault() {} },
+            null,
+            url,
+            certificates,
+            (certificate: Electron.Certificate | undefined) => {
+              if (certificate === certificates[1]) resolve(new Response(null, { status: 401 }));
+              else reject(new Error("Client certificate required"));
+            },
+          );
+        });
+      });
+      const selected = yield* service.prepare("https://work.test/?pairingCode=SECRET");
+      assert.equal(selected?.subjectName, "Laptop 2");
+      assert.lengthOf(fixture.prompts, 1);
+      assert.lengthOf(yield* (yield* fixture.create).list, 1);
+    }).pipe(Effect.provide(NodeServices.layer), Effect.scoped),
+  );
+
+  it.effect("allows setup without T3 authentication when the server needs no certificate", () =>
+    Effect.gen(function* () {
+      const fixture = yield* setup;
+      const service = yield* fixture.create;
+      netFetch.mockResolvedValueOnce(new Response(null, { status: 405 }));
+      assert.isNull(yield* service.prepare("wss://work.test:8443/ws"));
+      assert.equal(netFetch.mock.lastCall?.[0], "https://work.test:8443/");
+      assert.isEmpty(fixture.prompts);
+      assert.isEmpty(yield* service.list);
+    }).pipe(Effect.provide(NodeServices.layer), Effect.scoped),
+  );
+
+  it.effect("reports a failed TLS setup without saving a certificate", () =>
+    Effect.gen(function* () {
+      const fixture = yield* setup;
+      const service = yield* fixture.create;
+      netFetch.mockRejectedValueOnce(new Error("net::ERR_SSL_CLIENT_AUTH_CERT_NEEDED"));
+      const error = yield* service.prepare("https://work.test").pipe(Effect.flip);
+      assert.include(error.message, "installed certificates");
+      assert.isEmpty(yield* service.list);
+      const requests = netFetch.mock.calls.length;
+      for (const url of ["http://work.test", "https://user:secret@work.test", "bad url"]) {
+        yield* service.prepare(url).pipe(Effect.flip);
+      }
+      assert.equal(netFetch.mock.calls.length, requests);
+    }).pipe(Effect.provide(NodeServices.layer), Effect.scoped),
+  );
+
+  it.effect("accepts a completed TLS handshake when Electron blocks a redirect", () =>
+    Effect.gen(function* () {
+      const fixture = yield* setup;
+      const service = yield* fixture.create;
+      netFetch.mockRejectedValueOnce(new Error("Redirect was cancelled"));
+      assert.isNull(yield* service.prepare("https://work.test"));
+      assert.equal(netFetch.mock.lastCall?.[1].redirect, "manual");
+    }).pipe(Effect.provide(NodeServices.layer), Effect.scoped),
+  );
+
   it("normalizes HTTPS and WSS endpoints without widening the server scope", () => {
     assert.equal(clientCertificateOrigin("https://EXAMPLE.test:443/path"), "https://example.test");
     assert.equal(

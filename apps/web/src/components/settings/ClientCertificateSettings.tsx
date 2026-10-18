@@ -86,7 +86,8 @@ export function ClientCertificateSettings() {
       ) : null}
       {!loading && certificates.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No remembered certificates. Connect to a server that requires one to choose a certificate.
+          No remembered certificates. Use Choose client certificate when adding an environment to
+          select one before pairing.
         </p>
       ) : null}
       {certificates.map((certificate) => (

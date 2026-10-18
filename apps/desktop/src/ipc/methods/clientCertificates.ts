@@ -16,6 +16,15 @@ export const getClientCertificates = DesktopIpc.makeIpcMethod({
   }),
 });
 
+export const prepareClientCertificate = DesktopIpc.makeIpcMethod({
+  channel: IpcChannels.PREPARE_CLIENT_CERTIFICATE_CHANNEL,
+  payload: Schema.String,
+  result: Schema.NullOr(DesktopClientCertificatePreferenceSchema),
+  handler: Effect.fn("desktop.ipc.clientCertificates.prepare")(function* (url) {
+    return yield* (yield* DesktopClientCertificates.DesktopClientCertificates).prepare(url);
+  }),
+});
+
 export const forgetClientCertificate = DesktopIpc.makeIpcMethod({
   channel: IpcChannels.FORGET_CLIENT_CERTIFICATE_CHANNEL,
   payload: Schema.String,

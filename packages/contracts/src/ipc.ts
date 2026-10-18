@@ -1158,6 +1158,7 @@ export interface DesktopBridge {
   getClientSettings: () => Promise<ClientSettings | null>;
   setClientSettings: (settings: ClientSettings) => Promise<void>;
   getClientCertificates?: () => Promise<readonly DesktopClientCertificatePreference[]>;
+  prepareClientCertificate?: (url: string) => Promise<DesktopClientCertificatePreference | null>;
   forgetClientCertificate?: (origin: string) => Promise<void>;
   getConnectionCatalog?: () => Promise<string | null>;
   setConnectionCatalog?: (catalog: string) => Promise<boolean>;

@@ -4,7 +4,7 @@ import {
   DesktopClientCertificatePreferenceSchema,
   type DesktopClientCertificatePreference,
 } from "@t3tools/contracts";
-import type * as Electron from "electron";
+import * as Electron from "electron";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
@@ -63,6 +63,9 @@ export class DesktopClientCertificates extends Context.Service<
   {
     readonly list: Effect.Effect<readonly DesktopClientCertificatePreference[]>;
     readonly forget: (origin: string) => Effect.Effect<void, DesktopClientCertificateError>;
+    readonly prepare: (
+      url: string,
+    ) => Effect.Effect<DesktopClientCertificatePreference | null, DesktopClientCertificateError>;
     readonly select: (
       url: string,
       certificates: readonly Electron.Certificate[],
@@ -194,6 +197,45 @@ export const make = Effect.gen(function* () {
   return DesktopClientCertificates.of({
     list: SynchronizedRef.get(preferences),
     forget: (origin) => update((current) => current.filter((item) => item.origin !== origin)),
+    prepare: (url) =>
+      Effect.gen(function* () {
+        const origin = clientCertificateOrigin(url);
+        if (origin === null) {
+          return yield* new DesktopClientCertificateError({
+            operation: "setup (enter an HTTPS server address)",
+            cause: "Invalid HTTPS origin",
+          });
+        }
+        // Complete TLS with Chromium's certificate store before any T3 discovery or
+        // pairing request. HEAD needs no T3 session and never redeems a pairing code.
+        // HTTP errors still prove TLS succeeded; redirects must not select for another host.
+        yield* Effect.tryPromise({
+          try: (signal) =>
+            Electron.net.fetch(`${origin}/`, {
+              method: "HEAD",
+              // Client certificates are TLS credentials, so explicitly allow them.
+              credentials: "include",
+              redirect: "manual",
+              signal: AbortSignal.any([signal, AbortSignal.timeout(120_000)]),
+            }),
+          catch: (cause) =>
+            new DesktopClientCertificateError({
+              operation: "setup (check the server address and installed certificates)",
+              cause,
+            }),
+        }).pipe(
+          // Electron rejects manual redirects after TLS has already succeeded.
+          // Keep the original endpoint's choice without following the new address.
+          Effect.catch((error) =>
+            error.cause instanceof Error && error.cause.message === "Redirect was cancelled"
+              ? Effect.void
+              : Effect.fail(error),
+          ),
+        );
+        return (
+          (yield* SynchronizedRef.get(preferences)).find((item) => item.origin === origin) ?? null
+        );
+      }),
     select,
     register: app.on(
       "select-client-certificate",

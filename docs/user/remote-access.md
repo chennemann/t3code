@@ -22,10 +22,14 @@ certificate on the computer first:
   pk12util -d "sql:$nss_db" -i /path/to/laptop-client.p12
   ```
 
-Restart T3 Code after importing. When a server requests a certificate, choose it
-from the dialog. Leave **Remember for this server in T3 Code** checked to reuse
-that choice for the same HTTPS server and port. Other domains and ports ask
+Restart T3 Code after importing. When adding an environment, enter its HTTPS host
+and click **Choose client certificate** before pairing. This works before a T3
+connection is established and does not consume your pairing code. Choose the
+installed certificate from the dialog. Leave **Remember for this server in T3 Code**
+checked to reuse that choice for the same HTTPS server and port. Other domains and ports ask
 separately. Your private key stays in the platform certificate store.
+Other connections, including the Browser panel, also show the certificate dialog
+when a server requests one.
 
 Review remembered choices under **Settings → Connections → Client certificates**.
 Choose **Forget** to select a different certificate; this restarts the app to
