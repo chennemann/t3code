@@ -20,6 +20,8 @@ import {
   BuildCommandFailedError,
   parseWslRuntimeArchiveMembers,
   DesktopDmgBackgroundSourceMissingError,
+  DesktopServerBundleVersionMismatchError,
+  DesktopUpdateFeedConfigurationMissingError,
   createStageWorkspaceConfig,
   createStagePatchedDependencies,
   readWorkspaceConfig,
@@ -61,9 +63,11 @@ import {
   resolveWindowsServerAsarIgnoreGlobs,
   resourceMonitorExecutableName,
   resolveGitHubPublishConfig,
+  findDesktopBuildVersionMismatches,
   resolveMockUpdateServerPort,
   resolveMockUpdateServerUrl,
   resolvePackageManagerUserAgent,
+  resolveLocalVpInvocation,
   stageLinuxIconSize,
   stageDesktopDmgBackground,
   stageResourceMonitor,
@@ -76,6 +80,7 @@ import {
   LinuxBrowserSecretHostError,
   stageBrowserSecret,
   validateWindowsPackagedPayload,
+  verifyServerBundleVersion,
   WindowsPrimaryNativeProbeError,
   WindowsDesktopBuildPrerequisitesMissingError,
   WindowsPackagedPayloadValidationError,
@@ -267,6 +272,62 @@ const makeWindowsPayloadFixture = Effect.fn("test.makeWindowsPayloadFixture")(fu
 });
 
 it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
+  it("detects release package versions that do not match the requested artifact version", () => {
+    assert.deepStrictEqual(
+      findDesktopBuildVersionMismatches("0.0.35-fork.4", {
+        "apps/server/package.json": "0.0.34-fork.1",
+        "apps/desktop/package.json": "0.0.35-fork.4",
+        "apps/web/package.json": "0.0.34-fork.1",
+        "packages/contracts/package.json": "0.0.35-fork.4",
+      }),
+      [
+        { packagePath: "apps/server/package.json", actualVersion: "0.0.34-fork.1" },
+        { packagePath: "apps/web/package.json", actualVersion: "0.0.34-fork.1" },
+      ],
+    );
+  });
+
+  it.effect("rejects a distributable build without an update feed", () =>
+    Effect.gen(function* () {
+      const error = yield* createBuildConfig(
+        "win",
+        "nsis",
+        "0.0.35-fork.4",
+        false,
+        false,
+        undefined,
+        undefined,
+      ).pipe(Effect.flip);
+
+      assert.instanceOf(error, DesktopUpdateFeedConfigurationMissingError);
+      assert.equal(error.version, "0.0.35-fork.4");
+    }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
+  );
+
+  it.effect("rejects stale compiled server version output", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const tempDir = yield* fs.makeTempDirectoryScoped({
+          prefix: "desktop-server-version-test-",
+        });
+        const entryPath = path.join(tempDir, "bin.mjs");
+        yield* fs.writeFileString(entryPath, 'console.log("t3 v0.0.34-fork.1");\n');
+
+        const error = yield* verifyServerBundleVersion({
+          entryPath,
+          expectedVersion: "0.0.35-fork.4",
+          verbose: false,
+        }).pipe(Effect.flip);
+
+        assert.instanceOf(error, DesktopServerBundleVersionMismatchError);
+        assert.equal(error.expectedVersion, "0.0.35-fork.4");
+        assert.equal(error.actualOutput, "t3 v0.0.34-fork.1");
+      }),
+    ),
+  );
+
   it("resolves the dedicated nightly updater channel from nightly versions", () => {
     assert.equal(resolveDesktopUpdateChannel("0.0.17-nightly.20260413.42"), "nightly");
     assert.equal(resolveDesktopUpdateChannel("0.0.17"), "latest");
@@ -752,7 +813,13 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         assert.deepStrictEqual(config.electronLanguages, DESKTOP_ELECTRON_LANGUAGES);
       }
       assert.deepStrictEqual(mac.electronLanguages, DESKTOP_ELECTRON_LANGUAGES);
-    }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
+    }).pipe(
+      Effect.provide(
+        ConfigProvider.layer(
+          ConfigProvider.fromEnv({ env: { GITHUB_REPOSITORY: "pingdotgg/t3code" } }),
+        ),
+      ),
+    ),
   );
 
   it("excludes foreign node-pty prebuilds from macOS and Linux packages", () => {
@@ -1249,7 +1316,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
                 Effect.gen(function* () {
                   assert.equal(command._tag, "StandardCommand");
                   if (command._tag !== "StandardCommand") return mockProcess(1);
-                  assert.equal(command.command, "cargo");
+                  assert.match(path.basename(command.command), /^cargo(?:\.exe)?$/i);
                   assert.deepEqual(command.args, [
                     "build",
                     "--locked",
@@ -1277,7 +1344,8 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
               `${backend}-capture/t3-${backend}-snap-shot`,
             );
             assert.equal(yield* fs.readFileString(installed), `helper-${arch}`);
-            assert.equal((yield* fs.stat(installed)).mode & 0o777, 0o755);
+            if ((yield* HostProcess.Platform) !== "win32")
+              assert.equal((yield* fs.stat(installed)).mode & 0o777, 0o755);
             if (backend === "hyprland")
               assert.equal(
                 yield* fs.readFileString(
@@ -2144,7 +2212,13 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         { name: "T3 Code", schemes: ["t3code", "t3code-dev"] },
         { name: "Web site URL", schemes: ["http", "https"], role: "Viewer" },
       ]);
-    }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
+    }).pipe(
+      Effect.provide(
+        ConfigProvider.layer(
+          ConfigProvider.fromEnv({ env: { GITHUB_REPOSITORY: "pingdotgg/t3code" } }),
+        ),
+      ),
+    ),
   );
 
   it.effect("uses the nightly DMG background for nightly macOS builds", () =>
@@ -2163,7 +2237,13 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         (config.dmg as Record<string, unknown>).background,
         "dmg/dmg-background-nightly.png",
       );
-    }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
+    }).pipe(
+      Effect.provide(
+        ConfigProvider.layer(
+          ConfigProvider.fromEnv({ env: { GITHUB_REPOSITORY: "pingdotgg/t3code" } }),
+        ),
+      ),
+    ),
   );
 
   it.effect("configures Windows executable metadata and native signing extensions", () =>
@@ -2183,7 +2263,13 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       assert.deepStrictEqual(win.signExts, [".node", ".dll"]);
       assert.equal(win.signAndEditExecutable, true);
       assert.notProperty(win, "azureSignOptions");
-    }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
+    }).pipe(
+      Effect.provide(
+        ConfigProvider.layer(
+          ConfigProvider.fromEnv({ env: { GITHUB_REPOSITORY: "pingdotgg/t3code" } }),
+        ),
+      ),
+    ),
   );
 
   it("stages the resource monitor as an external executable resource", () => {
@@ -2485,6 +2571,15 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
 // own node_modules holds the sidecar externals and must be ignored, but any
 // node_modules *above* it would let Node's parent walk satisfy an import that is
 // missing from the package, so the probe refuses to run in that case.
+it("invokes the repository-pinned vp entry through Node without a Windows command shim", () => {
+  const invocation = resolveLocalVpInvocation("C:\\repo", ["install", "--prod"], "node.exe");
+
+  assert.strictEqual(invocation.command, "node.exe");
+  assert.match(invocation.args[0] ?? "", /node_modules[\\/]vite-plus[\\/]bin[\\/]vp$/u);
+  assert.deepStrictEqual(invocation.args.slice(1), ["install", "--prod"]);
+  assert.strictEqual(invocation.shell, false);
+});
+
 it("lists ancestor node_modules, nearest first, excluding the start directory", () => {
   assert.deepStrictEqual(ancestorNodeModulesPaths("C:\\tmp\\probe\\app", "\\"), [
     "C:\\tmp\\probe\\node_modules",
