@@ -774,6 +774,13 @@ export const SETTINGS_SEARCH_ITEMS = [
     localBackendManagementOnly: true,
   },
   {
+    id: "client-certificates",
+    title: "Client certificates",
+    to: "/settings/connections",
+    searchTerms: ["mtls tls ssl authentication p12 pfx certificate domain fingerprint"],
+    desktopOnly: true,
+  },
+  {
     id: "tailscale-https",
     title: "Tailscale HTTPS",
     to: "/settings/connections",

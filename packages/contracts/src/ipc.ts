@@ -1121,6 +1121,16 @@ export const DesktopPreviewAutomationWaitForInputSchema = Schema.Struct({
 export const SystemSettingsPaneSchema = Schema.Literals(["full-disk-access"]);
 export type SystemSettingsPane = typeof SystemSettingsPaneSchema.Type;
 
+export const DesktopClientCertificatePreferenceSchema = Schema.Struct({
+  origin: Schema.String,
+  fingerprint: Schema.String,
+  subjectName: Schema.String,
+  issuerName: Schema.String,
+  validExpiry: Schema.Number,
+});
+export type DesktopClientCertificatePreference =
+  typeof DesktopClientCertificatePreferenceSchema.Type;
+
 export interface DesktopBridge {
   getAppBranding: () => DesktopAppBranding | null;
   /** Absolute path of a dropped or picked file; absent on desktop builds predating it. */
@@ -1146,6 +1156,8 @@ export interface DesktopBridge {
   getLocalEnvironmentBearerToken: () => Promise<string>;
   getClientSettings: () => Promise<ClientSettings | null>;
   setClientSettings: (settings: ClientSettings) => Promise<void>;
+  getClientCertificates?: () => Promise<readonly DesktopClientCertificatePreference[]>;
+  forgetClientCertificate?: (origin: string) => Promise<void>;
   getConnectionCatalog?: () => Promise<string | null>;
   setConnectionCatalog?: (catalog: string) => Promise<boolean>;
   clearConnectionCatalog?: () => Promise<void>;
