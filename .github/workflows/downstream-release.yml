@@ -1,4 +1,4 @@
-name: Downstream Windows release
+name: Downstream desktop release
 
 on:
   push:
@@ -95,7 +95,7 @@ jobs:
               --max-count=1 \
               --format=%H \
               "$RELEASE_SHA" \
-              -- .github/upstream-release.json .github/workflows/downstream-release.yml
+              -- .github/upstream-release.json
           )"
           if [[ -z "$baseline_sha" ]]; then
             echo "Could not find the upstream baseline commit for $RELEASE_SHA." >&2
@@ -182,6 +182,88 @@ jobs:
 
           echo "status=$status" >> "$GITHUB_OUTPUT"
           echo "Resolved release state: $status"
+
+  build_linux:
+    name: Build Linux x64 AppImage and deb
+    needs: preflight
+    if: needs.preflight.outputs.status != 'already-released'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      T3CODE_DESKTOP_UPDATE_REPOSITORY: ${{ github.repository }}
+    steps:
+      - name: Checkout release commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.preflight.outputs.sha }}
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version-file: package.json
+          cache: true
+          run-install: true
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          toolchain: stable
+
+      - name: Install Linux desktop build libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsecret-1-dev pkg-config imagemagick
+
+      - name: Prepare resolved package versions
+        run: |
+          node scripts/update-release-package-versions.ts "${{ needs.preflight.outputs.version }}"
+          vp install --lockfile-only --ignore-scripts
+
+      - name: Build desktop artifact
+        env:
+          T3CODE_CLERK_PASSKEY_RP_DOMAINS: ${{ vars.CLERK_PASSKEY_RP_DOMAINS }}
+        run: |
+          vp run dist:desktop:artifact --platform linux --target AppImage --arch x64 \
+            --build-version "${{ needs.preflight.outputs.version }}" --verbose
+
+      - name: Collect and verify Linux release assets
+        env:
+          EXPECTED_VERSION: ${{ needs.preflight.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-publish
+          shopt -s nullglob
+          appimages=(release/*.AppImage)
+          packages=(release/*.deb)
+          if (( ${#appimages[@]} == 0 || ${#packages[@]} == 0 )); then
+            echo "The Linux release must contain an AppImage and a deb package." >&2
+            exit 1
+          fi
+          cp "${appimages[@]}" "${packages[@]}" release/latest-linux.yml release-publish/
+          node --input-type=module <<'NODE'
+            import fs from "node:fs";
+            const manifest = fs.readFileSync("release-publish/latest-linux.yml", "utf8");
+            const version = manifest.match(/^version:\s*['"]?([^'"\s#]+)['"]?\s*$/m)?.[1];
+            if (version !== process.env.EXPECTED_VERSION) {
+              throw new Error(`latest-linux.yml version mismatch: ${version}`);
+            }
+            for (const extension of ["AppImage", "deb"]) {
+              if (!manifest.includes(`.${extension}`)) {
+                throw new Error(`latest-linux.yml is missing the ${extension} update asset`);
+              }
+            }
+          NODE
+
+      - name: Upload Linux release assets
+        uses: actions/upload-artifact@v7
+        with:
+          name: downstream-desktop-linux-x64
+          path: release-publish/*
+          if-no-files-found: error
 
   build_wsl_runtime:
     name: Build Linux x64 runtime for WSL
@@ -438,8 +520,8 @@ jobs:
 
   publish:
     name: Publish immutable GitHub Release
-    needs: [preflight, build_windows]
-    if: needs.preflight.outputs.status != 'already-released' && needs.build_windows.result == 'success'
+    needs: [preflight, build_windows, build_linux]
+    if: needs.preflight.outputs.status != 'already-released' && needs.build_windows.result == 'success' && needs.build_linux.result == 'success'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -451,10 +533,11 @@ jobs:
           ref: ${{ needs.preflight.outputs.sha }}
           fetch-depth: 0
 
-      - name: Download Windows release assets
+      - name: Download desktop release assets
         uses: actions/download-artifact@v8
         with:
-          name: downstream-desktop-win-x64
+          pattern: downstream-desktop-*
+          merge-multiple: true
           path: release-assets
 
       - name: Verify and publish immutable release
@@ -475,6 +558,12 @@ jobs:
           fi
           if [[ ! -f release-assets/latest.yml ]]; then
             echo "Missing release-assets/latest.yml." >&2
+            exit 1
+          fi
+          appimages=(release-assets/*.AppImage)
+          packages=(release-assets/*.deb)
+          if (( ${#appimages[@]} == 0 || ${#packages[@]} == 0 )) || [[ ! -f release-assets/latest-linux.yml ]]; then
+            echo "Missing required Linux release assets or update manifest." >&2
             exit 1
           fi
 
@@ -499,6 +588,8 @@ jobs:
               release-assets/*.exe \
               release-assets/*.blockmap \
               release-assets/*.yml \
+              release-assets/*.AppImage \
+              release-assets/*.deb \
               --repo "$GITHUB_REPOSITORY" \
               --verify-tag \
               --title "T3 Code $RELEASE_TAG" \
