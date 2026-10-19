@@ -7810,6 +7810,8 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
             prompt.push({
               type: "text",
               text: buildRuntimeInstructions({
+                pullRequestLinkingInstructions:
+                  turnInput.runtimePolicy.pullRequestLinkingInstructions,
                 harness: flavor.runtimeHarness ?? driver,
                 model: turnInput.modelSelection.model,
                 pullRequestLinking:
