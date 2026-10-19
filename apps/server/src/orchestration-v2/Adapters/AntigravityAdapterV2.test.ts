@@ -1114,9 +1114,16 @@ describe("AntigravityAdapterV2 runtime mode ceiling", () => {
 });
 
 describe("AntigravityAdapterV2 session system prompt", () => {
-  it.effect.each(["1.4.5", "1.4.1"])(
-    "carries PR linking once in the %s session setup or once per turn",
-    (agentVersion) =>
+  it.effect.each(
+    ["1.4.5", "1.4.1"].flatMap((agentVersion) =>
+      [undefined, "", "Link only my task PR."].map((pullRequestLinkingInstructions) => ({
+        agentVersion,
+        pullRequestLinkingInstructions,
+      })),
+    ),
+  )(
+    "carries configured PR linking in $agentVersion: $pullRequestLinkingInstructions",
+    ({ agentVersion, pullRequestLinkingInstructions }) =>
       Effect.gen(function* () {
         const childProcessSpawner = yield* ChildProcessSpawner.ChildProcessSpawner;
         const fileSystem = yield* FileSystem.FileSystem;
@@ -1166,6 +1173,9 @@ describe("AntigravityAdapterV2 session system prompt", () => {
           runtimeMode: "full-access",
           interactionMode: "default",
           cwd: workspace,
+          ...(pullRequestLinkingInstructions === undefined
+            ? {}
+            : { pullRequestLinkingInstructions }),
         });
         const threadId = ThreadId.make("thread-antigravity-system-prompt");
         const modelSelection = { instanceId, model: "gemini-test-low" } as const;
@@ -1233,12 +1243,18 @@ describe("AntigravityAdapterV2 session system prompt", () => {
         const append = JSON.stringify(sessionNew?.params?._meta ?? null);
         // Identity stays per turn either way.
         assert.include(sent, "through the Antigravity harness, as gemini-test-low");
-        if (agentVersion === "1.4.5") {
+        if (pullRequestLinkingInstructions === "") {
+          assert.notInclude(append, "pull_request_linking");
+          assert.notInclude(sent, "pull_request_linking");
+        } else if (agentVersion === "1.4.5") {
           assert.include(append, "pull_request_linking");
+          if (pullRequestLinkingInstructions)
+            assert.include(append, pullRequestLinkingInstructions);
           assert.notInclude(sent, "<pull_request_linking>");
         } else {
           assert.notInclude(append, "systemPrompt");
           assert.include(sent, "<pull_request_linking>");
+          if (pullRequestLinkingInstructions) assert.include(sent, pullRequestLinkingInstructions);
         }
       }).pipe(Effect.provide(layerSession), Effect.scoped),
   );

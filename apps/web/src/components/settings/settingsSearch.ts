@@ -462,6 +462,14 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["hide fold running monitoring threads inbox sidebar shelf"],
   },
   {
+    id: "pr-linking-instructions",
+    title: "PR linking instructions",
+    to: "/settings/labs",
+    targetId: "pr-linking-instructions",
+    scope: "environment-defaults",
+    searchTerms: ["pull request prompt stack linking instructions"],
+  },
+  {
     id: "boring-sidebar",
     title: "Boring sidebar (group by project)",
     to: "/settings/labs",

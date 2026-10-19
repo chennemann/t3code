@@ -38,6 +38,7 @@ import { DEFAULT_RUNTIME_MODE, RuntimeMode } from "./providerPolicy.ts";
 import { BrowserProfile, BrowserProfileId, DEFAULT_BROWSER_PROFILE_ID } from "./browserProfile.ts";
 
 import * as Downstream from "./downstream/settings.ts";
+export { DEFAULT_PULL_REQUEST_LINKING_INSTRUCTIONS } from "./downstream/settings.ts";
 import {
   BrowserRecordingFrameRate,
   DEFAULT_BROWSER_RECORDING_FRAME_RATE,

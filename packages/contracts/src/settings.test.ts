@@ -559,3 +559,23 @@ describe("ServerSettings terminal shell policy", () => {
     ).toBe("/bin/fish");
   });
 });
+
+describe("PR linking instructions", () => {
+  it("defaults existing settings to task-only linking", () => {
+    expect(decodeServerSettings({}).pullRequestLinkingInstructions).toContain(
+      "excluding other stack PRs",
+    );
+  });
+  it.each(["", "Link just the current PR."])(
+    "preserves custom or disabled instructions: %s",
+    (pullRequestLinkingInstructions) => {
+      expect(
+        decodeServerSettingsPatch({ pullRequestLinkingInstructions })
+          .pullRequestLinkingInstructions,
+      ).toBe(pullRequestLinkingInstructions);
+      expect(
+        decodeServerSettings({ pullRequestLinkingInstructions }).pullRequestLinkingInstructions,
+      ).toBe(pullRequestLinkingInstructions);
+    },
+  );
+});

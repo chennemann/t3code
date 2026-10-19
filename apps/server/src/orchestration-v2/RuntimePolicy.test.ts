@@ -80,7 +80,9 @@ const providerInstanceFor = (instanceId: ProviderInstanceId) =>
 
 const layerWithPolicy = (policy?: ManagedPolicySummary) =>
   RuntimePolicy.layerFromProjectStore.pipe(
-    Layer.provide(ServerSettings.layerTest({}, policy)),
+    Layer.provideMerge(
+      ServerSettings.layerTest({ pullRequestLinkingInstructions: "Link task PRs only." }, policy),
+    ),
     Layer.provide(
       Layer.succeed(ProviderInstanceRegistry.ProviderInstanceRegistry, {
         getInstance: (instanceId) => Effect.succeed(providerInstanceFor(instanceId)),
@@ -116,6 +118,24 @@ const layerWithPolicy = (policy?: ManagedPolicySummary) =>
 const layerTest = layerWithPolicy();
 
 it.layer(layerTest)("RuntimePolicyV2", (it) => {
+  it.effect("reads the environment PR linking prompt", () =>
+    Effect.gen(function* () {
+      const service = yield* RuntimePolicy.RuntimePolicyV2;
+      const now = yield* DateTime.now;
+      const resolved = yield* service.resolve({
+        thread: makeThread({ now, worktreePath: null }),
+        modelSelection,
+      });
+      assert.equal(resolved.pullRequestLinkingInstructions, "Link task PRs only.");
+      const settings = yield* ServerSettings.ServerSettingsService;
+      yield* settings.updateSettings({ pullRequestLinkingInstructions: "" });
+      const next = yield* service.resolve({
+        thread: makeThread({ now, worktreePath: null }),
+        modelSelection,
+      });
+      assert.equal(next.pullRequestLinkingInstructions, "");
+    }),
+  );
   it.effect("asks for Antigravity command approval when a stored Auto thread falls back", () =>
     Effect.gen(function* () {
       const policy = yield* RuntimePolicy.RuntimePolicyV2;

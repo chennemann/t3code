@@ -95,3 +95,19 @@ describe("Codex device context", () => {
 function runtimeInstructions(runtime: Parameters<typeof buildCodexAdditionalContext>[0]) {
   return buildCodexAdditionalContext(runtime).t3_code_runtime!.value;
 }
+
+describe("Codex PR linking instructions", () => {
+  it.each(["", "Link only the current PR."])(
+    "uses the configured prompt: %s",
+    (pullRequestLinkingInstructions) => {
+      const text = runtimeInstructions({ model: "test-model", pullRequestLinkingInstructions });
+      NodeAssert.equal(
+        text.includes("<pull_request_linking>"),
+        pullRequestLinkingInstructions !== "",
+      );
+      if (pullRequestLinkingInstructions)
+        NodeAssert.ok(text.includes(pullRequestLinkingInstructions));
+      NodeAssert.ok(!text.includes("watch_pull_request"));
+    },
+  );
+});
