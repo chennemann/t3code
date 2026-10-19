@@ -90,7 +90,8 @@ describe("client certificate selection", () => {
             "select-client-certificate",
             { preventDefault() {} },
             null,
-            url,
+            // Electron emits HostPortPair::ToString(), without a URL scheme.
+            "work.test:443",
             certificates,
             (certificate: Electron.Certificate | undefined) => {
               if (certificate === certificates[1]) resolve(new Response(null, { status: 401 }));
@@ -124,7 +125,7 @@ describe("client certificate selection", () => {
       const service = yield* fixture.create;
       netFetch.mockRejectedValueOnce(new Error("net::ERR_SSL_CLIENT_AUTH_CERT_NEEDED"));
       const error = yield* service.prepare("https://work.test").pipe(Effect.flip);
-      assert.include(error.message, "installed certificates");
+      assert.include(error.message, "ERR_SSL_CLIENT_AUTH_CERT_NEEDED");
       assert.isEmpty(yield* service.list);
       const requests = netFetch.mock.calls.length;
       for (const url of ["http://work.test", "https://user:secret@work.test", "bad url"]) {
@@ -150,12 +151,21 @@ describe("client certificate selection", () => {
       clientCertificateOrigin("wss://example.test:8443/ws"),
       "https://example.test:8443",
     );
+    assert.equal(clientCertificateOrigin("EXAMPLE.test:443"), "https://example.test");
+    assert.equal(clientCertificateOrigin("example.test:8443"), "https://example.test:8443");
+    assert.equal(clientCertificateOrigin("[::1]:443"), "https://[::1]");
+    assert.equal(clientCertificateOrigin("[::1]:8443"), "https://[::1]:8443");
     for (const url of [
       "http://example.test",
       "ws://example.test",
       "file:///tmp",
       "bad url",
       "https://user:secret@example.test",
+      "user:secret@example.test:443",
+      "example.test:443/path",
+      "example.test:443?token=secret",
+      "example.test:443#token=secret",
+      "example.test:99999",
     ]) {
       assert.isNull(clientCertificateOrigin(url));
     }

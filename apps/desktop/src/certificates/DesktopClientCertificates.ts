@@ -31,15 +31,20 @@ export class DesktopClientCertificateError extends Schema.TaggedError<DesktopCli
   { operation: Schema.String, cause: Schema.Defect() },
 ) {
   override get message(): string {
-    return `Client certificate ${this.operation} failed.`;
+    const detail = this.cause instanceof Error ? ` ${this.cause.message}` : "";
+    return `Client certificate ${this.operation} failed.${detail}`;
   }
 }
 const isDesktopClientCertificateError = Schema.is(DesktopClientCertificateError);
 
-/** Scope a choice to the TLS endpoint, including its port, across HTTPS and WSS. */
+/** Scope HTTPS/WSS URLs and Electron's TLS host:port callbacks to one origin. */
 export function clientCertificateOrigin(value: string): string | null {
   try {
-    const url = new URL(value);
+    // Electron emits HostPortPair::ToString(), including brackets around IPv6.
+    const endpoint = /^(?:\[[\da-f:]+\]|[^:/?#@\s]+):\d+$/iu.test(value)
+      ? `https://${value}`
+      : value;
+    const url = new URL(endpoint);
     if (url.username || url.password) return null;
     if (url.protocol === "wss:") url.protocol = "https:";
     return url.protocol === "https:" ? url.origin : null;
@@ -220,7 +225,7 @@ export const make = Effect.gen(function* () {
             }),
           catch: (cause) =>
             new DesktopClientCertificateError({
-              operation: "setup (check the server address and installed certificates)",
+              operation: "setup",
               cause,
             }),
         }).pipe(
