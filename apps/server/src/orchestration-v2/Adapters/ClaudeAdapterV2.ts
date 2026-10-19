@@ -2578,6 +2578,7 @@ const subagentDeviceInstructions: HookCallback = () =>
   });
 
 export function makeClaudeQueryOptions(input: {
+  readonly pullRequestLinkingInstructions?: string | undefined;
   readonly modelSelection: ModelSelection;
   readonly modelCatalog?: ClaudeModelCatalog;
   readonly nativeThreadId: string;
@@ -2756,6 +2757,7 @@ export function makeClaudeQueryOptions(input: {
         buildRuntimeInstructions({
           harness: "Claude Code",
           agentFeedback,
+          pullRequestLinkingInstructions: input.pullRequestLinkingInstructions,
           runtimePolicy: { cwd: input.cwd, workspace: input.workspace },
         }) +
           (input.mcpServers === undefined
@@ -4122,6 +4124,7 @@ export function claudeEffectiveQueryPolicyKey(
   mcpOverrides: {
     readonly allowedTools?: ReadonlyArray<string>;
     readonly mcpServers?: ClaudeQueryOptions["mcpServers"];
+    readonly pullRequestLinkingInstructions?: string | undefined;
   },
   // Folders are fixed when a query starts, so a changed list needs a new one.
   workspace?: ProviderAdapter.ProviderAdapterV2RuntimePolicy["workspace"],
@@ -4135,6 +4138,7 @@ export function claudeEffectiveQueryPolicyKey(
         : { allowedTools: mcpOverrides.allowedTools }),
     }),
     mcpServers: mcpOverrides.mcpServers,
+    pullRequestLinkingInstructions: mcpOverrides.pullRequestLinkingInstructions,
   });
 }
 
@@ -13980,7 +13984,11 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
           });
           const queryPolicyKey = claudeEffectiveQueryPolicyKey(
             queryPolicy,
-            mcpOverrides,
+            {
+              ...mcpOverrides,
+              pullRequestLinkingInstructions:
+                turnInput.runtimePolicy.pullRequestLinkingInstructions,
+            },
             turnInput.runtimePolicy.workspace,
           );
           const resumeSessionAt = yield* getNativeConversationHeadId(turnInput.providerThread);
@@ -14154,6 +14162,7 @@ export const makeClaudeAdapterV2 = Effect.fn("makeClaudeAdapterV2")(function* (
             resumeSessionAt !== undefined || openedWithResume || hasPersistedProviderTurn;
           const queryOptions = makeClaudeQueryOptions({
             agentFeedback: turnInput.agentFeedback ?? "off",
+            pullRequestLinkingInstructions: turnInput.runtimePolicy.pullRequestLinkingInstructions,
             modelSelection: turnInput.modelSelection,
             modelCatalog: catalog,
             nativeThreadId,

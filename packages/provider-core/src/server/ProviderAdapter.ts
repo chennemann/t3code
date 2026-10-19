@@ -63,6 +63,7 @@ export const ProviderAdapterV2RuntimeWorkspace = Schema.Struct({
 export type ProviderAdapterV2RuntimeWorkspace = typeof ProviderAdapterV2RuntimeWorkspace.Type;
 
 export const ProviderAdapterV2RuntimePolicy = Schema.Struct({
+  pullRequestLinkingInstructions: Schema.optional(Schema.String),
   runtimeMode: RuntimeMode,
   interactionMode: ProviderInteractionMode,
   cwd: Schema.NullOr(Schema.String),

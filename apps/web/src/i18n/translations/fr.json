@@ -13069,5 +13069,9 @@
   "cb053078f01f815a": "Aucun certificat mémorisé. Utilisez Choisir un certificat client lors de l’ajout d’un environnement pour en sélectionner un avant l’association.",
   "e7537980f5d59fce": "Oublier…",
   "db290991043b6b62": "Oublier ce certificat et redémarrer ?",
-  "d858a580cd4e166f": "Certificats clients"
+  "d858a580cd4e166f": "Certificats clients",
+  "aeddf4420f291989": "Instructions de l’agent",
+  "4530d1e0dc4bb130": "Définissez les pull requests que les agents lient aux fils. Laissez vide pour désactiver les instructions. Créez un nouveau fil pour que les anciennes instructions ne s’appliquent plus.",
+  "ccfb9aec36900f53": "Réinitialiser les instructions de liaison des PR",
+  "fd3b48389394ac2c": "Instructions de liaison des PR"
 }

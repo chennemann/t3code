@@ -13069,5 +13069,9 @@
   "cb053078f01f815a": "Keine gespeicherten Zertifikate. Wählen Sie beim Hinzufügen einer Umgebung vor dem Koppeln „Clientzertifikat auswählen“.",
   "e7537980f5d59fce": "Vergessen…",
   "db290991043b6b62": "Dieses Zertifikat vergessen und neu starten?",
-  "d858a580cd4e166f": "Clientzertifikate"
+  "d858a580cd4e166f": "Clientzertifikate",
+  "aeddf4420f291989": "Agent-Anweisungen",
+  "4530d1e0dc4bb130": "Legen Sie fest, welche Pull Requests Agenten mit Threads verknüpfen. Leer lassen deaktiviert die Anweisungen. Beginnen Sie einen neuen Thread, damit vorherige Anweisungen nicht mehr gelten.",
+  "ccfb9aec36900f53": "PR-Verknüpfungsanweisungen zurücksetzen",
+  "fd3b48389394ac2c": "PR-Verknüpfungsanweisungen"
 }

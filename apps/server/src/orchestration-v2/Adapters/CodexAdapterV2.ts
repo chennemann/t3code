@@ -978,6 +978,7 @@ export const buildCodexTurnStartParams = Effect.fn("CodexAdapterV2.buildCodexTur
             {
               model: input.modelSelection.model,
               reasoningEffort: effort ?? undefined,
+              pullRequestLinkingInstructions: input.runtimePolicy.pullRequestLinkingInstructions,
               agentFeedback: input.agentFeedback ?? "off",
             },
             {

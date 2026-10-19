@@ -4,6 +4,7 @@ import { useAuth } from "@clerk/react";
 import { Link } from "@tanstack/react-router";
 import {
   AgentFeedbackMode,
+  DEFAULT_PULL_REQUEST_LINKING_INSTRUCTIONS,
   DEFAULT_WORKFLOW_SKIPPED_RUNS_KEPT,
   MAX_WORKFLOW_SKIPPED_RUNS_KEPT,
 } from "@t3tools/contracts";
@@ -16,6 +17,7 @@ import { NumberField, NumberFieldGroup, NumberFieldInput } from "../ui/number-fi
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { Switch } from "../ui/switch";
 import { commitNumberFieldOnEnter } from "./commitNumberFieldOnEnter";
+import { Textarea } from "../ui/textarea";
 import { ScopedSwitch } from "./ScopedSwitch";
 import {
   SettingResetButton,
@@ -48,6 +50,9 @@ export function LabsSettingsPanel() {
         <SimlockHostsRow />
         <FastWorktreeCheckoutRow />
         <AgentFeedbackRow />
+      </SettingsSection>
+      <SettingsSection id="agent-instructions" title={gt("Agent instructions")}>
+        <PullRequestLinkingRow />
       </SettingsSection>
     </SettingsPageContainer>
   );
@@ -461,6 +466,45 @@ function AgentFeedbackRow() {
             ))}
           </SelectPopup>
         </Select>
+      }
+    />
+  );
+}
+
+function PullRequestLinkingRow() {
+  const gt = useGT();
+  const searchableSetting = useSearchableSetting();
+  const settings = useScopedSettings();
+  const updateSettings = useUpdateScopedSettings();
+  return (
+    <SettingsRow
+      {...searchableSetting("pr-linking-instructions")}
+      serverScoped
+      settingKeys={["pullRequestLinkingInstructions"]}
+      description={gt(
+        "Control which pull requests agents link to threads. Leave empty to disable the instructions. Start a new thread to ensure previous instructions no longer apply.",
+      )}
+      resetAction={
+        settings.pullRequestLinkingInstructions !== DEFAULT_PULL_REQUEST_LINKING_INSTRUCTIONS ? (
+          <SettingResetButton
+            ariaLabel={gt("Reset PR linking instructions")}
+            onClick={() =>
+              updateSettings({
+                pullRequestLinkingInstructions: DEFAULT_PULL_REQUEST_LINKING_INSTRUCTIONS,
+              })
+            }
+          />
+        ) : null
+      }
+      control={
+        <Textarea
+          className="min-h-40 w-[min(32rem,60vw)]"
+          value={settings.pullRequestLinkingInstructions}
+          onChange={(event) =>
+            updateSettings({ pullRequestLinkingInstructions: event.currentTarget.value })
+          }
+          aria-label={gt("PR linking instructions")}
+        />
       }
     />
   );

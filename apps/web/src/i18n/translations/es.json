@@ -13064,5 +13064,9 @@
   "cb053078f01f815a": "No hay certificados guardados. Usa Elegir certificado de cliente al añadir un entorno para seleccionarlo antes de emparejar.",
   "e7537980f5d59fce": "Olvidar…",
   "db290991043b6b62": "¿Olvidar este certificado y reiniciar?",
-  "d858a580cd4e166f": "Certificados de cliente"
+  "d858a580cd4e166f": "Certificados de cliente",
+  "aeddf4420f291989": "Instrucciones del agente",
+  "4530d1e0dc4bb130": "Controla qué pull requests vinculan los agentes a los hilos. Déjalo vacío para desactivar las instrucciones. Inicia un hilo nuevo para que las instrucciones anteriores dejen de aplicarse.",
+  "ccfb9aec36900f53": "Restablecer instrucciones de enlace de PR",
+  "fd3b48389394ac2c": "Instrucciones de enlace de PR"
 }

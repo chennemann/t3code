@@ -34,6 +34,7 @@ const toolInstructions = (availability: boolean | T3CodeToolAvailability): strin
 
 export interface CodexRuntimeInfo {
   readonly agentFeedback?: AgentFeedbackMode;
+  readonly pullRequestLinkingInstructions?: string | undefined;
   readonly model: string;
   readonly modelName?: string | undefined;
   readonly reasoningEffort?: string | undefined;
