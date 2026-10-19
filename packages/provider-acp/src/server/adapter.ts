@@ -1576,7 +1576,7 @@ function acpRootSessionUpdateIngestsOutput(
   }
 }
 
-/** Monitor wakes arrive as their own chunk led by a tagged `<monitor-event task_id=…>`; bare mentions are content. */
+/** Monitor wakes arrive as their own chunk led by a tagged `<monitor-event task_id=â€¦>`; bare mentions are content. */
 const acpIsMonitorChatter = (text: string) =>
   /^\s*(?:<monitor-event\s|Monitor\s+["']?[0-9a-f-]{8,}["']?\s+ended)/i.test(text);
 
@@ -2401,7 +2401,7 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
         // Grok re-prompts on stale monitor notices; suppress output until a genuine terminal or app turn.
         const suppressPostSettleMonitorPrompt = yield* Ref.make(false);
         const runningBackgroundTaskIds = yield* Ref.make<ReadonlySet<string>>(new Set());
-        // Background command task id → the completed turn that owns its row. Ended commands stay,
+        // Background command task id â†’ the completed turn that owns its row. Ended commands stay,
         // bounded, so a later authoritative terminal still corrects the row on its run.
         const detachedBackgroundCommands = yield* Ref.make<ReadonlyMap<string, ActiveAcpTurn>>(
           new Map(),
@@ -8460,6 +8460,7 @@ export const makeAcpAdapterV2 = Effect.fn("makeAcpAdapterV2")(function* (
           });
           const sessionSetup = yield* Ref.get(activeSessionSetup);
           const runtimeInstructions = buildRuntimeInstructions({
+            pullRequestLinkingInstructions: turnInput.runtimePolicy.pullRequestLinkingInstructions,
             harness: flavor.runtimeHarness ?? driver,
             model: turnInput.modelSelection.model,
             pullRequestLinking:
