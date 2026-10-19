@@ -1,13 +1,22 @@
 import { useAuth } from "@clerk/react";
 import { Link } from "@tanstack/react-router";
-import { managedCapabilityDenial } from "@t3tools/contracts";
+import {
+  DEFAULT_PULL_REQUEST_LINKING_INSTRUCTIONS,
+  managedCapabilityDenial,
+} from "@t3tools/contracts";
 
 import { hasCloudPublicConfig } from "~/cloud/publicConfig";
 import { useT3ConnectAuthPrompt } from "../clerk/useT3ConnectAuthPrompt";
 import { Button } from "../ui/button";
 import { Switch } from "../ui/switch";
+import { Textarea } from "../ui/textarea";
 import { ScopedSwitch } from "./ScopedSwitch";
-import { SettingsPageContainer, SettingsRow, SettingsSection } from "./settingsLayout";
+import {
+  SettingsPageContainer,
+  SettingsRow,
+  SettingsSection,
+  SettingResetButton,
+} from "./settingsLayout";
 import { searchableSetting } from "./settingsSearch";
 import { useScopedSettings, useUpdateScopedSettings } from "./useScopedSettings";
 import { useOptionalSettingsScope, useSettingsScope } from "./SettingsScopeContext";
@@ -25,6 +34,9 @@ export function LabsSettingsPanel() {
         <PromptSuggestionsRow />
         <SimlockHostsRow />
         <FastWorktreeCheckoutRow />
+      </SettingsSection>
+      <SettingsSection id="agent-instructions" title="Agent instructions">
+        <PullRequestLinkingRow />
       </SettingsSection>
     </SettingsPageContainer>
   );
@@ -257,6 +269,41 @@ function FastWorktreeCheckoutRow() {
           checked={settings.fastWorktreeCheckout}
           onCheckedChange={(checked) => updateSettings({ fastWorktreeCheckout: Boolean(checked) })}
           aria-label="Fast worktree checkout"
+        />
+      }
+    />
+  );
+}
+
+function PullRequestLinkingRow() {
+  const settings = useScopedSettings();
+  const updateSettings = useUpdateScopedSettings();
+  return (
+    <SettingsRow
+      {...searchableSetting("pr-linking-instructions")}
+      serverScoped
+      settingKeys={["pullRequestLinkingInstructions"]}
+      description="Control which pull requests agents link to threads. Leave empty to disable the instructions. Start a new thread to ensure previous instructions no longer apply."
+      resetAction={
+        settings.pullRequestLinkingInstructions !== DEFAULT_PULL_REQUEST_LINKING_INSTRUCTIONS ? (
+          <SettingResetButton
+            label="PR linking instructions"
+            onClick={() =>
+              updateSettings({
+                pullRequestLinkingInstructions: DEFAULT_PULL_REQUEST_LINKING_INSTRUCTIONS,
+              })
+            }
+          />
+        ) : null
+      }
+      control={
+        <Textarea
+          className="min-h-40 w-[min(32rem,60vw)]"
+          value={settings.pullRequestLinkingInstructions}
+          onChange={(event) =>
+            updateSettings({ pullRequestLinkingInstructions: event.currentTarget.value })
+          }
+          aria-label="PR linking instructions"
         />
       }
     />
