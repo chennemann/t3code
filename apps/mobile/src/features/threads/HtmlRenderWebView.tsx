@@ -5,6 +5,7 @@ import {
   htmlRenderFrameHeight,
   htmlRenderThemeFragment,
   htmlRenderThemeMessage,
+  readHtmlRenderImageRequest,
   type HtmlRenderReference,
   type HtmlRenderTheme,
 } from "@t3tools/shared/htmlRender";
@@ -13,6 +14,7 @@ import { ActivityIndicator, Platform, Pressable, View, type ColorValue } from "r
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
 import { SymbolView } from "../../components/AppSymbol";
+import { FilePreviewModal, type FilePreviewSource } from "../../components/FilePreviewModal";
 import { AppText as Text } from "../../components/AppText";
 import { mobileHtmlRenderTheme } from "../../lib/htmlRenderTheme";
 import { tryOpenExternalUrl } from "../../lib/openExternalUrl";
@@ -95,6 +97,7 @@ export function HtmlRenderWebView(props: {
   const [generation, setGeneration] = useState(0);
   const [loaded, setLoaded] = useState(false);
   const [overflow, setOverflow] = useState(NO_OVERFLOW);
+  const [imagePreview, setImagePreview] = useState<FilePreviewSource | null>(null);
   const webView = useRef<WebView<object>>(null);
   const crashes = useRef(0);
   // The theme the loaded document shows; null until it loads.
@@ -172,16 +175,32 @@ export function HtmlRenderWebView(props: {
         onHttpError={props.onLoadError}
         onContentProcessDidTerminate={restart}
         onRenderProcessGone={restart}
-        {...(props.nested
-          ? {
-              injectedJavaScript: OVERFLOW_SCRIPT,
-              onMessage: (event: WebViewMessageEvent) => {
-                const next = readOverflowMessage(event.nativeEvent.data);
-                if (next !== null) setOverflow(next);
-              },
-            }
-          : {})}
+        injectedJavaScript={props.nested ? OVERFLOW_SCRIPT : undefined}
+        onMessage={(event: WebViewMessageEvent) => {
+          let message: unknown;
+          try {
+            message = JSON.parse(event.nativeEvent.data);
+          } catch {
+            return;
+          }
+          const request = readHtmlRenderImageRequest(message);
+          if (request) {
+            const gallery = request.images.map(({ src, name }) => ({
+              kind: "image" as const,
+              uri: src,
+              name,
+              actionsSource: { uri: src, name, mimeType: "image/*" },
+            }));
+            setImagePreview({ ...gallery[request.index]!, gallery });
+            return;
+          }
+          if (props.nested) {
+            const next = readOverflowMessage(event.nativeEvent.data);
+            if (next !== null) setOverflow(next);
+          }
+        }}
       />
+      <FilePreviewModal source={imagePreview} onRequestClose={() => setImagePreview(null)} />
       {loaded ? null : (
         <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
           <ActivityIndicator />

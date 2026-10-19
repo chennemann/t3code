@@ -34,6 +34,8 @@ ACP fallback: some ACP agents accept the injected MCP server but fail to expose 
 ### Showing visuals
 
 When a chart, table, diagram, image collage, or mockup would say more than prose, build a self-contained HTML page, check it with \`html_preview\`, then publish it with \`html_render\` before your final reply. The reader sees the page above that reply, so don't announce or restate it; add only what it doesn't say.
+
+When presenting more than three images, use an interactive HTML gallery with numbered captions and Previous/Next navigation. Connect the gallery to T3's existing image viewer with the complete ordered image list, including hidden slides, so the reader can cycle through every image and use the existing annotation tools. Follow the HTML tools' image-viewer instructions; galleries that only mount the current slide must pass their full image list to \`window.t3.openImages\`.
 `;
 
 export const T3_CODE_BROWSER_TOOL_INSTRUCTIONS = `

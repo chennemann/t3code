@@ -15,6 +15,7 @@ import {
   readHtmlRenderContentHeight,
   readHtmlRenderKeyDown,
   readHtmlRenderLinkRequest,
+  readHtmlRenderImageRequest,
 } from "@t3tools/shared/htmlRender";
 import {
   isMacPlatform,
@@ -30,6 +31,8 @@ import { useOpenChangeRequestLink } from "~/lib/openPullRequestLink";
 import { readLocalApi } from "~/localApi";
 import { cn } from "~/lib/utils";
 import { primaryServerKeybindingsAtom, serverEnvironment } from "~/state/server";
+import { ExpandedImageDialog } from "../chat/ExpandedImageDialog";
+import type { ExpandedImagePreview } from "../chat/ExpandedImagePreview";
 
 /**
  * Chromium's viewer opens with its own toolbar, a thumbnail rail and a small
@@ -131,6 +134,7 @@ export function HtmlRenderDocument(props: {
   const frameRef = useRef<HTMLIFrameElement>(null);
   const [src] = useState(() => `${props.src.split("#", 1)[0]}${htmlRenderThemeFragment(theme)}`);
   const [loaded, setLoaded] = useState(false);
+  const [imagePreview, setImagePreview] = useState<ExpandedImagePreview | null>(null);
   const postTheme = () => {
     frameRef.current?.contentWindow?.postMessage(htmlRenderThemeMessage(theme), "*");
   };
@@ -224,6 +228,24 @@ export function HtmlRenderDocument(props: {
   // app. A page can take focus by script, so this stops opens on load, not a
   // page that waits for the reader's next click or key.
   useEffect(() => {
+    const openImages = (event: MessageEvent) => {
+      const frame = frameRef.current;
+      const request = readHtmlRenderImageRequest(event.data);
+      if (
+        request === undefined ||
+        frame === null ||
+        event.source !== frame.contentWindow ||
+        document.activeElement !== frame ||
+        navigator.userActivation?.isActive === false
+      )
+        return;
+      setImagePreview({ images: request.images, index: request.index });
+      frame.contentWindow?.postMessage(htmlRenderResult(request.id), "*");
+    };
+    window.addEventListener("message", openImages);
+    return () => window.removeEventListener("message", openImages);
+  }, []);
+  useEffect(() => {
     const openLink = (event: MessageEvent) => {
       const frame = frameRef.current;
       const request = readHtmlRenderLinkRequest(event.data);
@@ -282,25 +304,34 @@ export function HtmlRenderDocument(props: {
     return () => window.removeEventListener("message", resize);
   }, [onContentHeight]);
   return (
-    <iframe
-      ref={frameRef}
-      src={src}
-      title={props.title}
-      // Never allow-same-origin: the opaque origin keeps the page out of the app's session.
-      sandbox="allow-scripts allow-forms"
-      loading="lazy"
-      onLoad={() => {
-        setLoaded(true);
-        // Covers a theme change that landed while the page was loading.
-        postTheme();
-        postShortcuts();
-        props.onLoad?.();
-      }}
-      // A frame whose color scheme differs from its document's paints an opaque
-      // canvas, so the blank document a frame starts with would flash white in
-      // dark mode. Once the page is in, its prefers-color-scheme follows the app.
-      className={cn("border-0 scheme-light", props.className)}
-      style={loaded ? { colorScheme: theme.appearance } : undefined}
-    />
+    <>
+      <iframe
+        ref={frameRef}
+        src={src}
+        title={props.title}
+        // Never allow-same-origin: the opaque origin keeps the page out of the app's session.
+        sandbox="allow-scripts allow-forms"
+        loading="lazy"
+        onLoad={() => {
+          setLoaded(true);
+          // Covers a theme change that landed while the page was loading.
+          postTheme();
+          postShortcuts();
+          props.onLoad?.();
+        }}
+        // A frame whose color scheme differs from its document's paints an opaque
+        // canvas, so the blank document a frame starts with would flash white in
+        // dark mode. Once the page is in, its prefers-color-scheme follows the app.
+        className={cn("border-0 scheme-light", props.className)}
+        style={loaded ? { colorScheme: theme.appearance } : undefined}
+      />
+      {imagePreview ? (
+        <ExpandedImageDialog
+          preview={imagePreview}
+          composerTarget={props.threadRef}
+          onClose={() => setImagePreview(null)}
+        />
+      ) : null}
+    </>
   );
 }

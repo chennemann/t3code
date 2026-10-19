@@ -189,6 +189,64 @@ it("routes links from the expanded page through its thread", async () => {
   expect(openLink).not.toHaveBeenCalled();
 });
 
+async function requestImages(
+  frame: HTMLIFrameElement,
+  source: Window | null = frame.contentWindow,
+) {
+  await act(() => {
+    window.dispatchEvent(
+      new MessageEvent("message", {
+        source,
+        data: {
+          jsonrpc: "2.0",
+          id: "gallery",
+          method: "t3/open-images",
+          params: {
+            images: ["01", "02", "03"].map((name) => ({
+              src: `https://host.test/${name}.png`,
+              name: `${name}.png`,
+            })),
+            index: 1,
+          },
+        },
+      }),
+    );
+  });
+}
+
+it.each([false, true])(
+  "cycles through the full gallery from the selected image and returns to the loaded page (expanded: %s)",
+  async (expanded) => {
+    await renderInline();
+    if (expanded) await click("Open full screen");
+    const frames = document.querySelectorAll<HTMLIFrameElement>("iframe");
+    const frame = frames[frames.length - 1]!;
+    frame.focus();
+    await requestImages(frame);
+    expect(document.querySelector('img[alt="02.png"]')).not.toBeNull();
+    await click("Next media");
+    expect(document.querySelector('img[alt="03.png"]')).not.toBeNull();
+    await click("Next media");
+    expect(document.querySelector('img[alt="01.png"]')).not.toBeNull();
+    await click("Previous media");
+    expect(document.querySelector('img[alt="03.png"]')).not.toBeNull();
+    await click("Close image preview");
+    expect(frame.isConnected).toBe(true);
+    expect(document.activeElement).toBe(frame);
+  },
+);
+
+it("ignores gallery requests from other frames or a page without focus", async () => {
+  await renderInline();
+  const frame = document.querySelector("iframe")!;
+  document.querySelector<HTMLButtonElement>('[aria-label="Open full screen"]')!.focus();
+  await requestImages(frame);
+  expect(document.querySelector('img[alt="02.png"]')).toBeNull();
+  frame.focus();
+  await requestImages(frame, window);
+  expect(document.querySelector('img[alt="02.png"]')).toBeNull();
+});
+
 it.each([null, new Error("Disconnected")])(
   "reports an unavailable URL instead of opening a blank page: %s",
   async (failure) => {

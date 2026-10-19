@@ -6,6 +6,7 @@ import {
   useState,
   type PointerEvent,
   type Ref,
+  type ReactNode,
 } from "react";
 import { Trash2Icon, XIcon, ZoomInIcon } from "lucide-react";
 import { Button } from "../ui/button";
@@ -47,6 +48,7 @@ export function ImageAnnotationEditor({
   onDraftChange,
   onBusyChange,
   onZoom,
+  navigation,
   ref,
 }: {
   src: string;
@@ -57,6 +59,7 @@ export function ImageAnnotationEditor({
   onDraftChange: (marks: ImageAnnotation[]) => void;
   onBusyChange: (busy: boolean) => void;
   onZoom: () => void;
+  navigation?: ReactNode;
   ref?: Ref<ImageAnnotationEditorHandle> | undefined;
 }) {
   const imageRef = useRef<HTMLImageElement>(null);
@@ -216,6 +219,9 @@ export function ImageAnnotationEditor({
         }
       }}
     >
+      {navigation ? (
+        <div className="absolute bottom-0 left-1/2 z-30 -translate-x-1/2">{navigation}</div>
+      ) : null}
       {!loaded && <p className="self-center text-sm">{error ?? "Loading image…"}</p>}
       <div
         className="relative shrink-0"

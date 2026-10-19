@@ -15,7 +15,14 @@ type MediaImagePreviewProps = {
   readonly onRequestClose: () => void;
 };
 
-const ImagePreviewContext = createContext<MediaImagePreviewProps | null>(null);
+const ImagePreviewContext = createContext<
+  | (MediaImagePreviewProps & {
+      readonly index: number;
+      readonly count: number;
+      readonly navigate: (direction: -1 | 1) => void;
+    })
+  | null
+>(null);
 
 function ImagePreviewHeader() {
   const props = useContext(ImagePreviewContext)!;
@@ -26,7 +33,26 @@ function ImagePreviewHeader() {
       <View className="flex-row items-center gap-2 px-3">
         <AppText className="flex-1 text-base text-white" numberOfLines={2}>
           {props.source.name ?? "Image"}
+          {props.count > 1 ? ` (${props.index + 1}/${props.count})` : ""}
         </AppText>
+        {props.count > 1
+          ? ([-1, 1] as const).map((direction) => (
+              <Pressable
+                key={direction}
+                accessibilityRole="button"
+                accessibilityLabel={direction === -1 ? "Previous image" : "Next image"}
+                onPress={() => props.navigate(direction)}
+                className="min-h-11 min-w-11 items-center justify-center"
+              >
+                <SymbolView
+                  name={direction === -1 ? "chevron.left" : "chevron.right"}
+                  size={20}
+                  tintColor="#ffffff"
+                  type="monochrome"
+                />
+              </Pressable>
+            ))
+          : null}
         <MediaActionsMenu media={mediaActions} inModal />
         <Pressable
           accessibilityRole="button"
@@ -42,7 +68,7 @@ function ImagePreviewHeader() {
   );
 }
 
-/** Android keeps media actions in its in-app image viewer. iOS uses Quick Look. */
+/** Keeps media actions with the complete gallery, wrapping in either direction. */
 export function MediaImagePreview(props: MediaImagePreviewProps) {
   const gallery = props.source.gallery ?? [props.source];
   const [index, setIndex] = useState(() =>
@@ -52,7 +78,17 @@ export function MediaImagePreview(props: MediaImagePreviewProps) {
     ),
   );
   const selected = gallery[index] ?? props.source;
-  const context = useMemo(() => ({ ...props, source: selected }), [props, selected]);
+  const context = useMemo(
+    () => ({
+      ...props,
+      source: selected,
+      index,
+      count: gallery.length,
+      navigate: (direction: -1 | 1) =>
+        setIndex((current) => (current + direction + gallery.length) % gallery.length),
+    }),
+    [props, selected, index, gallery.length],
+  );
   return (
     <ImagePreviewContext value={context}>
       <ImageViewing
