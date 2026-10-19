@@ -250,6 +250,16 @@ export const ExpandedImageDialog = memo(function ExpandedImageDialog({
               if (item.src) annotationDrafts.current.set(item.src, marks);
             }}
             onBusyChange={setAnnotationBusy}
+            onDiscard={() => {
+              if (item.src) {
+                const saved = savedAnnotations[item.src] ?? item.annotations ?? [];
+                annotationDrafts.current.set(
+                  item.src,
+                  saved.slice(item.burnedAnnotationCount ?? 0),
+                );
+              }
+              setAnnotating(false);
+            }}
             navigation={
               imageCount > 1 ? (
                 <div className="flex items-center gap-2">

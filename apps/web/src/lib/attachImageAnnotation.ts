@@ -1,6 +1,6 @@
 import { PROVIDER_SEND_TURN_MAX_IMAGE_BYTES, type ImageAnnotation } from "@t3tools/contracts";
 import { useComposerDraftStore, type ComposerThreadTarget } from "../composerDraftStore";
-import { prepareImageForAttachment } from "./imageCompression";
+import { dataUrlToFile, prepareImageForAttachment } from "./imageCompression";
 import { randomUUID } from "./utils";
 
 /** Save editable marks beside the original bytes, without changing the prompt or its uploads. */
@@ -21,14 +21,30 @@ export async function attachImageAnnotation(
     return composerImageId;
   }
   if (annotations.length === 0) return;
-  const response = await fetch(source.src, { signal: AbortSignal.timeout(30_000) });
-  if (!response.ok)
-    throw new Error("The original image could not be attached. Try opening it again.");
-  const blob = await response.blob();
-  const prepared = await prepareImageForAttachment(
-    new File([blob], source.name, { type: blob.type }),
-    PROVIDER_SEND_TURN_MAX_IMAGE_BYTES,
-  );
+  let file: File;
+  const embedded = /^data:(image\/[^;,]+)(?:;[^,]*)?,/i.exec(source.src);
+  if (embedded) {
+    // Desktop permits displaying data URLs, but connect-src blocks fetching them.
+    try {
+      const mimeType = embedded[1]!;
+      file = /;base64,$/i.test(embedded[0])
+        ? dataUrlToFile(source.src, source.name, mimeType)
+        : new File([decodeURIComponent(source.src.slice(embedded[0].length))], source.name, {
+            type: mimeType,
+          });
+    } catch (cause) {
+      throw new Error("The embedded image could not be decoded. Reopen it and try again.", {
+        cause,
+      });
+    }
+  } else {
+    const response = await fetch(source.src, { signal: AbortSignal.timeout(30_000) });
+    if (!response.ok)
+      throw new Error("The original image could not be attached. Try opening it again.");
+    const blob = await response.blob();
+    file = new File([blob], source.name, { type: blob.type });
+  }
+  const prepared = await prepareImageForAttachment(file, PROVIDER_SEND_TURN_MAX_IMAGE_BYTES);
   if (!prepared.ok) throw new Error("The original image could not be prepared for attachment.");
   const image = {
     type: "image" as const,

@@ -109,3 +109,26 @@ it("keeps the current image and edits when saving fails, then allows retry", asy
   await click("Next media");
   expect(document.querySelector('img[alt="02.png"]')).not.toBeNull();
 });
+
+it("lets the reader discard unsaved edits after a fetch error and continue without reloading", async () => {
+  const image = document.querySelector<HTMLImageElement>('img[alt="01.png"]')!;
+  await act(() => image.dispatchEvent(new Event("load")));
+  await click("Delete annotation 1");
+  save.mockRejectedValue(new TypeError("Failed to fetch"));
+  await click("Next media");
+  expect(document.querySelector('[role="alert"]')?.textContent).toContain("Failed to fetch");
+  const discard = Array.from(document.querySelectorAll("button")).find((button) =>
+    button.textContent?.includes("Discard unsaved changes"),
+  );
+  expect(discard).toBeDefined();
+  await act(() => discard!.click());
+  expect(document.querySelector('[aria-label="Image annotation editor"]')).toBeNull();
+  expect(document.querySelector('[aria-label="Saved annotation comments"]')?.textContent).toContain(
+    mark.comment,
+  );
+  await click("Next media");
+  expect(document.querySelector('img[alt="02.png"]')).not.toBeNull();
+  await click("Close image preview");
+  expect(close).toHaveBeenCalledOnce();
+  expect(save).toHaveBeenCalledOnce();
+});
