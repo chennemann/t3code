@@ -1,14 +1,16 @@
+import { useStableCallback } from "../../hooks/useStableCallback";
 import { observeResize } from "~/lib/observeResize";
 import {
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useRef,
   useState,
   type PointerEvent,
   type Ref,
   type ReactNode,
 } from "react";
-import { Trash2Icon, XIcon, ZoomInIcon } from "lucide-react";
+import { SquareDashedIcon, Trash2Icon, XIcon, ZoomInIcon } from "lucide-react";
 import { Button } from "../ui/button";
 import { Textarea } from "../ui/textarea";
 import { randomUUID } from "../../lib/utils";
@@ -48,9 +50,11 @@ export function ImageAnnotationEditor({
   priorMarks = EMPTY_PRIOR_MARKS,
   onDraftChange,
   onBusyChange,
-  onZoom,
+  initialAction = "annotate",
   onDiscard,
   navigation,
+  details,
+  onNavigate,
   ref,
 }: {
   src: string;
@@ -60,13 +64,31 @@ export function ImageAnnotationEditor({
   priorMarks?: ReadonlyArray<ImageAnnotation>;
   onDraftChange: (marks: ImageAnnotation[]) => void;
   onBusyChange: (busy: boolean) => void;
-  onZoom: () => void;
+  initialAction?: "zoom" | "annotate";
   onDiscard: () => void;
   navigation?: ReactNode;
+  details?: ReactNode;
+  onNavigate?: ((direction: -1 | 1) => void) | undefined;
   ref?: Ref<ImageAnnotationEditorHandle> | undefined;
 }) {
   const imageRef = useRef<HTMLImageElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const panRef = useRef<{
+    pointerId: number;
+    x: number;
+    y: number;
+    left: number;
+    top: number;
+  } | null>(null);
+  const zoomAnchor = useRef<{ x: number; y: number; clientX: number; clientY: number } | null>(
+    null,
+  );
+  const suppressClick = useRef(false);
+  const [action, setAction] = useState(initialAction);
+  const [ctrlPressed, setCtrlPressed] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const zoomRef = useRef(1);
   const commentRefs = useRef(new Map<string, HTMLTextAreaElement>());
   const gesture = useRef<Gesture | null>(null);
   const commentBefore = useRef<ImageAnnotation[] | null>(null);
@@ -88,10 +110,69 @@ export function ImageAnnotationEditor({
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const sideBySide = stageSize.width >= 900;
-  // Reserve room from the start so the first circle cannot resize the image mid-drag.
+  // Reserve comment space so the first rectangle cannot resize the image mid-drag.
   const maxWidth = sideBySide ? stageSize.width - 624 : stageSize.width;
   const maxHeight = sideBySide ? stageSize.height : Math.max(1, stageSize.height - 220);
   const fit = Math.min(maxWidth / (size.width || 1), maxHeight / (size.height || 1), 1);
+  const scale = fit * zoom;
+  const isZoomAction = (ctrl: boolean) => (action === "zoom") !== ctrl;
+  const changeZoom = useStableCallback((next: number, clientX?: number, clientY?: number) => {
+    const viewport = viewportRef.current;
+    const previous = zoomRef.current;
+    const clamped = Math.min(32, Math.max(1, next));
+    if (!viewport || previous === clamped) return;
+    const bounds = viewport.getBoundingClientRect();
+    const x = (clientX ?? bounds.left + viewport.clientWidth / 2) - bounds.left;
+    const y = (clientY ?? bounds.top + viewport.clientHeight / 2) - bounds.top;
+    zoomAnchor.current = {
+      x: (viewport.scrollLeft + x) / previous,
+      y: (viewport.scrollTop + y) / previous,
+      clientX: x,
+      clientY: y,
+    };
+    zoomRef.current = clamped;
+    setZoom(clamped);
+  });
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- Restore the DOM scroll position around the pointer after zoom resizes the image.
+  useLayoutEffect(() => {
+    const viewport = viewportRef.current;
+    const anchor = zoomAnchor.current;
+    if (!viewport || !anchor) return;
+    viewport.scrollLeft = anchor.x * zoom - anchor.clientX;
+    viewport.scrollTop = anchor.y * zoom - anchor.clientY;
+    zoomAnchor.current = null;
+  }, [zoom]);
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- Track the physical Ctrl key and clear it when the window loses focus.
+  useEffect(() => {
+    const key = (event: KeyboardEvent) => setCtrlPressed(event.ctrlKey);
+    const blur = () => setCtrlPressed(false);
+    window.addEventListener("keydown", key);
+    window.addEventListener("keyup", key);
+    window.addEventListener("blur", blur);
+    return () => {
+      window.removeEventListener("keydown", key);
+      window.removeEventListener("keyup", key);
+      window.removeEventListener("blur", blur);
+    };
+  }, []);
+  // oxlint-disable-next-line t3code/no-unreasoned-state-sync -- Register a non-passive DOM wheel listener to prevent browser zoom for Ctrl image gestures.
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const wheel = (event: WheelEvent) => {
+      // Ctrl belongs to the image action, including when a wheel cannot annotate.
+      if (event.ctrlKey) event.preventDefault();
+      if ((action === "zoom") === event.ctrlKey || busy || gesture.current || panRef.current)
+        return;
+      event.preventDefault();
+      const delta =
+        event.deltaY *
+        (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? viewport.clientHeight : 1);
+      changeZoom(zoomRef.current * Math.exp(-delta * 0.002), event.clientX, event.clientY);
+    };
+    viewport.addEventListener("wheel", wheel, { passive: false });
+    return () => viewport.removeEventListener("wheel", wheel);
+  }, [action, busy, changeZoom]);
   const record = (before: ImageAnnotation[]) => {
     setUndo((history) => [...history.slice(-49), before]);
     setRedo([]);
@@ -139,8 +220,8 @@ export function ImageAnnotationEditor({
     const end = point(event);
     const clicked =
       Math.hypot(
-        (end.x - active.start.x) * size.width * fit,
-        (end.y - active.start.y) * size.height * fit,
+        (end.x - active.start.x) * size.width * scale,
+        (end.y - active.start.y) * size.height * scale,
       ) < 5;
     if (active.kind !== "draw" && clicked) {
       setMarks(active.before);
@@ -157,6 +238,7 @@ export function ImageAnnotationEditor({
                   ...annotationRect(
                     { x: Math.max(0, end.x - 0.1), y: Math.max(0, end.y - 0.04) },
                     { x: Math.min(1, end.x + 0.1), y: Math.min(1, end.y + 0.04) },
+                    size,
                   ),
                 }
               : mark,
@@ -212,6 +294,14 @@ export function ImageAnnotationEditor({
         }
         if (event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLInputElement)
           return;
+        if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+          const viewport = viewportRef.current;
+          if (viewport && zoom > 1 && viewport.scrollWidth > viewport.clientWidth) {
+            viewport.scrollLeft += event.key === "ArrowLeft" ? -40 : 40;
+          } else onNavigate?.(event.key === "ArrowLeft" ? -1 : 1);
+          event.preventDefault();
+          return;
+        }
         if (
           (event.ctrlKey || event.metaKey) &&
           (event.key.toLowerCase() === "z" || event.key.toLowerCase() === "y")
@@ -245,12 +335,25 @@ export function ImageAnnotationEditor({
         <Button
           variant="media-close"
           size="icon-xs"
-          aria-label="Zoom image"
+          aria-label={
+            action === "annotate"
+              ? "Zoom image"
+              : marks.length
+                ? "Edit annotations"
+                : "Annotate image"
+          }
           className="absolute right-10 -top-10 z-20"
           disabled={busy}
-          onClick={onZoom}
+          onClick={() => setAction((current) => (current === "zoom" ? "annotate" : "zoom"))}
         >
-          <ZoomInIcon />
+          {action === "annotate" ? <ZoomInIcon /> : <SquareDashedIcon />}
+          <span className="sr-only">
+            {action === "zoom"
+              ? marks.length
+                ? "Edit annotations"
+                : "Annotate image"
+              : "Zoom image"}
+          </span>
         </Button>
         <Button
           variant="media-close"
@@ -262,184 +365,267 @@ export function ImageAnnotationEditor({
         >
           <XIcon />
         </Button>
-        <div className="relative select-none" style={{ height: size.height * fit }}>
-          <img
-            ref={imageRef}
-            src={src}
-            alt={name}
-            draggable={false}
-            className="block h-full w-full"
-            onLoad={(event) => {
-              setSize({
-                width: event.currentTarget.naturalWidth,
-                height: event.currentTarget.naturalHeight,
-              });
-              setLoaded(true);
-            }}
-            onError={() => setError("This image could not be opened for annotation.")}
-          />
-          {loaded && (
-            <svg
-              aria-label="Draw numbered ellipses on the image"
-              className="absolute inset-0 h-full w-full touch-none cursor-crosshair"
-              viewBox={`0 0 ${size.width} ${size.height}`}
-              onPointerDown={(event) => {
-                if (busy || event.button !== 0 || gesture.current) return;
-                const target =
-                  event.target instanceof Element ? event.target.closest("[data-mark-id]") : null;
-                const id = target?.getAttribute("data-mark-id"),
-                  handle = target?.getAttribute("data-handle"),
-                  start = point(event);
-                const existing = marks.find((mark) => mark.id === id);
-                if (existing) {
-                  setSelected(existing.id);
-                  const anchor = handle
-                    ? {
-                        x: handle.includes("w") ? existing.x + existing.width : existing.x,
-                        y: handle.includes("n") ? existing.y + existing.height : existing.y,
-                      }
-                    : undefined;
-                  gesture.current = {
-                    pointerId: event.pointerId,
-                    start,
-                    before: marks,
-                    id: existing.id,
-                    kind: handle ? "resize" : "move",
-                    anchor,
-                  };
-                } else {
-                  if (marks.length + priorMarks.length >= 100) {
-                    setError("An image can contain up to 100 annotations.");
+        <div
+          ref={viewportRef}
+          role="region"
+          aria-label={`${name}, zoomable image`}
+          tabIndex={0}
+          className="overflow-auto overscroll-contain"
+          style={{
+            width: size.width * fit,
+            height: size.height * fit,
+            cursor: isZoomAction(ctrlPressed) ? (zoom > 1 ? "grab" : "zoom-in") : "crosshair",
+          }}
+          onKeyDown={(event) => {
+            if (event.ctrlKey || event.metaKey) return;
+            if (event.key === "+" || event.key === "=") changeZoom(zoomRef.current * 1.5);
+            else if (event.key === "-") changeZoom(zoomRef.current / 1.5);
+            else if (event.key === "0") changeZoom(1);
+            else if ((event.key === "Enter" || event.key === " ") && action === "zoom") {
+              if (!event.repeat) changeZoom(zoomRef.current > 1 ? 1 : 2);
+            } else return;
+            event.preventDefault();
+          }}
+          onClick={(event) => {
+            if (busy || suppressClick.current || !isZoomAction(event.ctrlKey)) return;
+            changeZoom(zoomRef.current > 1 ? 1 : 2, event.clientX, event.clientY);
+          }}
+          onPointerDown={(event) => {
+            if (busy || event.button !== 0 || !isZoomAction(event.ctrlKey)) return;
+            suppressClick.current = false;
+            const viewport = event.currentTarget;
+            panRef.current = {
+              pointerId: event.pointerId,
+              x: event.clientX,
+              y: event.clientY,
+              left: viewport.scrollLeft,
+              top: viewport.scrollTop,
+            };
+            viewport.setPointerCapture(event.pointerId);
+          }}
+          onPointerMove={(event) => {
+            const pan = panRef.current;
+            if (!pan || pan.pointerId !== event.pointerId) return;
+            if (Math.hypot(event.clientX - pan.x, event.clientY - pan.y) > 4)
+              suppressClick.current = true;
+            event.currentTarget.scrollLeft = pan.left - (event.clientX - pan.x);
+            event.currentTarget.scrollTop = pan.top - (event.clientY - pan.y);
+          }}
+          onPointerUp={(event) => {
+            if (panRef.current?.pointerId !== event.pointerId) return;
+            panRef.current = null;
+            event.currentTarget.releasePointerCapture(event.pointerId);
+          }}
+          onLostPointerCapture={() => {
+            panRef.current = null;
+          }}
+        >
+          <div
+            className="relative select-none"
+            style={{ width: size.width * scale, height: size.height * scale }}
+          >
+            <img
+              ref={imageRef}
+              src={src}
+              alt={name}
+              draggable={false}
+              className="block h-full w-full"
+              onLoad={(event) => {
+                setSize({
+                  width: event.currentTarget.naturalWidth,
+                  height: event.currentTarget.naturalHeight,
+                });
+                setLoaded(true);
+              }}
+              onError={() => setError("This image could not be opened for annotation.")}
+            />
+            {loaded && (
+              <svg
+                aria-label="Draw numbered rectangles on the image"
+                className="absolute inset-0 h-full w-full touch-none"
+                viewBox={`0 0 ${size.width} ${size.height}`}
+                onPointerDown={(event) => {
+                  if (busy || event.button !== 0 || gesture.current || isZoomAction(event.ctrlKey))
                     return;
-                  }
-                  const nextId = randomUUID();
-                  gesture.current = {
-                    pointerId: event.pointerId,
-                    start,
-                    before: marks,
-                    id: nextId,
-                    kind: "draw",
-                  };
-                  setMarks([
-                    ...marks,
-                    { id: nextId, ...annotationRect(start, start), comment: "" },
-                  ]);
-                  setSelected(nextId);
-                }
-                event.currentTarget.setPointerCapture(event.pointerId);
-                event.preventDefault();
-              }}
-              onPointerMove={(event) => {
-                const active = gesture.current;
-                if (!active || active.pointerId !== event.pointerId) return;
-                const end = point(event);
-                setMarks((current) =>
-                  current.map((mark) => {
-                    if (mark.id !== active.id) return mark;
-                    if (active.kind === "draw" || active.kind === "resize")
-                      return { ...mark, ...annotationRect(active.anchor ?? active.start, end) };
-                    const original = active.before.find((candidate) => candidate.id === active.id);
-                    return original
-                      ? moveAnnotation(original, {
-                          x: end.x - active.start.x,
-                          y: end.y - active.start.y,
-                        })
-                      : mark;
-                  }),
-                );
-              }}
-              onPointerUp={(event) => finishGesture(event)}
-              onPointerCancel={(event) => finishGesture(event, true)}
-            >
-              {marks.map((mark, index) => {
-                const label = annotationLabel(mark, size.width, size.height),
-                  active = mark.id === selected;
-                const x = mark.x * size.width,
-                  y = mark.y * size.height,
-                  width = mark.width * size.width,
-                  height = mark.height * size.height,
-                  handleSize = 9 / fit;
-                return (
-                  <g key={mark.id}>
-                    <ellipse
-                      cx={x + width / 2}
-                      cy={y + height / 2}
-                      rx={width / 2}
-                      ry={height / 2}
-                      fill={
-                        active
-                          ? "color-mix(in srgb, var(--color-image-annotation) 7%, transparent)"
-                          : "none"
-                      }
-                      stroke={ANNOTATION_COLOR}
-                      strokeWidth={Math.max(3, label.radius / 5) * (active ? 1.5 : 1)}
-                      opacity={selected && !active ? 0.65 : 1}
-                      pointerEvents="none"
-                    />
-                    <g
-                      data-mark-id={mark.id}
-                      role="button"
-                      aria-label={`Select annotation ${priorMarks.length + index + 1}`}
-                      aria-pressed={active}
-                      tabIndex={busy ? -1 : 0}
-                      style={{ cursor: "move" }}
-                      onFocus={() => setSelected(mark.id)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          focusComment(mark.id);
+                  event.stopPropagation();
+                  suppressClick.current = true;
+                  const target =
+                    event.target instanceof Element ? event.target.closest("[data-mark-id]") : null;
+                  const id = target?.getAttribute("data-mark-id"),
+                    handle = target?.getAttribute("data-handle"),
+                    start = point(event);
+                  const existing = marks.find((mark) => mark.id === id);
+                  if (existing) {
+                    setSelected(existing.id);
+                    const anchor = handle
+                      ? {
+                          x: handle.includes("w") ? existing.x + existing.width : existing.x,
+                          y: handle.includes("n") ? existing.y + existing.height : existing.y,
                         }
-                      }}
-                    >
-                      <circle
-                        cx={label.x}
-                        cy={label.y}
-                        r={label.radius}
-                        fill={ANNOTATION_COLOR}
-                        stroke={active ? "var(--color-white)" : "none"}
-                        strokeWidth={2 / fit}
+                      : undefined;
+                    gesture.current = {
+                      pointerId: event.pointerId,
+                      start,
+                      before: marks,
+                      id: existing.id,
+                      kind: handle ? "resize" : "move",
+                      anchor,
+                    };
+                  } else {
+                    if (marks.length + priorMarks.length >= 100) {
+                      setError("An image can contain up to 100 annotations.");
+                      return;
+                    }
+                    const nextId = randomUUID();
+                    gesture.current = {
+                      pointerId: event.pointerId,
+                      start,
+                      before: marks,
+                      id: nextId,
+                      kind: "draw",
+                    };
+                    setMarks([
+                      ...marks,
+                      {
+                        id: nextId,
+                        ...annotationRect(start, start, size),
+                        comment: "",
+                        imageSize: size,
+                      },
+                    ]);
+                    setSelected(nextId);
+                  }
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                  event.preventDefault();
+                }}
+                onPointerMove={(event) => {
+                  const active = gesture.current;
+                  if (!active || active.pointerId !== event.pointerId) return;
+                  const end = point(event);
+                  setMarks((current) =>
+                    current.map((mark) => {
+                      if (mark.id !== active.id) return mark;
+                      if (active.kind === "draw" || active.kind === "resize")
+                        return {
+                          ...mark,
+                          imageSize: mark.imageSize ?? size,
+                          ...annotationRect(active.anchor ?? active.start, end, size),
+                        };
+                      const original = active.before.find(
+                        (candidate) => candidate.id === active.id,
+                      );
+                      return original
+                        ? moveAnnotation(
+                            { ...original, imageSize: original.imageSize ?? size },
+                            {
+                              x: end.x - active.start.x,
+                              y: end.y - active.start.y,
+                            },
+                          )
+                        : mark;
+                    }),
+                  );
+                }}
+                onPointerUp={(event) => finishGesture(event)}
+                onPointerCancel={(event) => finishGesture(event, true)}
+              >
+                {marks.map((mark, index) => {
+                  const label = annotationLabel(mark, size.width, size.height),
+                    active = mark.id === selected;
+                  const x = mark.x * size.width,
+                    y = mark.y * size.height,
+                    width = mark.width * size.width,
+                    height = mark.height * size.height,
+                    handleSize = 9 / scale;
+                  return (
+                    <g key={mark.id}>
+                      <rect
+                        x={x}
+                        y={y}
+                        width={width}
+                        height={height}
+                        fill={
+                          active
+                            ? "color-mix(in srgb, var(--color-image-annotation) 7%, transparent)"
+                            : "none"
+                        }
+                        stroke={ANNOTATION_COLOR}
+                        strokeWidth={Math.max(3, label.radius / 5) * (active ? 1.5 : 1)}
+                        opacity={selected && !active ? 0.65 : 1}
+                        pointerEvents="none"
                       />
-                      <text
-                        x={label.x}
-                        y={label.y}
-                        textAnchor="middle"
-                        dominantBaseline="central"
-                        fill="var(--color-white)"
-                        fontSize={label.radius * 1.2}
-                        fontFamily="system-ui, sans-serif"
-                        fontWeight="600"
+                      <g
+                        data-mark-id={mark.id}
+                        role="button"
+                        aria-label={`Select annotation ${priorMarks.length + index + 1}`}
+                        aria-pressed={active}
+                        tabIndex={busy ? -1 : 0}
+                        style={{ cursor: "move" }}
+                        onFocus={() => setSelected(mark.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            focusComment(mark.id);
+                          }
+                        }}
                       >
-                        {priorMarks.length + index + 1}
-                      </text>
-                    </g>
-                    {active &&
-                      (["nw", "ne", "sw", "se"] as const).map((corner) => (
-                        <rect
-                          key={corner}
-                          data-mark-id={mark.id}
-                          data-handle={corner}
-                          x={(corner.includes("w") ? x : x + width) - handleSize / 2}
-                          y={(corner.includes("n") ? y : y + height) - handleSize / 2}
-                          width={handleSize}
-                          height={handleSize}
-                          rx={2 / fit}
-                          fill="var(--color-white)"
-                          stroke={ANNOTATION_COLOR}
-                          strokeWidth={1.5 / fit}
-                          style={{
-                            cursor:
-                              corner === "nw" || corner === "se" ? "nwse-resize" : "nesw-resize",
-                          }}
+                        <circle
+                          cx={label.x}
+                          cy={label.y}
+                          r={label.radius}
+                          fill={ANNOTATION_COLOR}
+                          stroke={active ? "var(--color-white)" : "none"}
+                          strokeWidth={2 / scale}
                         />
-                      ))}
-                  </g>
-                );
-              })}
-            </svg>
-          )}
+                        <text
+                          x={label.x}
+                          y={label.y}
+                          textAnchor="middle"
+                          dominantBaseline="central"
+                          fill="var(--color-white)"
+                          fontSize={label.radius * 1.2}
+                          fontFamily="system-ui, sans-serif"
+                          fontWeight="600"
+                        >
+                          {priorMarks.length + index + 1}
+                        </text>
+                      </g>
+                      {active &&
+                        (["nw", "ne", "sw", "se"] as const).map((corner) => (
+                          <rect
+                            key={corner}
+                            data-mark-id={mark.id}
+                            data-handle={corner}
+                            x={(corner.includes("w") ? x : x + width) - handleSize / 2}
+                            y={(corner.includes("n") ? y : y + height) - handleSize / 2}
+                            width={handleSize}
+                            height={handleSize}
+                            rx={2 / scale}
+                            fill="var(--color-white)"
+                            stroke={ANNOTATION_COLOR}
+                            strokeWidth={1.5 / scale}
+                            style={{
+                              cursor:
+                                corner === "nw" || corner === "se" ? "nwse-resize" : "nesw-resize",
+                            }}
+                          />
+                        ))}
+                    </g>
+                  );
+                })}
+              </svg>
+            )}
+          </div>
         </div>
         <p className="mt-2 truncate text-center text-xs text-white/80">{name}</p>
+        {details}
+        <p className="mt-1 text-center text-xs text-white/80">
+          {action === "annotate"
+            ? "Drag to annotate. Hold Ctrl to zoom or drag to pan."
+            : "Click or scroll to zoom, drag to pan. Hold Ctrl to annotate."}{" "}
+          {Math.round(zoom * 100)}%
+        </p>
         {marks.length + priorMarks.length > 0 && (
           <aside
             aria-label="Annotation comments"
@@ -503,7 +689,11 @@ export function ImageAnnotationEditor({
                         setMarks((current) =>
                           current.map((candidate) =>
                             candidate.id === mark.id
-                              ? { ...candidate, comment: event.target.value }
+                              ? {
+                                  ...candidate,
+                                  comment: event.target.value,
+                                  ...(loaded ? { imageSize: candidate.imageSize ?? size } : {}),
+                                }
                               : candidate,
                           ),
                         )

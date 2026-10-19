@@ -41,7 +41,17 @@ describe("image annotation geometry", () => {
     expect(rect.y + rect.height).toBeLessThanOrEqual(1);
   });
 
-  it("moves the whole ellipse without changing its dimensions or comment", () => {
+  it("allows pixel-sized rectangles when zooming into high-resolution screenshots", () => {
+    const rect = annotationRect(
+      { x: 0.5, y: 0.5 },
+      { x: 0.5001, y: 0.5001 },
+      { width: 10000, height: 10000 },
+    );
+    expect(rect.width).toBeCloseTo(0.0001);
+    expect(rect.height).toBeCloseTo(0.0001);
+  });
+
+  it("moves the whole rectangle without changing its dimensions or comment", () => {
     const moved = moveAnnotation(card, { x: 0.8, y: -0.8 });
     expect(moved).toMatchObject({
       y: 0,
@@ -65,7 +75,7 @@ describe("image annotation geometry", () => {
 });
 
 describe("numbered image feedback", () => {
-  it("keeps multiline comments as text with the same numbering as the remaining ellipses", () => {
+  it("keeps multiline comments as text with the same numbering as the remaining rectangles", () => {
     const checkbox = { ...card, id: "checkbox", comment: "Make this larger.\nKeep it aligned." };
     expect(annotationComments([card, checkbox])).toBe(
       "1. Reduce padding.\n2. Make this larger.\nKeep it aligned.",

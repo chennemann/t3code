@@ -20,14 +20,11 @@ export async function renderImageAnnotations(
       context.strokeStyle = ANNOTATION_COLOR;
       context.lineWidth = Math.max(3, label.radius / 5);
       context.beginPath();
-      context.ellipse(
-        (mark.x + mark.width / 2) * image.width,
-        (mark.y + mark.height / 2) * image.height,
-        (mark.width * image.width) / 2,
-        (mark.height * image.height) / 2,
-        0,
-        0,
-        Math.PI * 2,
+      context.rect(
+        mark.x * image.width,
+        mark.y * image.height,
+        mark.width * image.width,
+        mark.height * image.height,
       );
       context.stroke();
       context.beginPath();

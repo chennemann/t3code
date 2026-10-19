@@ -8,8 +8,6 @@ import { HtmlPreviewToolkit, HtmlRenderToolkit, type HtmlToolkit } from "./tools
 
 const INVALID_PAGE_ERRORS = new Set([
   "HtmlRenderImagesNotFoundError",
-  "HtmlRenderImageTooLargeError",
-  "HtmlRenderPageTooLargeError",
   "HtmlRenderViewportHeightError",
 ]);
 

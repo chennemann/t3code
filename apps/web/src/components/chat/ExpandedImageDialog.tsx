@@ -1,7 +1,7 @@
 import { memo, useRef, useState, type ReactNode, type KeyboardEvent } from "react";
 import { flushSync } from "react-dom";
 import { registerThreadOverlay } from "./threadOverlayRetention";
-import { ChevronLeftIcon, ChevronRightIcon, CircleIcon, XIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon, SquareDashedIcon, XIcon } from "lucide-react";
 import { Image as ImageGlyph, Text as TextGlyph } from "lucide";
 import { MorphIcon } from "~/components/MorphIcon";
 import { Button } from "../ui/button";
@@ -89,7 +89,7 @@ export const ExpandedImageDialog = memo(function ExpandedImageDialog({
       composerTarget &&
       !preview.annotationDisabled &&
       preview.images[preview.index]?.type !== "video" &&
-      imageOpenAction === "annotate",
+      preview.images[preview.index]?.src,
     ),
   );
   const [annotationBusy, setAnnotationBusy] = useState(false);
@@ -106,7 +106,7 @@ export const ExpandedImageDialog = memo(function ExpandedImageDialog({
     Record<string, ReadonlyArray<ImageAnnotation>>
   >({});
   const savedComposerIds = useRef(new Map<string, string>());
-  const closeDestination = useRef<"close" | "zoom" | -1 | 1>("close");
+  const closeDestination = useRef<"close" | -1 | 1>("close");
   const annotationEditorRef = useRef<ImageAnnotationEditorHandle>(null);
   const [imageOffset, setImageOffset] = useState(0);
   const [failedImageSrc, setFailedImageSrc] = useState<string | null>(null);
@@ -221,97 +221,109 @@ export const ExpandedImageDialog = memo(function ExpandedImageDialog({
       >
         <DialogTitle className="sr-only">Expanded {mediaLabel} preview</DialogTitle>
         {annotating && item.src && composerTarget ? (
-          <ImageAnnotationEditor
-            ref={annotationEditorRef}
-            key={item.src}
-            src={item.src}
-            name={item.name}
-            initialMarks={annotationInitialMarks}
-            priorMarks={priorAnnotations}
-            onDraftChange={(marks) => {
-              if (item.src) annotationDrafts.current.set(item.src, marks);
-            }}
-            onBusyChange={setAnnotationBusy}
-            onDiscard={() => {
-              if (item.src) {
-                const saved = savedAnnotations[item.src] ?? item.annotations ?? [];
-                annotationDrafts.current.set(
-                  item.src,
-                  saved.slice(item.burnedAnnotationCount ?? 0),
-                );
-              }
-              setAnnotating(false);
-            }}
-            navigation={
-              imageCount > 1 ? (
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="overlay"
-                    size="icon-sm"
-                    aria-label="Previous media"
-                    disabled={annotationBusy}
-                    onClick={() => {
-                      closeDestination.current = -1;
-                      void annotationEditorRef.current?.close();
-                    }}
-                  >
-                    <ChevronLeftIcon />
-                  </Button>
-                  <span className="text-xs" aria-live="polite">
-                    {index + 1}/{imageCount}
-                  </span>
-                  <Button
-                    variant="overlay"
-                    size="icon-sm"
-                    aria-label="Next media"
-                    disabled={annotationBusy}
-                    onClick={() => {
-                      closeDestination.current = 1;
-                      void annotationEditorRef.current?.close();
-                    }}
-                  >
-                    <ChevronRightIcon />
-                  </Button>
-                </div>
-              ) : undefined
-            }
-            onZoom={() => {
-              closeDestination.current = "zoom";
-              void annotationEditorRef.current?.close();
-            }}
-            onApply={async ({ annotations, changed }) => {
-              const savedMarks = [...priorAnnotations, ...annotations];
-              const destination = closeDestination.current;
-              closeDestination.current = "close";
-              const id = changed
-                ? await attachImageAnnotation(
-                    composerTarget,
-                    {
-                      src: item.src!,
-                      name: item.name,
-                      burnedAnnotationCount: item.burnedAnnotationCount,
-                    },
-                    savedMarks,
-                    item.composerImageId ?? savedComposerIds.current.get(item.src!),
-                  )
-                : undefined;
-              if (id) savedComposerIds.current.set(item.src!, id);
-              setSavedAnnotations((saved) => ({ ...saved, [item.src!]: savedMarks }));
-              if (destination === "zoom") {
-                setAnnotating(false);
-              } else if (typeof destination === "number") {
-                const next =
-                  preview.images[wrapExpandedImageIndex(index + destination, imageCount)]!;
-                if (next.type === "video" || next.src === null) setAnnotating(false);
-                setAnnotationInitialMarks(
-                  annotationDrafts.current.get(next.src!) ??
-                    next.annotations?.slice(next.burnedAnnotationCount ?? 0) ??
-                    [],
-                );
-                navigateImage(destination);
-              } else close();
-            }}
-          />
+          <MediaActions source={actionsSource}>
+            <div className="contents">
+              <ImageAnnotationEditor
+                ref={annotationEditorRef}
+                key={item.src}
+                src={item.src}
+                name={item.name}
+                initialAction={imageOpenAction}
+                details={
+                  item.source ? (
+                    <SnapShotContentsButton source={item.source} side="top" />
+                  ) : undefined
+                }
+                onNavigate={
+                  imageCount > 1
+                    ? (direction) => {
+                        closeDestination.current = direction;
+                        void annotationEditorRef.current?.close();
+                      }
+                    : undefined
+                }
+                initialMarks={annotationInitialMarks}
+                priorMarks={priorAnnotations}
+                onDraftChange={(marks) => {
+                  if (item.src) annotationDrafts.current.set(item.src, marks);
+                }}
+                onBusyChange={setAnnotationBusy}
+                onDiscard={() => {
+                  if (item.src) {
+                    const saved = savedAnnotations[item.src] ?? item.annotations ?? [];
+                    annotationDrafts.current.set(
+                      item.src,
+                      saved.slice(item.burnedAnnotationCount ?? 0),
+                    );
+                  }
+                  setAnnotating(false);
+                }}
+                navigation={
+                  imageCount > 1 ? (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="overlay"
+                        size="icon-sm"
+                        aria-label="Previous media"
+                        disabled={annotationBusy}
+                        onClick={() => {
+                          closeDestination.current = -1;
+                          void annotationEditorRef.current?.close();
+                        }}
+                      >
+                        <ChevronLeftIcon />
+                      </Button>
+                      <span className="text-xs" aria-live="polite">
+                        {index + 1}/{imageCount}
+                      </span>
+                      <Button
+                        variant="overlay"
+                        size="icon-sm"
+                        aria-label="Next media"
+                        disabled={annotationBusy}
+                        onClick={() => {
+                          closeDestination.current = 1;
+                          void annotationEditorRef.current?.close();
+                        }}
+                      >
+                        <ChevronRightIcon />
+                      </Button>
+                    </div>
+                  ) : undefined
+                }
+                onApply={async ({ annotations, changed }) => {
+                  const savedMarks = [...priorAnnotations, ...annotations];
+                  const destination = closeDestination.current;
+                  closeDestination.current = "close";
+                  const id = changed
+                    ? await attachImageAnnotation(
+                        composerTarget,
+                        {
+                          src: item.src!,
+                          name: item.name,
+                          burnedAnnotationCount: item.burnedAnnotationCount,
+                        },
+                        savedMarks,
+                        item.composerImageId ?? savedComposerIds.current.get(item.src!),
+                      )
+                    : undefined;
+                  if (id) savedComposerIds.current.set(item.src!, id);
+                  setSavedAnnotations((saved) => ({ ...saved, [item.src!]: savedMarks }));
+                  if (typeof destination === "number") {
+                    const next =
+                      preview.images[wrapExpandedImageIndex(index + destination, imageCount)]!;
+                    if (next.type === "video" || next.src === null) setAnnotating(false);
+                    setAnnotationInitialMarks(
+                      annotationDrafts.current.get(next.src!) ??
+                        next.annotations?.slice(next.burnedAnnotationCount ?? 0) ??
+                        [],
+                    );
+                    navigateImage(destination);
+                  } else close();
+                }}
+              />
+            </div>
+          </MediaActions>
         ) : (
           <>
             <Button
@@ -422,7 +434,7 @@ export const ExpandedImageDialog = memo(function ExpandedImageDialog({
                           setAnnotating(true);
                         }}
                       >
-                        <CircleIcon />
+                        <SquareDashedIcon />
                         {(visibleAnnotations?.length ?? 0) > priorAnnotations.length
                           ? "Edit annotations"
                           : "Annotate image"}

@@ -1100,7 +1100,7 @@ export function ChatSettingsPanel() {
       <SettingsSection id="composer" title="Composer">
         <SettingsRow
           {...searchableSetting("image-open-action")}
-          description="Choose whether clicking a chat image opens zoom controls or editable annotations. You can switch modes in the preview."
+          description="Choose the primary image action. Hold Ctrl in the preview to use the other action while keeping your zoom level."
           resetAction={
             settings.imageOpenAction !== DEFAULT_UNIFIED_SETTINGS.imageOpenAction ? (
               <SettingResetButton

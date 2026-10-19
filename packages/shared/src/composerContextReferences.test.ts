@@ -62,6 +62,22 @@ describe("image annotation context without a prose chip", () => {
     });
     expect(projected.match(/Make this checkbox larger\./g)).toHaveLength(1);
   });
+  it("sends source pixel rectangles even when the accompanying upload has been resized", () => {
+    const projected = projectComposerContextForProvider({
+      text: "Change this rectangle.",
+      records: [
+        {
+          ...record,
+          annotations: record.annotations.map((mark) => ({
+            ...mark,
+            imageSize: { width: 3840, height: 2160 },
+          })),
+        },
+      ],
+    });
+    expect(projected).toContain("rectangle bounds; origin is top-left");
+    expect(projected).toContain("1. x=384, y=432, width=1152, height=864 px (source 3840×2160)");
+  });
 });
 
 describe("href codec", () => {

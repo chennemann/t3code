@@ -243,15 +243,26 @@ function formatElementDetails(element: ElementContextDetails): string[] {
   return lines;
 }
 
-/** The original image accompanies these normalized ellipse bounds; numbers match its overlay. */
+/** Formats rectangle coordinates against the source screenshot, including older saved marks. */
+export function formatImageAnnotationBounds(mark: ImageAnnotation): string {
+  if (!mark.imageSize)
+    return `x=${mark.x}, y=${mark.y}, width=${mark.width}, height=${mark.height} (fractions)`;
+  const x = Math.round(mark.x * mark.imageSize.width);
+  const y = Math.round(mark.y * mark.imageSize.height);
+  const right = Math.round((mark.x + mark.width) * mark.imageSize.width);
+  const bottom = Math.round((mark.y + mark.height) * mark.imageSize.height);
+  return `x=${x}, y=${y}, width=${right - x}, height=${bottom - y} px (source ${mark.imageSize.width}×${mark.imageSize.height})`;
+}
+
+/** The original image accompanies these rectangles; numbers match its overlay. */
 export function formatImageAnnotationContext(annotations: ReadonlyArray<ImageAnnotation>): string {
   return annotations.length === 0
     ? ""
     : [
-        "Image annotations (ellipse bounds, fractions of the original image; origin is top-left):",
+        "Image annotations (rectangle bounds; origin is top-left of the source image, x increases right, y increases down):",
         ...annotations.map(
           (mark, index) =>
-            `${index + 1}. x=${mark.x}, y=${mark.y}, width=${mark.width}, height=${mark.height}\n${mark.comment.trim()}`,
+            `${index + 1}. ${formatImageAnnotationBounds(mark)}\n${mark.comment.trim()}`,
         ),
       ].join("\n");
 }

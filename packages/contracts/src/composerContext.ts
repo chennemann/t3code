@@ -92,7 +92,7 @@ const attachmentBinding = {
   sizeBytes: NonNegativeInt,
 } as const;
 
-/** Ellipse bounds in fractions of the original image, independent of display size. */
+/** Rectangle bounds in fractions of the original image, independent of display size. */
 export const ImageAnnotation = Schema.Struct({
   id: TrimmedNonEmptyString.check(Schema.isMaxLength(128)),
   x: Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 1 })),
@@ -100,6 +100,8 @@ export const ImageAnnotation = Schema.Struct({
   width: Schema.Number.check(Schema.isBetween({ minimum: 0.000001, maximum: 1 })),
   height: Schema.Number.check(Schema.isBetween({ minimum: 0.000001, maximum: 1 })),
   comment: BoundedString(8_000),
+  /** Source dimensions preserve pixel coordinates even if the upload is resized. */
+  imageSize: Schema.optional(Schema.Struct({ width: PositiveInt, height: PositiveInt })),
 }).check(
   Schema.makeFilter((mark) => mark.x + mark.width <= 1.000001 && mark.y + mark.height <= 1.000001),
 );

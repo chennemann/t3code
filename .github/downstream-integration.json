@@ -1,8 +1,5 @@
 {
-  "ownedDirectories": [
-    "apps/server/src/downstream",
-    "packages/contracts/src/downstream"
-  ],
+  "ownedDirectories": ["apps/server/src/downstream", "packages/contracts/src/downstream"],
   "ownedFiles": [
     ".editorconfig",
     ".github/actions/downstream-check/action.yml",
@@ -15,6 +12,7 @@
     "apps/desktop/src/ipc/methods/clientCertificates.ts",
     "apps/server/src/terminal/ShellPolicy.ts",
     "apps/web/src/components/chat/ExpandedImageDialog.browser.test.tsx",
+    "apps/web/src/components/chat/ImageAnnotationEditor.browser.test.tsx",
     "apps/web/src/components/chat/ImageAnnotationEditor.tsx",
     "apps/web/src/components/chat/ImageAnnotationIndicator.tsx",
     "apps/web/src/components/files/htmlRenderGallery.browser.test.ts",
@@ -45,6 +43,9 @@
     "apps/mobile/src/components/MediaImagePreview.tsx",
     "apps/mobile/src/features/threads/HtmlRenderWebView.tsx",
     "apps/server/package.json",
+    "apps/server/src/htmlRender/HtmlRender.test.ts",
+    "apps/server/src/htmlRender/HtmlRender.ts",
+    "apps/server/src/mcp/toolkits/html/handlers.ts",
     "apps/server/src/mcp/toolkits/html/tools.ts",
     "apps/server/src/persistence/Sqlite.ts",
     "apps/server/src/pullRequest/PullRequestService.test.ts",

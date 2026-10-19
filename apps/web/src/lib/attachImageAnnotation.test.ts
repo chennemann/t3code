@@ -160,13 +160,14 @@ describe("editable image annotations", () => {
   });
 
   it("persists the latest geometry and comments across reload, even if image serialization was already in flight", async () => {
+    const sizedMark = { ...mark, imageSize: { width: 3840, height: 2160 } };
     const store = useComposerDraftStore.getState();
     const original = image("original");
     store.addImages(target, [original]);
     await attachImageAnnotation(
       target,
       { src: original.previewUrl, name: original.name },
-      [mark],
+      [sizedMark],
       original.id,
     );
     const serializedImage = {
@@ -199,7 +200,7 @@ describe("editable image annotations", () => {
       useComposerDraftStore.getInitialState(),
     );
     const restored = Object.values(reloaded.draftsByThreadKey)[0];
-    expect(restored?.images[0]?.annotations).toEqual([mark]);
+    expect(restored?.images[0]?.annotations).toEqual([sizedMark]);
     expect(new Uint8Array(await restored!.images[0]!.file.arrayBuffer())).toEqual(
       new Uint8Array([1, 2, 3]),
     );

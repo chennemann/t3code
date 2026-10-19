@@ -8,14 +8,20 @@ export interface AnnotationPoint {
 
 const clamp = (value: number, min = 0, max = 1) => Math.min(max, Math.max(min, value));
 
-export function annotationRect(start: AnnotationPoint, end: AnnotationPoint) {
-  const x = clamp(Math.min(start.x, end.x), 0, 0.995);
-  const y = clamp(Math.min(start.y, end.y), 0, 0.995);
+export function annotationRect(
+  start: AnnotationPoint,
+  end: AnnotationPoint,
+  imageSize?: { width: number; height: number },
+) {
+  const minWidth = imageSize ? Math.max(0.000001, 1 / imageSize.width) : 0.005;
+  const minHeight = imageSize ? Math.max(0.000001, 1 / imageSize.height) : 0.005;
+  const x = clamp(Math.min(start.x, end.x), 0, 1 - minWidth);
+  const y = clamp(Math.min(start.y, end.y), 0, 1 - minHeight);
   return {
     x,
     y,
-    width: Math.max(0.005, clamp(Math.max(start.x, end.x)) - x),
-    height: Math.max(0.005, clamp(Math.max(start.y, end.y)) - y),
+    width: Math.max(minWidth, clamp(Math.max(start.x, end.x)) - x),
+    height: Math.max(minHeight, clamp(Math.max(start.y, end.y)) - y),
   };
 }
 

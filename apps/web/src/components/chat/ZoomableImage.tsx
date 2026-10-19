@@ -271,11 +271,11 @@ export function ZoomableImage({
                 const label = annotationLabel(mark, naturalSize.width, naturalSize.height);
                 return (
                   <g key={mark.id}>
-                    <ellipse
-                      cx={(mark.x + mark.width / 2) * naturalSize.width}
-                      cy={(mark.y + mark.height / 2) * naturalSize.height}
-                      rx={(mark.width * naturalSize.width) / 2}
-                      ry={(mark.height * naturalSize.height) / 2}
+                    <rect
+                      x={mark.x * naturalSize.width}
+                      y={mark.y * naturalSize.height}
+                      width={mark.width * naturalSize.width}
+                      height={mark.height * naturalSize.height}
                       fill="none"
                       stroke={ANNOTATION_COLOR}
                       strokeWidth={Math.max(3, label.radius / 5)}

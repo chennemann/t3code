@@ -11,6 +11,23 @@ const mark = (comment: string) => ({
 });
 
 describe("appendImageAnnotationComments", () => {
+  it("includes the source pixel rectangle beside its numbered comment", () => {
+    expect(
+      appendImageAnnotationComments("", [
+        {
+          name: "screenshot.png",
+          annotations: [
+            {
+              ...mark("Change this."),
+              imageSize: { width: 2000, height: 1000 },
+            },
+          ],
+        },
+      ]),
+    ).toBe(
+      "annotations for screenshot.png:\n1. [x=200, y=200, width=600, height=400 px (source 2000×1000)] Change this.",
+    );
+  });
   it("groups comments by filename and appends them after the user's message", () => {
     expect(
       appendImageAnnotationComments("Please update these screens.", [

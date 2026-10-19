@@ -25,13 +25,28 @@ describe("image annotation bounds", () => {
     mimeType: "image/png",
     sizeBytes: 10,
   };
-  it("round-trips editable marks, including circles whose comments are still empty", () => {
+  it("round-trips editable rectangles, including marks whose comments are still empty", () => {
     expect(
       decodeRecordSync({
         ...record,
         annotations: [mark, { ...mark, id: "circle-2", comment: "" }],
       }),
     ).toMatchObject({ annotations: [mark, { ...mark, id: "circle-2", comment: "" }] });
+  });
+  it("preserves source dimensions for pixel coordinates and rejects invalid sizes", () => {
+    const sized = { ...mark, imageSize: { width: 3840, height: 2160 } };
+    expect(decodeRecordSync({ ...record, annotations: [sized] })).toMatchObject({
+      annotations: [sized],
+    });
+    for (const imageSize of [
+      { width: 0, height: 2160 },
+      { width: 3840, height: -1 },
+      { width: 1.5, height: 2160 },
+    ]) {
+      expect(
+        Option.isNone(decodeRecord({ ...record, annotations: [{ ...mark, imageSize }] })),
+      ).toBe(true);
+    }
   });
   it("rejects regions outside the image and bounds annotation payloads", () => {
     for (const invalid of [
