@@ -13033,5 +13033,9 @@
   "cb053078f01f815a": "Inga sparade certifikat. Använd Välj klientcertifikat när du lägger till en miljö för att välja före parkoppling.",
   "e7537980f5d59fce": "Glöm…",
   "db290991043b6b62": "Glömma certifikatet och starta om?",
-  "d858a580cd4e166f": "Klientcertifikat"
+  "d858a580cd4e166f": "Klientcertifikat",
+  "aeddf4420f291989": "Agentinstruktioner",
+  "4530d1e0dc4bb130": "Styr vilka pull requests agenter länkar till trådar. Lämna tomt för att inaktivera instruktionerna. Starta en ny tråd så att tidigare instruktioner slutar gälla.",
+  "ccfb9aec36900f53": "Återställ instruktioner för PR-länkning",
+  "fd3b48389394ac2c": "Instruktioner för PR-länkning"
 }

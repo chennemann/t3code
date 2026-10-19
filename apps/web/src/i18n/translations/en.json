@@ -13035,5 +13035,9 @@
   "cb053078f01f815a": "No remembered certificates. Use Choose client certificate when adding an environment to select one before pairing.",
   "e7537980f5d59fce": "Forget…",
   "db290991043b6b62": "Forget this certificate and restart?",
-  "d858a580cd4e166f": "Client certificates"
+  "d858a580cd4e166f": "Client certificates",
+  "aeddf4420f291989": "Agent instructions",
+  "4530d1e0dc4bb130": "Control which pull requests agents link to threads. Leave empty to disable the instructions. Start a new thread to ensure previous instructions no longer apply.",
+  "ccfb9aec36900f53": "Reset PR linking instructions",
+  "fd3b48389394ac2c": "PR linking instructions"
 }

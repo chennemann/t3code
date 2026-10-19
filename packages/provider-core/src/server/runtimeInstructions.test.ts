@@ -21,8 +21,11 @@ describe("buildRuntimeInstructions", () => {
   it("links PRs the agent creates, takes over, or pushes to, and no others", () => {
     const instructions = buildRuntimeInstructions({ harness: "Codex" });
 
-    assert.include(instructions, "Link each PR you create, take over, or push to");
-    assert.include(instructions, "every stack layer");
+    assert.include(instructions, "Link only PRs belonging to this thread's task");
+    assert.include(
+      instructions,
+      "excluding other stack PRs updated incidentally by queue operations",
+    );
     assert.include(instructions, "link_issue");
     assert.include(instructions, "Skip PRs you only read or review");
     assert.include(instructions, "If linking fails, say so.");
@@ -153,5 +156,27 @@ describe("buildRuntimeInstructions", () => {
     assert.isAbove(shown, 0);
     assert.include(block, `\n- Not listed: ${128 - shown} more\n</workspace_folders>`);
     assert.isBelow(new TextEncoder().encode(block).length, 4000);
+  });
+});
+
+describe("custom PR linking instructions", () => {
+  it("replaces the default prompt", () => {
+    const text = buildRuntimeInstructions({
+      harness: "Codex",
+      pullRequestLinkingInstructions: "Link only the current PR.",
+    });
+    assert.include(
+      text,
+      "<pull_request_linking>\nLink only the current PR.\n</pull_request_linking>",
+    );
+    assert.notInclude(text, "watch_pull_request");
+  });
+  it.each(["", "   "])("disables the prompt when cleared: %s", (pullRequestLinkingInstructions) => {
+    const text = buildRuntimeInstructions({
+      harness: "Claude Code",
+      pullRequestLinkingInstructions,
+    });
+    assert.notInclude(text, "pull_request_linking");
+    assert.include(text, "<runtime_info>");
   });
 });
