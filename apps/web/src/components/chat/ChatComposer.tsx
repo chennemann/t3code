@@ -607,7 +607,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     focusComposer,
     scheduleComposerFocus,
     setThreadError,
-    onExpandImage,
+    onExpandImage: expandImage,
     onFileOpen,
     editingQueuedAttachments,
     removedEditingQueuedAttachments,
@@ -676,6 +676,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
   const activeRemovedEditingQueuedAttachments = queuedEditOwnsComposer
     ? removedEditingQueuedAttachments
     : undefined;
+  const onExpandImage = (preview: ExpandedImagePreview) =>
+    expandImage({ ...preview, annotationDisabled: questionAttachmentTarget !== null });
   const attachmentDraftTarget = questionAttachmentTarget ?? composerDraftTarget;
   const attachmentDraft = useComposerThreadDraft(attachmentDraftTarget);
   const questionTakesSnapShots =
@@ -777,7 +779,9 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     projectId: activeProjectId ?? undefined,
     expandImage: (imageId: string) => {
       const preview =
-        buildExpandedImagePreview(composerImages, imageId, copyComposerSnapshotStable) ??
+        buildExpandedImagePreview(composerImages, imageId, copyComposerSnapshotStable, {
+          fromComposer: true,
+        }) ??
         buildExpandedImagePreview(
           (activeEditingQueuedAttachments ?? []).flatMap(({ attachment, url }) =>
             isQueuedImageAttachment(attachment) && url ? [{ ...attachment, previewUrl: url }] : [],

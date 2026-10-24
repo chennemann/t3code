@@ -44,6 +44,8 @@ export interface ThreadTerminalGroup {
 
 export interface ChatImageAttachment extends ContractChatImageAttachment {
   readonly previewUrl?: string;
+  readonly annotations?: ReadonlyArray<import("@t3tools/contracts").ImageAnnotation>;
+  readonly burnedAnnotationCount?: number;
 }
 
 export interface ChatFileAttachment extends ContractChatFileAttachment {

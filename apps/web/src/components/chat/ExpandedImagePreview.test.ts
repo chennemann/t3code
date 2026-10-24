@@ -37,6 +37,59 @@ describe("resolveMarkdownMediaPreview", () => {
 });
 
 describe("buildExpandedImagePreview", () => {
+  it("restores image annotations and identifies reply attachments separately from sent images", async () => {
+    const file = new File([new Uint8Array([1, 2, 3])], "screen.png", { type: "image/png" });
+    const attachment = {
+      type: "image" as const,
+      id: "screen-1",
+      name: file.name,
+      mimeType: file.type,
+      sizeBytes: file.size,
+      previewUrl: "blob:screen",
+      source: {
+        kind: "snap-shot" as const,
+        capturedAt: "2026-01-01T00:00:00.000Z",
+        appName: "Finder",
+        windowTitle: "Downloads",
+      },
+      annotations: [
+        { id: "circle-1", x: 0.1, y: 0.2, width: 0.3, height: 0.4, comment: "Change this." },
+      ],
+    };
+    expect(
+      buildExpandedImagePreview([{ ...attachment, file }], attachment.id, undefined, {
+        fromComposer: true,
+      })?.images[0]?.composerImageId,
+    ).toBe(attachment.id);
+    expect(
+      buildExpandedImagePreview([attachment], attachment.id)?.images[0]?.composerImageId,
+    ).toBeUndefined();
+    expect(buildExpandedImagePreview([attachment], attachment.id)?.images[0]).toMatchObject({
+      src: attachment.previewUrl,
+      annotations: attachment.annotations,
+    });
+    expect(
+      buildExpandedImagePreview([{ ...attachment, file }], attachment.id)?.images[0]
+        ?.composerImageId,
+    ).toBeUndefined();
+    const onCopySnapshot = vi.fn(async (_id: string) => {});
+    const preview = buildExpandedImagePreview(
+      [{ ...attachment, file }],
+      attachment.id,
+      onCopySnapshot,
+      {
+        fromComposer: true,
+      },
+    );
+    expect(preview?.images[0]).toMatchObject({
+      composerImageId: attachment.id,
+      annotations: attachment.annotations,
+      source: attachment.source,
+    });
+    await preview?.images[0]?.onCopySnapshot?.();
+    expect(onCopySnapshot).toHaveBeenCalledWith(attachment.id);
+  });
+
   it("keeps MIME type for stored images without a filename extension", () => {
     const preview = buildExpandedImagePreview(
       [

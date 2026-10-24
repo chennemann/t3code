@@ -541,6 +541,12 @@ export function attachmentContextRecord(
         ...base,
         kind: "image",
         ...(attachment.source !== undefined ? { source: attachment.source } : {}),
+        ...("annotations" in attachment && attachment.annotations?.length
+          ? { annotations: attachment.annotations }
+          : {}),
+        ...("burnedAnnotationCount" in attachment && attachment.burnedAnnotationCount
+          ? { burnedAnnotationCount: attachment.burnedAnnotationCount }
+          : {}),
       }
     : { ...base, kind: "file" };
 }
