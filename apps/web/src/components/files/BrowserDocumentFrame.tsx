@@ -13,7 +13,7 @@ import {
   htmlRenderThemeMessage,
   htmlRenderResult,
   readHtmlRenderContentHeight,
-  readHtmlRenderImageRequest,
+  readHtmlRenderImageGallery,
   readHtmlRenderKeyDown,
   readHtmlRenderLinkRequest,
 } from "@t3tools/shared/htmlRender";
@@ -260,9 +260,9 @@ export function HtmlRenderDocument(props: {
       }
       return;
     }
-    const imageRequest = readHtmlRenderImageRequest(event.data);
+    const imageRequest = readHtmlRenderImageGallery(event.data);
     if (imageRequest !== undefined) {
-      setExpandedImage({ images: [{ src: imageRequest.src, name: imageRequest.name }], index: 0 });
+      setExpandedImage({ images: imageRequest.images, index: imageRequest.index });
     }
   });
   // Attach at commit because a fast page may post its initial height before passive effects run.
@@ -295,7 +295,11 @@ export function HtmlRenderDocument(props: {
         style={loaded ? { colorScheme: theme.appearance } : undefined}
       />
       {expandedImage !== null ? (
-        <ExpandedImageDialog preview={expandedImage} onClose={() => setExpandedImage(null)} />
+        <ExpandedImageDialog
+          preview={expandedImage}
+          composerTarget={props.threadRef}
+          onClose={() => setExpandedImage(null)}
+        />
       ) : null}
     </>
   );
