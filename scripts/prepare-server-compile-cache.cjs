@@ -6,7 +6,9 @@ const os = require("node:os");
 
 // afterPack runs before signing and installer creation, against the final ASAR layout.
 module.exports = async ({ appOutDir, electronPlatformName, arch, packager }) => {
-  if (!["darwin", "win32", "linux"].includes(electronPlatformName)) {
+  // Upstream cross-builds Windows without prepared bytecode. Match that payload's
+  // NSIS file budget on native hosts too; Windows still uses its runtime cache.
+  if (!["darwin", "linux"].includes(electronPlatformName)) {
     console.log(`[server-compile-cache] Skipping unsupported target ${electronPlatformName}`);
     return;
   }
