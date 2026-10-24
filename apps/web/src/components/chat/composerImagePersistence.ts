@@ -23,6 +23,10 @@ export async function serializeComposerImages(
           sizeBytes: image.sizeBytes,
           dataUrl,
           ...(image.source ? { source: image.source } : {}),
+          ...(image.annotations ? { annotations: image.annotations } : {}),
+          ...(image.burnedAnnotationCount
+            ? { burnedAnnotationCount: image.burnedAnnotationCount }
+            : {}),
         };
       } catch {
         return existingPersistedById.get(image.id);

@@ -4060,7 +4060,7 @@ export default function ChatView(props: ChatViewProps) {
       />
       {embedded ? null : <LinkPullRequestDialogHost />}
       <ThreadVisitWatermark threadRef={routeThreadRef} />
-      <ExpandedImageDialogHost threadKey={routeThreadKey} />
+      <ExpandedImageDialogHost threadKey={routeThreadKey} composerTarget={composerDraftTarget} />
     </div>
   );
   return (

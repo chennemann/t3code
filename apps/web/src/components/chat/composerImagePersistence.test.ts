@@ -55,6 +55,21 @@ describe("serializeComposerImages", () => {
       },
     ]);
     expect(readFileAsDataUrl).toHaveBeenCalledTimes(2);
+    const annotated = {
+      ...a,
+      annotations: [
+        { id: "comment-1", x: 0.2, y: 0.3, width: 0.1, height: 0.1, comment: "Updated comment" },
+      ],
+      burnedAnnotationCount: 1,
+    };
+    const updated = await serializeComposerImages([annotated], first);
+    expect(updated[0]).toMatchObject({
+      annotations: annotated.annotations,
+      burnedAnnotationCount: 1,
+      dataUrl: first[0]!.dataUrl,
+    });
+    expect(await serializeComposerImages([a], updated)).toEqual(first);
+    expect(readFileAsDataUrl).toHaveBeenCalledTimes(2);
     expect(readFileAsDataUrl).toHaveBeenNthCalledWith(2, b.file);
 
     expect(await serializeComposerImages([a], second)).toEqual(first);
