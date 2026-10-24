@@ -13011,5 +13011,20 @@
   "9a91815046516a49": "Action d’ouverture d’image",
   "64c2b6346fd9f94e": "Annoter",
   "b3c7b7342f92fb6b": "Zoomer",
-  "049e7606a0eef612": "Annoter"
+  "049e7606a0eef612": "Annoter",
+  "a27ff4ba4ba2262c": "Prêt à associer avec {name}.",
+  "f202af159f75247d": "Prêt à associer avec le certificat sélectionné.",
+  "cf4c3eda5ea382e7": "Connexion TLS prête. Aucun choix de certificat client enregistré.",
+  "9e30d9b90ffb2294": "Sélection du certificat…",
+  "b257ecf8a076d094": "Choisir un certificat client…",
+  "a8f6c0428042cd5e": "Si ce serveur exige un certificat client, choisissez-en un avant l’association. Installez d’abord votre fichier .p12 ou .pfx sur cet ordinateur.",
+  "cde4ba7042601141": "Impossible d’oublier le certificat client.",
+  "ab8176c4303a3518": "Expire le {date}",
+  "676a671832b4f71e": "T3 Code redémarrera pour effacer les sessions de certificat existantes de {origin}. Vous choisirez un certificat à la prochaine demande de ce serveur. Le certificat installé reste sur votre ordinateur.",
+  "98d1359faa129cf3": "Oublier et redémarrer",
+  "ff8a3e07f7f1ddb3": "Lorsqu’un serveur demande un certificat client, choisissez-en un installé sur cet ordinateur. Les choix mémorisés ne s’appliquent qu’à cette installation de T3 Code et à l’adresse et au port exacts du serveur.",
+  "cb053078f01f815a": "Aucun certificat mémorisé. Utilisez Choisir un certificat client lors de l’ajout d’un environnement pour en sélectionner un avant l’association.",
+  "e7537980f5d59fce": "Oublier…",
+  "db290991043b6b62": "Oublier ce certificat et redémarrer ?",
+  "d858a580cd4e166f": "Certificats clients"
 }

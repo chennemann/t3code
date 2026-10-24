@@ -13006,5 +13006,20 @@
   "9a91815046516a49": "Acción al abrir imágenes",
   "64c2b6346fd9f94e": "Anotar",
   "b3c7b7342f92fb6b": "Ampliar",
-  "049e7606a0eef612": "Anotar"
+  "049e7606a0eef612": "Anotar",
+  "a27ff4ba4ba2262c": "Listo para emparejar con {name}.",
+  "f202af159f75247d": "Listo para emparejar con el certificado seleccionado.",
+  "cf4c3eda5ea382e7": "Conexión TLS lista. No se guardó ninguna selección de certificado de cliente.",
+  "9e30d9b90ffb2294": "Seleccionando certificado…",
+  "b257ecf8a076d094": "Elegir certificado de cliente…",
+  "a8f6c0428042cd5e": "Si este servidor requiere un certificado de cliente, elige uno antes de emparejar. Instala primero tu .p12 o .pfx en este equipo.",
+  "cde4ba7042601141": "No se pudo olvidar el certificado de cliente.",
+  "ab8176c4303a3518": "Caduca el {date}",
+  "676a671832b4f71e": "T3 Code se reiniciará para borrar las sesiones de certificado existentes de {origin}. Elegirás un certificado la próxima vez que este servidor lo solicite. El certificado instalado permanece en tu equipo.",
+  "98d1359faa129cf3": "Olvidar y reiniciar",
+  "ff8a3e07f7f1ddb3": "Cuando un servidor solicite un certificado de cliente, elige uno instalado en este equipo. Las selecciones guardadas solo se aplican a esta instalación de T3 Code y a la dirección y puerto exactos del servidor.",
+  "cb053078f01f815a": "No hay certificados guardados. Usa Elegir certificado de cliente al añadir un entorno para seleccionarlo antes de emparejar.",
+  "e7537980f5d59fce": "Olvidar…",
+  "db290991043b6b62": "¿Olvidar este certificado y reiniciar?",
+  "d858a580cd4e166f": "Certificados de cliente"
 }

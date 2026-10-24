@@ -13020,5 +13020,20 @@
   "9a91815046516a49": "Image open action",
   "64c2b6346fd9f94e": "Annotate",
   "b3c7b7342f92fb6b": "Zoom",
-  "049e7606a0eef612": "Annotate"
+  "049e7606a0eef612": "Annotate",
+  "a27ff4ba4ba2262c": "Ready to pair using {name}.",
+  "f202af159f75247d": "Ready to pair using the selected certificate.",
+  "cf4c3eda5ea382e7": "TLS connection ready. No client certificate choice was saved.",
+  "9e30d9b90ffb2294": "Choosing certificate…",
+  "b257ecf8a076d094": "Choose client certificate…",
+  "a8f6c0428042cd5e": "If this server requires a client certificate, choose one before pairing. Install your .p12 or .pfx on this computer first.",
+  "cde4ba7042601141": "Couldn't forget the client certificate.",
+  "ab8176c4303a3518": "Expires {date}",
+  "676a671832b4f71e": "T3 Code will restart to clear existing certificate sessions for {origin}. You'll choose a certificate the next time this server requests one. The installed certificate stays on your computer.",
+  "98d1359faa129cf3": "Forget and restart",
+  "ff8a3e07f7f1ddb3": "When a server requests a client certificate, choose one installed on this computer. Remembered choices apply only to this T3 Code installation and the exact server address and port.",
+  "cb053078f01f815a": "No remembered certificates. Use Choose client certificate when adding an environment to select one before pairing.",
+  "e7537980f5d59fce": "Forget…",
+  "db290991043b6b62": "Forget this certificate and restart?",
+  "d858a580cd4e166f": "Client certificates"
 }

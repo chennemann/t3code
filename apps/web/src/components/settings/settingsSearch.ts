@@ -1396,6 +1396,13 @@ export const SETTINGS_SEARCH_ITEMS = [
     desktopOnly: true,
   },
   {
+    id: "client-certificates",
+    title: msg("Client certificates"),
+    to: "/settings/connections",
+    searchTerms: ["mtls tls ssl authentication p12 pfx certificate domain fingerprint"],
+    desktopOnly: true,
+  },
+  {
     id: "network-access",
     title: msg("Network access"),
     to: "/settings/access",
