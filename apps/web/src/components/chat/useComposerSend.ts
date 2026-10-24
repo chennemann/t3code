@@ -105,6 +105,8 @@ import {
   retryAttachmentUpload,
   startAttachmentUpload,
 } from "../../lib/attachmentUploadQueue";
+import { prepareAnnotatedAttachmentsForSend } from "../../lib/prepareAnnotatedAttachmentsForSend";
+import { appendImageAnnotationComments } from "../../lib/appendImageAnnotationComments";
 import { appAtomRegistry } from "../../rpc/atomRegistry";
 import { fileAttachmentCapabilityBlockReason } from "./composerAttachmentFiles";
 import { useLinkedEnvironments } from "../../state/peerLinks";
@@ -362,7 +364,21 @@ export function useComposerSend(input: ComposerSendInput) {
     respondingRequestIdsRef.current = respondingRequestIds;
   }, [pendingApprovals, respondingRequestIds]);
 
-  const onSend = async (
+  // Annotated images are sent as rendered copies; whatever exit the send takes, those
+  // copies are released while the editable originals stay with the draft.
+  const onSend = async (...args: SendArgs) => {
+    const renderedAttachments: Array<ComposerImageAttachment | ComposerFileAttachment> = [];
+    try {
+      await send(renderedAttachments, ...args);
+    } finally {
+      releaseDraftAttachments(renderedAttachments);
+    }
+  };
+
+  type SendArgs = Parameters<typeof send> extends [unknown, ...infer Rest] ? Rest : never;
+
+  const send = async (
+    renderedAttachments: Array<ComposerImageAttachment | ComposerFileAttachment>,
     e?: { preventDefault: () => void },
     dispatchMode: ComposerDispatchMode = "auto",
     submissionIntent: ComposerSubmissionIntent = "foreground",
@@ -763,6 +779,9 @@ export function useComposerSend(input: ComposerSendInput) {
       setThreadError(threadIdForSend, "Select a base branch before sending in New worktree mode.");
       return;
     }
+    // Rendered annotation copies replace their originals once the send prepares them; the
+    // records keep the draft's ids so the optimistic row and the server bind them alike.
+    let sendAttachmentsSnapshot = composerAttachmentsSnapshot;
     // Records bind attachments by the id each side knows: the local id for the optimistic
     // row, the upload id (or local id on the data-URL path) on the wire; the server
     // rebinds them to the persisted id.
@@ -773,13 +792,14 @@ export function useComposerSend(input: ComposerSendInput) {
         previewAnnotations: composerPreviewAnnotationsSnapshot,
         threadContexts: composerThreadContextsSnapshot,
         environmentContexts: composerEnvironmentContextsSnapshot,
-        attachments: composerAttachmentsSnapshot.map((attachment, index) => ({
-          attachment,
+        attachments: sendAttachmentsSnapshot.map((attachment, index) => ({
+          attachment: { ...attachment, id: composerAttachmentsSnapshot[index]!.id },
           attachmentId: attachmentIds[index] ?? attachment.id,
         })),
       });
-    const outgoingMessageContext = buildOutgoingMessageContext(
-      composerAttachmentsSnapshot.map((attachment) => attachment.id),
+    const messageTextWithAnnotations = appendImageAnnotationComments(
+      messageTextForSend,
+      sendSnapshot.images,
     );
     const messageIdForSend = newMessageId();
     const messageCreatedAt = new Date().toISOString();
@@ -788,7 +808,7 @@ export function useComposerSend(input: ComposerSendInput) {
       model: ctxSelectedModel,
       models: ctxSelectedProviderModels,
       effort: ctxSelectedPromptEffort,
-      text: messageTextForSend || ATTACHMENT_ONLY_BOOTSTRAP_PROMPT,
+      text: messageTextWithAnnotations || ATTACHMENT_ONLY_BOOTSTRAP_PROMPT,
     });
     if (composerRef.current?.validateProviderInput(outgoingMessageText) === false) {
       return;
@@ -813,7 +833,7 @@ export function useComposerSend(input: ComposerSendInput) {
     for (const resolved of resolveMultipleModelTargets({
       selections: multipleModelSelections ?? [],
       providerInstanceEntries,
-      messageText: messageTextForSend,
+      messageText: messageTextWithAnnotations,
     })) {
       if ("error" in resolved) {
         setThreadError(threadIdForSend, resolved.error);
@@ -825,6 +845,26 @@ export function useComposerSend(input: ComposerSendInput) {
 
     sendInFlightRef.current = true;
     const sendGeneration = ++composerSendGenerationRef.current;
+    try {
+      sendAttachmentsSnapshot = await prepareAnnotatedAttachmentsForSend(
+        composerAttachmentsSnapshot,
+      );
+    } catch (error) {
+      sendInFlightRef.current = false;
+      setThreadError(
+        threadIdForSend,
+        error instanceof Error ? error.message : "Could not prepare image annotations.",
+      );
+      return;
+    }
+    renderedAttachments.push(
+      ...sendAttachmentsSnapshot.filter(
+        (attachment, index) => attachment !== composerAttachmentsSnapshot[index],
+      ),
+    );
+    const outgoingMessageContext = buildOutgoingMessageContext(
+      composerAttachmentsSnapshot.map((attachment) => attachment.id),
+    );
     const attachmentCapabilitiesBeforeUpload = readLiveAttachmentCapabilities();
     if (attachmentCapabilitiesBeforeUpload.fileBlockReason !== null) {
       sendInFlightRef.current = false;
@@ -837,7 +877,7 @@ export function useComposerSend(input: ComposerSendInput) {
         : (readEnvironmentPresentation(environmentId)?.serverConfig ?? null) !== null;
     // Uploads finish after the message shows as sending; the turn starts once they land.
     if (turnUsesAttachmentUploads) {
-      for (const attachment of composerAttachmentsSnapshot) {
+      for (const attachment of sendAttachmentsSnapshot) {
         const upload =
           readAttachmentUpload(attachment.id)?.status === "failed"
             ? retryAttachmentUpload
@@ -895,13 +935,13 @@ export function useComposerSend(input: ComposerSendInput) {
     // Declining is irreversible, so a redirect waits for its uploads instead of failing after.
     if (
       turnUsesAttachmentUploads &&
-      composerAttachmentsSnapshot.length > 0 &&
+      sendAttachmentsSnapshot.length > 0 &&
       (sendCtx?.shownPendingApprovalIds.length ?? 0) > 0
     ) {
-      await awaitAttachmentUploads(composerAttachmentsSnapshot.map((attachment) => attachment.id));
+      await awaitAttachmentUploads(sendAttachmentsSnapshot.map((attachment) => attachment.id));
       const uploadBlockReason =
         readLiveAttachmentCapabilities().fileBlockReason ??
-        (getUploadedAttachments({ environmentId, images: composerAttachmentsSnapshot }) === null
+        (getUploadedAttachments({ environmentId, images: sendAttachmentsSnapshot }) === null
           ? "Retry or remove failed uploads before sending."
           : null);
       if (uploadBlockReason !== null) {
@@ -1056,7 +1096,7 @@ export function useComposerSend(input: ComposerSendInput) {
 
     const turnAttachmentsPromise = prepareTurnAttachments({
       environmentId,
-      attachments: composerAttachmentsSnapshot,
+      attachments: sendAttachmentsSnapshot,
       usesAttachmentUploads: turnUsesAttachmentUploads,
     });
     if (multipleModelSelections !== null) {
@@ -1076,7 +1116,20 @@ export function useComposerSend(input: ComposerSendInput) {
       });
       return;
     }
-    const optimisticAttachments = optimisticMessageAttachments(composerAttachmentsSnapshot);
+    const optimisticAttachments = optimisticMessageAttachments(
+      sendAttachmentsSnapshot.map((attachment, index) => {
+        const original = composerAttachmentsSnapshot[index]!;
+        return attachment === original
+          ? attachment
+          : {
+              ...attachment,
+              id: original.id,
+              ...(attachment.type === "image"
+                ? { previewUrl: URL.createObjectURL(attachment.file) }
+                : {}),
+            };
+      }),
+    );
     if (!shouldQueueBehindActiveRun) {
       anchorNewTurn(
         scopedThreadKey(scopeThreadRef(activeThread.environmentId, threadIdForSend)),

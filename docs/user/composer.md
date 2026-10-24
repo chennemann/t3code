@@ -364,6 +364,25 @@ say exactly which image you mean. Deleting an image chip leaves the image on the
 the thumbnail asks first when the image is still mentioned in your text, then removes both. Files
 exist only as chips: deleting a file's last chip removes the file from the message.
 
+On web and desktop, open an image and choose **Annotate image** to give visual feedback.
+Click or drag to place a numbered rectangle, then describe the change in its matching comment.
+Select a rectangle by its number, or focus its comment. Drag the number to move it and use its
+corners to resize it. Undo and redo are available with your usual keyboard shortcuts.
+Closing the image saves its rectangles and comments separately from the original picture.
+An annotated attachment shows a comment indicator; open it again to edit or delete marks.
+Viewing saved annotations leaves your reply alone. Sent images are flattened snapshots;
+their rectangles cannot be moved or deleted. You can add new annotations in another reply.
+Annotations survive draft reloads and prompt stashes. Annotating a conversation image adds
+the original picture with its annotations to your reply. Your draft text stays unchanged.
+Sending renders a separate copy with the rectangles and numbers burned into the image and appends
+the numbered comments and source pixel coordinates to your message, grouped by image filename.
+Coordinates start at the top-left of the source screenshot. Drafts keep their original
+pixels and editable marks until sent.
+Choose **Settings → Chat → Image open action** to open images in zoom or annotation mode
+by default. Hold Ctrl to use the other action without losing your zoom level: in annotation
+mode, Ctrl plus scrolling zooms and Ctrl plus dragging pans; in zoom mode, Ctrl plus dragging
+draws a rectangle. You can also switch the primary action from the preview.
+
 Copy text that holds chips and paste it into another draft, in the same thread or another one,
 and the chips come along with what they point to. Images and files are fetched again from the
 environment they came from; while that happens the chip shows a dashed outline, and if it cannot
