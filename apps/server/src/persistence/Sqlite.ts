@@ -8,6 +8,8 @@ import * as SqlClient from "effect/sql/SqlClient";
 import * as SqlError from "effect/sql/SqlError";
 import * as NodeSqliteClient from "@t3tools/shared/nodeSqliteClient";
 
+import { repairForkDatabase } from "../downstream/persistence/repairForkDatabase.ts";
+
 import { hasPendingMigrations, runMigrations } from "./Migrations.ts";
 import { initializeV2Database } from "./initializeV2Database.ts";
 import * as ServerConfig from "../config.ts";
@@ -61,6 +63,7 @@ const runMigrationsAsOwner = Effect.fn("SqlitePersistence.runMigrationsAsOwner")
         Effect.fail(new ServerOwnsDatabaseError({ stateDir })),
     }),
   );
+  yield* repairForkDatabase();
   yield* runMigrations();
 }, Effect.scoped);
 
@@ -98,7 +101,7 @@ const makeLayerSetup = <E, R>(migrate: Effect.Effect<unknown, E, R>) =>
     }).pipe(Effect.withSpan("Sqlite.setup")),
   );
 
-const layerSetup = makeLayerSetup(runMigrations());
+const layerSetup = makeLayerSetup(Effect.andThen(repairForkDatabase(), runMigrations()));
 
 const makeLayerFromPath = <E, R>(makeSetup: (dbPath: string) => Layer.Layer<never, E, R>) =>
   Effect.fn("makeSqlitePersistenceLive")(function* (dbPath: string) {
