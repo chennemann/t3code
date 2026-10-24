@@ -28,6 +28,10 @@ import {
   parseWslRuntimeArchiveMembers,
   readWorkspaceConfig,
   createBuildConfig,
+  DesktopServerBundleVersionMismatchError,
+  DesktopUpdateFeedConfigurationMissingError,
+  findDesktopBuildVersionMismatches,
+  verifyServerBundleVersion,
   DESKTOP_FILE_EXCLUSIONS,
   InvalidMacPasskeyRpDomainError,
   InvalidMacPasskeyPublishableKeyError,
@@ -234,6 +238,62 @@ const makeMacPayloadFixture = Effect.fn("test.makeMacPayloadFixture")(function* 
 });
 
 it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
+  it("detects release package versions that do not match the requested artifact version", () => {
+    assert.deepStrictEqual(
+      findDesktopBuildVersionMismatches("0.0.35-fork.4", {
+        "apps/server/package.json": "0.0.34-fork.1",
+        "apps/desktop/package.json": "0.0.35-fork.4",
+        "apps/web/package.json": "0.0.34-fork.1",
+        "packages/contracts/package.json": "0.0.35-fork.4",
+      }),
+      [
+        { packagePath: "apps/server/package.json", actualVersion: "0.0.34-fork.1" },
+        { packagePath: "apps/web/package.json", actualVersion: "0.0.34-fork.1" },
+      ],
+    );
+  });
+
+  it.effect("rejects a distributable build without an update feed", () =>
+    Effect.gen(function* () {
+      const error = yield* createBuildConfig(
+        "win",
+        "nsis",
+        "0.0.35-fork.4",
+        false,
+        false,
+        undefined,
+        undefined,
+      ).pipe(Effect.flip);
+
+      assert.instanceOf(error, DesktopUpdateFeedConfigurationMissingError);
+      assert.equal(error.version, "0.0.35-fork.4");
+    }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
+  );
+
+  it.effect("rejects stale compiled server version output", () =>
+    Effect.scoped(
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const tempDir = yield* fs.makeTempDirectoryScoped({
+          prefix: "desktop-server-version-test-",
+        });
+        const entryPath = path.join(tempDir, "bin.mjs");
+        yield* fs.writeFileString(entryPath, 'console.log("t3 v0.0.34-fork.1");\n');
+
+        const error = yield* verifyServerBundleVersion({
+          entryPath,
+          expectedVersion: "0.0.35-fork.4",
+          verbose: false,
+        }).pipe(Effect.flip);
+
+        assert.instanceOf(error, DesktopServerBundleVersionMismatchError);
+        assert.equal(error.expectedVersion, "0.0.35-fork.4");
+        assert.equal(error.actualOutput, "t3 v0.0.34-fork.1");
+      }),
+    ),
+  );
+
   it.effect("rejects overlapping builds from another process until restoration finishes", () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
@@ -1582,6 +1642,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         ConfigProvider.layer(
           ConfigProvider.fromEnv({
             env: {
+              GITHUB_REPOSITORY: "pingdotgg/t3code",
               AZURE_TRUSTED_SIGNING_PUBLISHER_NAME: "T3",
               AZURE_TRUSTED_SIGNING_ENDPOINT: "https://eus.codesigning.azure.net/",
               AZURE_TRUSTED_SIGNING_CERTIFICATE_PROFILE_NAME: "profile",
