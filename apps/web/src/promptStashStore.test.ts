@@ -86,6 +86,34 @@ describe("promptStashStore", () => {
     resetPromptStashStore();
   });
 
+  it("restores editable image geometry and comments with the original stashed pixels", () => {
+    const annotation = {
+      id: "circle-1",
+      x: 0.1,
+      y: 0.2,
+      width: 0.3,
+      height: 0.4,
+      comment: "Make this larger.",
+    };
+    const image = {
+      id: "original-image",
+      name: "original.png",
+      mimeType: "image/png",
+      sizeBytes: 3,
+      dataUrl: "data:image/png;base64,AQID",
+      annotations: [annotation],
+    };
+    writePromptStashStorageForTest(
+      JSON.stringify({
+        version: 2,
+        state: { entries: [{ ...makeEntry({ id: "annotated-image" }), attachments: [image] }] },
+      }),
+    );
+    const restored = usePromptStashStore.getState().takeEntry("annotated-image").entry;
+    expect(restored?.attachments).toEqual([image]);
+    expect(restored?.prompt).toBe("prompt annotated-image");
+  });
+
   it("restores citations and bound comments from a persisted stash", () => {
     const citation = {
       version: 1 as const,

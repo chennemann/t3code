@@ -92,11 +92,32 @@ const attachmentBinding = {
   sizeBytes: NonNegativeInt,
 } as const;
 
+/** Ellipse bounds in fractions of the original image, independent of display size. */
+export const ImageAnnotation = Schema.Struct({
+  id: TrimmedNonEmptyString.check(Schema.isMaxLength(128)),
+  x: Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 1 })),
+  y: Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 1 })),
+  width: Schema.Number.check(Schema.isBetween({ minimum: 0.000001, maximum: 1 })),
+  height: Schema.Number.check(Schema.isBetween({ minimum: 0.000001, maximum: 1 })),
+  comment: BoundedString(8_000),
+}).check(
+  Schema.makeFilter((mark) => mark.x + mark.width <= 1.000001 && mark.y + mark.height <= 1.000001),
+);
+export type ImageAnnotation = typeof ImageAnnotation.Type;
+export const ImageAnnotations = Schema.Array(ImageAnnotation).check(Schema.isMaxLength(100));
+
 export const ImageContextRecord = Schema.Struct({
   ...recordBase,
   kind: Schema.Literal("image"),
   ...attachmentBinding,
-});
+  annotations: Schema.optional(ImageAnnotations),
+  /** Leading annotations already flattened into this image's pixels. */
+  burnedAnnotationCount: Schema.optional(NonNegativeInt),
+}).check(
+  Schema.makeFilter(
+    (record) => (record.burnedAnnotationCount ?? 0) <= (record.annotations?.length ?? 0),
+  ),
+);
 export type ImageContextRecord = typeof ImageContextRecord.Type;
 
 export const FileContextRecord = Schema.Struct({

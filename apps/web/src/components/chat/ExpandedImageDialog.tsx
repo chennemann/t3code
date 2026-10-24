@@ -1,9 +1,10 @@
 import { memo, useRef, useState, type ReactNode, type KeyboardEvent } from "react";
 import { flushSync } from "react-dom";
-import { ChevronLeftIcon, ChevronRightIcon, XIcon } from "lucide-react";
+import { registerThreadOverlay } from "./threadOverlayRetention";
+import { ChevronLeftIcon, ChevronRightIcon, CircleIcon, XIcon } from "lucide-react";
 import { Image as ImageGlyph, Text as TextGlyph } from "lucide";
-import { Button } from "../ui/button";
 import { MorphIcon } from "~/components/MorphIcon";
+import { Button } from "../ui/button";
 import { Dialog, DialogPopup, DialogTitle } from "../ui/dialog";
 import type { ExpandedImageItem, ExpandedImagePreview } from "./ExpandedImagePreview";
 import { resolveExternalWebLinkHost } from "./externalLinkContextMenu";
@@ -24,11 +25,16 @@ import { useAtomValue } from "@effect/atom-react";
 import { Atom } from "effect/reactivity";
 import { appAtomRegistry } from "~/rpc/atomRegistry";
 import { expandedImageKey } from "./ExpandedImagePreview";
-import { registerThreadOverlay } from "./threadOverlayRetention";
+import { ImageAnnotationEditor, type ImageAnnotationEditorHandle } from "./ImageAnnotationEditor";
+import { attachImageAnnotation } from "../../lib/attachImageAnnotation";
+import type { ComposerThreadTarget } from "../../composerDraftStore";
+import type { ImageAnnotation } from "../../lib/imageAnnotations";
+import { useClientSettings } from "../../hooks/useSettings";
 
 interface ExpandedImageDialogProps {
   preview: ExpandedImagePreview;
   onClose: () => void;
+  composerTarget?: ComposerThreadTarget | undefined;
 }
 
 const EXPANDED_MEDIA_STATE_CLASS_NAME =
@@ -70,7 +76,33 @@ function ExpandedVideo({ item }: { readonly item: ExpandedImageItem }) {
 export const ExpandedImageDialog = memo(function ExpandedImageDialog({
   preview,
   onClose,
+  composerTarget,
 }: ExpandedImageDialogProps) {
+  const imageOpenAction = useClientSettings((settings) => settings.imageOpenAction);
+  const [annotating, setAnnotating] = useState(() =>
+    Boolean(
+      composerTarget &&
+      !preview.annotationDisabled &&
+      preview.images[preview.index]?.type !== "video" &&
+      imageOpenAction === "annotate",
+    ),
+  );
+  const [annotationBusy, setAnnotationBusy] = useState(false);
+  const [annotationInitialMarks, setAnnotationInitialMarks] = useState<
+    ReadonlyArray<ImageAnnotation>
+  >(
+    () =>
+      preview.images[preview.index]?.annotations?.slice(
+        preview.images[preview.index]?.burnedAnnotationCount ?? 0,
+      ) ?? [],
+  );
+  const annotationDrafts = useRef(new Map<string, ImageAnnotation[]>());
+  const [savedAnnotations, setSavedAnnotations] = useState<
+    Record<string, ReadonlyArray<ImageAnnotation>>
+  >({});
+  const savedComposerIds = useRef(new Map<string, string>());
+  const closeDestination = useRef<"close" | "zoom">("close");
+  const annotationEditorRef = useRef<ImageAnnotationEditorHandle>(null);
   const [imageOffset, setImageOffset] = useState(0);
   const [failedImageSrc, setFailedImageSrc] = useState<string | null>(null);
   const [accessibilityDetailsSrc, setAccessibilityDetailsSrc] = useState<string | null>(null);
@@ -78,18 +110,20 @@ export const ExpandedImageDialog = memo(function ExpandedImageDialog({
   const [returnFocusTarget] = useState(() =>
     document.activeElement instanceof HTMLElement ? document.activeElement : null,
   );
-  // The host unmounts the dialog outright, so Base UI never runs finalFocus. Without
-  // this, focus stays on the removed dialog, and the composer that owned the opener
-  // reads that as a blur and rests.
   const close = () => {
     flushSync(onClose);
     if (returnFocusTarget?.isConnected) returnFocusTarget.focus({ preventScroll: true });
   };
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  // JavaScript `%` keeps the sign of the dividend, and a negative index blanks the dialog.
   const imageCount = preview.images.length;
   const index =
     imageCount > 0 ? (((preview.index + imageOffset) % imageCount) + imageCount) % imageCount : 0;
   const item = preview.images[index];
+  const visibleAnnotations = item?.src
+    ? (savedAnnotations[item.src] ?? item.annotations)
+    : undefined;
+  const priorAnnotations = item?.annotations?.slice(0, item.burnedAnnotationCount ?? 0) ?? [];
   const source: MediaActionSource = item?.actionsSource ?? {
     kind: item?.type === "video" ? "video" : "image",
     name: item?.name ?? "Media",
@@ -110,7 +144,17 @@ export const ExpandedImageDialog = memo(function ExpandedImageDialog({
     setImageOffset((current) => current + direction);
   };
 
+  const requestClose = () => {
+    if (annotationBusy) return;
+    if (annotating) {
+      void annotationEditorRef.current?.close();
+    } else {
+      close();
+    }
+  };
+
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (annotating) return;
     if (event.defaultPrevented || isContextMenuOpen() || event.target instanceof HTMLVideoElement)
       return;
     if (zoomableImageRef.current?.pan(event.key)) {
@@ -151,12 +195,12 @@ export const ExpandedImageDialog = memo(function ExpandedImageDialog({
       open
       onOpenChange={(open, eventDetails) => {
         if (open) return;
-        // Escape belongs to an open context menu first.
         if (eventDetails.reason === "escape-key" && isContextMenuOpen()) {
           eventDetails.cancel();
           return;
         }
-        close();
+        if (annotating || annotationBusy) eventDetails.cancel();
+        requestClose();
       }}
     >
       <DialogPopup
@@ -169,108 +213,194 @@ export const ExpandedImageDialog = memo(function ExpandedImageDialog({
         initialFocus={closeButtonRef}
         finalFocus={() => returnFocusTarget}
         onClick={(event) => {
-          if (event.target === event.currentTarget) close();
+          if (event.target === event.currentTarget) requestClose();
         }}
       >
         <DialogTitle className="sr-only">Expanded {mediaLabel} preview</DialogTitle>
-        <Button
-          type="button"
-          ref={closeButtonRef}
-          size="icon-sm"
-          variant="media-close"
-          className="absolute right-0 top-0 z-20"
-          onClick={close}
-          aria-label={`Close ${mediaLabel} preview`}
-        >
-          <XIcon />
-        </Button>
-        {preview.images.length > 1 && (
-          <Button
-            type="button"
-            size="icon"
-            variant="media-navigation"
-            className="left-0 top-auto bottom-0 translate-y-0 sm:top-1/2 sm:bottom-auto sm:-translate-y-1/2"
-            aria-label="Previous media"
-            onClick={() => navigateImage(-1)}
-          >
-            <ChevronLeftIcon className="size-5" />
-          </Button>
-        )}
-        <MediaActions source={actionsSource}>
-          <div className="relative isolate z-10 flex max-h-full max-w-[var(--media-width)] flex-col items-center">
-            {item.type === "video" ? (
-              <ExpandedVideo key={index} item={item} />
-            ) : showingAccessibilityDetails ? (
-              accessibilityDetails ? (
-                <SnapShotAccessibilityData
-                  details={accessibilityDetails}
-                  className="h-[min(var(--media-height),40rem)] w-[min(var(--media-width),42rem)] transition-opacity duration-140 ease-out starting:opacity-0 rounded-lg border border-border/70 bg-background p-4 text-xs leading-5 shadow-2xl motion-reduce:transition-none"
-                />
-              ) : null
-            ) : item.src === null || failedImageSrc === item.src ? (
-              <ExpandedMediaFailure>
-                <p>
-                  {openOriginalLink
-                    ? "This image could not be loaded."
-                    : "Image unavailable. The file may have been moved or deleted."}
-                </p>
-                {openOriginalLink}
-              </ExpandedMediaFailure>
-            ) : (
-              <ZoomableImage
-                ref={zoomableImageRef}
-                key={`${index}:${item.src}`}
-                src={item.src}
-                name={item.name}
-                mimeType={item.mimeType}
-                onError={() => setFailedImageSrc(item.src)}
-              />
+        {annotating && item.src && composerTarget ? (
+          <ImageAnnotationEditor
+            ref={annotationEditorRef}
+            key={item.src}
+            src={item.src}
+            name={item.name}
+            initialMarks={annotationInitialMarks}
+            priorMarks={priorAnnotations}
+            onDraftChange={(marks) => {
+              if (item.src) annotationDrafts.current.set(item.src, marks);
+            }}
+            onBusyChange={setAnnotationBusy}
+            onZoom={() => {
+              closeDestination.current = "zoom";
+              void annotationEditorRef.current?.close();
+            }}
+            onApply={async ({ annotations, changed }) => {
+              const savedMarks = [...priorAnnotations, ...annotations];
+              const destination = closeDestination.current;
+              closeDestination.current = "close";
+              const id = changed
+                ? await attachImageAnnotation(
+                    composerTarget,
+                    {
+                      src: item.src!,
+                      name: item.name,
+                      burnedAnnotationCount: item.burnedAnnotationCount,
+                    },
+                    savedMarks,
+                    item.composerImageId ?? savedComposerIds.current.get(item.src!),
+                  )
+                : undefined;
+              if (id) savedComposerIds.current.set(item.src!, id);
+              setSavedAnnotations((saved) => ({ ...saved, [item.src!]: savedMarks }));
+              if (destination === "zoom") {
+                setAnnotating(false);
+              } else close();
+            }}
+          />
+        ) : (
+          <>
+            <Button
+              type="button"
+              ref={closeButtonRef}
+              size="icon-sm"
+              variant="media-close"
+              className="absolute right-0 top-0 z-20"
+              onClick={close}
+              aria-label={`Close ${mediaLabel} preview`}
+            >
+              <XIcon />
+            </Button>
+            {preview.images.length > 1 && (
+              <Button
+                type="button"
+                size="icon"
+                variant="media-navigation"
+                className="left-0 top-auto bottom-0 translate-y-0 sm:top-1/2 sm:bottom-auto sm:-translate-y-1/2"
+                aria-label="Previous media"
+                onClick={() => navigateImage(-1)}
+              >
+                <ChevronLeftIcon className="size-5" />
+              </Button>
             )}
-            <div className="mt-2 flex max-w-[var(--media-width)] items-center justify-center gap-1.5 text-xs text-white/80 max-sm:px-10">
-              <span className="truncate" aria-live="polite" aria-atomic="true">
-                {item.name}
-                {preview.images.length > 1 ? ` (${index + 1}/${preview.images.length})` : ""}
-              </span>
-              {accessibilityDetails && item.source ? (
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Button
-                        aria-label={contentsLabel}
-                        aria-pressed={showingAccessibilityDetails}
-                        onClick={() =>
-                          setAccessibilityDetailsSrc(showingAccessibilityDetails ? null : item.src)
-                        }
-                        size="icon-micro"
-                        variant="overlay"
-                      />
-                    }
-                  >
-                    <MorphIcon
-                      className="size-3"
-                      aria-hidden="true"
-                      icon={showingAccessibilityDetails ? ImageGlyph : TextGlyph}
+            <MediaActions source={actionsSource}>
+              <div className="relative isolate z-10 flex max-h-full max-w-[var(--media-width)] flex-col items-center">
+                {item.type === "video" ? (
+                  <ExpandedVideo key={index} item={item} />
+                ) : showingAccessibilityDetails ? (
+                  accessibilityDetails ? (
+                    <SnapShotAccessibilityData
+                      details={accessibilityDetails}
+                      className="h-[min(var(--media-height),40rem)] w-[min(var(--media-width),42rem)] transition-opacity duration-140 ease-out starting:opacity-0 rounded-lg border border-border/70 bg-background p-4 text-xs leading-5 shadow-2xl motion-reduce:transition-none"
                     />
-                  </TooltipTrigger>
-                  <TooltipPopup side="top">{contentsLabel}</TooltipPopup>
-                </Tooltip>
-              ) : item.source ? (
-                <SnapShotContentsButton source={item.source} side="top" />
-              ) : null}
-            </div>
-          </div>
-        </MediaActions>
-        {preview.images.length > 1 && (
-          <Button
-            type="button"
-            size="icon"
-            variant="media-navigation"
-            className="right-0 top-auto bottom-0 translate-y-0 sm:top-1/2 sm:bottom-auto sm:-translate-y-1/2"
-            aria-label="Next media"
-            onClick={() => navigateImage(1)}
-          >
-            <ChevronRightIcon className="size-5" />
-          </Button>
+                  ) : null
+                ) : item.src === null || failedImageSrc === item.src ? (
+                  <ExpandedMediaFailure>
+                    <p>
+                      {openOriginalLink
+                        ? "This image could not be loaded."
+                        : "Image unavailable. The file may have been moved or deleted."}
+                    </p>
+                    {openOriginalLink}
+                  </ExpandedMediaFailure>
+                ) : (
+                  <ZoomableImage
+                    ref={zoomableImageRef}
+                    key={`${index}:${item.src}`}
+                    src={item.src}
+                    name={item.name}
+                    mimeType={item.mimeType}
+                    annotations={visibleAnnotations}
+                    burnedAnnotationCount={item.burnedAnnotationCount}
+                    onError={() => setFailedImageSrc(item.src)}
+                  />
+                )}
+                <div className="mt-2 flex max-w-[var(--media-width)] items-center justify-center gap-1.5 text-xs text-white/80 max-sm:px-10">
+                  <span className="truncate" aria-live="polite" aria-atomic="true">
+                    {item.name}
+                    {preview.images.length > 1 ? ` (${index + 1}/${preview.images.length})` : ""}
+                  </span>
+                  {accessibilityDetails && item.source ? (
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <Button
+                            aria-label={contentsLabel}
+                            aria-pressed={showingAccessibilityDetails}
+                            onClick={() =>
+                              setAccessibilityDetailsSrc(
+                                showingAccessibilityDetails ? null : item.src,
+                              )
+                            }
+                            size="icon-micro"
+                            variant="overlay"
+                          />
+                        }
+                      >
+                        <MorphIcon
+                          className="size-3"
+                          aria-hidden="true"
+                          icon={showingAccessibilityDetails ? ImageGlyph : TextGlyph}
+                        />
+                      </TooltipTrigger>
+                      <TooltipPopup side="top">{contentsLabel}</TooltipPopup>
+                    </Tooltip>
+                  ) : item.source ? (
+                    <SnapShotContentsButton source={item.source} side="top" />
+                  ) : null}
+                </div>
+                {composerTarget &&
+                  !preview.annotationDisabled &&
+                  item.type !== "video" &&
+                  item.src &&
+                  failedImageSrc !== item.src &&
+                  !showingAccessibilityDetails && (
+                    <div className="mt-3 flex justify-center">
+                      <Button
+                        variant="overlay"
+                        size="sm"
+                        onClick={() => {
+                          setAnnotationInitialMarks(
+                            annotationDrafts.current.get(item.src!) ??
+                              item.annotations?.slice(item.burnedAnnotationCount ?? 0) ??
+                              [],
+                          );
+                          setAnnotating(true);
+                        }}
+                      >
+                        <CircleIcon />
+                        {(visibleAnnotations?.length ?? 0) > priorAnnotations.length
+                          ? "Edit annotations"
+                          : "Annotate image"}
+                      </Button>
+                    </div>
+                  )}
+                {visibleAnnotations?.length && item.type !== "video" ? (
+                  <aside
+                    aria-label="Saved annotation comments"
+                    className="absolute right-0 bottom-16 z-20 max-h-48 w-72 max-w-[85vw] space-y-2 overflow-auto rounded-lg border border-border bg-background p-3 text-sm text-foreground shadow-lg"
+                  >
+                    {visibleAnnotations.map((mark, index) => (
+                      <p key={mark.id} className="whitespace-pre-wrap break-words">
+                        <span className="font-semibold text-image-annotation">{index + 1}.</span>{" "}
+                        {mark.comment || "No comment"}
+                      </p>
+                    ))}
+                  </aside>
+                ) : null}
+              </div>
+            </MediaActions>
+            {preview.images.length > 1 && (
+              <Button
+                type="button"
+                size="icon"
+                variant="media-navigation"
+                className="right-0 top-auto bottom-0 translate-y-0 sm:top-1/2 sm:bottom-auto sm:-translate-y-1/2"
+                aria-label="Next media"
+                onClick={() => navigateImage(1)}
+              >
+                <ChevronRightIcon className="size-5" />
+              </Button>
+            )}
+          </>
         )}
       </DialogPopup>
     </Dialog>
@@ -314,7 +444,13 @@ registerThreadOverlay((threadKey) => {
   if (current !== null && current.threadKey !== threadKey) closeExpandedImagePreview();
 });
 
-export function ExpandedImageDialogHost({ threadKey }: { readonly threadKey: string }) {
+export function ExpandedImageDialogHost({
+  threadKey,
+  composerTarget,
+}: {
+  readonly threadKey: string;
+  readonly composerTarget?: ComposerThreadTarget | undefined;
+}) {
   const state = useAtomValue(expandedImagePreviewAtom);
   const preview = state?.threadKey === threadKey ? state.preview : null;
   if (preview === null) return null;
@@ -322,6 +458,7 @@ export function ExpandedImageDialogHost({ threadKey }: { readonly threadKey: str
     <ExpandedImageDialog
       key={expandedImageKey(preview)}
       preview={preview}
+      composerTarget={composerTarget}
       onClose={closeExpandedImagePreview}
     />
   );
