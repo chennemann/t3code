@@ -76,6 +76,7 @@ import * as ProcessRunner from "../processRunner.ts";
 import * as PortScanner from "../preview/PortScanner.ts";
 import * as NativeTelemetryClient from "../resourceTelemetry/NativeTelemetryClient.ts";
 import * as PtyAdapter from "@t3tools/shared/PtyAdapter";
+import * as ShellPolicy from "./ShellPolicy.ts";
 
 export {
   TerminalCwdError,
@@ -1384,7 +1385,7 @@ interface TerminalManagerOptions {
   historyLineLimit?: number;
   historyByteLimit?: number;
   ptyAdapter: PtyAdapter.PtyAdapter["Service"];
-  shellResolver?: () => string;
+  shellResolver?: Effect.Effect<string>;
   env?: NodeJS.ProcessEnv;
   managedBinaryCacheDir?: string;
   managedBinaryToolsDir?: string;
@@ -1473,6 +1474,7 @@ export const make = Effect.fn("TerminalManager.make")(function* () {
       env,
     }),
   );
+  const shellPolicy = yield* ShellPolicy.TerminalShellPolicy;
   return yield* makeWithOptions({
     logsDir: terminalLogsDir,
     ptyAdapter,
@@ -1483,6 +1485,7 @@ export const make = Effect.fn("TerminalManager.make")(function* () {
     ),
     managedBinaryCacheDir: providerStatusCacheDir,
     managedBinaryToolsDir: path.join(baseDir, "tools"),
+    shellResolver: shellPolicy.resolve,
     registerTerminalProcesses: portDiscovery.registerTerminalProcesses,
     unregisterTerminal: portDiscovery.unregisterTerminal,
     resolveProviderInstanceEnvironment,
@@ -1505,7 +1508,7 @@ export const makeWithOptions = Effect.fn("TerminalManager.makeWithOptions")(func
   const agentScope = yield* AgentScope;
   // Inherit the full environment minus createTerminalSpawnEnv's blocklist; allowlists silently drop user tooling variables.
   const baseEnv = options.env ?? process.env;
-  const shellResolver = options.shellResolver ?? (() => defaultShellResolver(platform, baseEnv));
+  const shellResolver = options.shellResolver ?? Effect.succeed("");
   const processRunner = yield* ProcessRunner.ProcessRunner;
   const resolveLaunchInputEnvironment = Effect.fn("terminal.resolveLaunchInputEnvironment")(
     function* <Input extends TerminalOpenInput | TerminalAttachInput | TerminalRestartInput>(
@@ -2299,7 +2302,9 @@ export const makeWithOptions = Effect.fn("TerminalManager.makeWithOptions")(func
       increment(terminalSessionsTotal, { lifecycle: eventType }).pipe(
         Effect.andThen(
           Effect.gen(function* () {
-            const shellCandidates = resolveShellCandidates(shellResolver, platform, baseEnv);
+            const configuredShell = (yield* shellResolver).trim();
+            const requestedShell = configuredShell || defaultShellResolver(platform, baseEnv);
+            const shellCandidates = resolveShellCandidates(() => requestedShell, platform, baseEnv);
             const terminalEnv = createTerminalSpawnEnv(
               baseEnv,
               session.runtimeEnv,
@@ -3357,4 +3362,8 @@ export const makeWithOptions = Effect.fn("TerminalManager.makeWithOptions")(func
   });
 });
 
-export const layer = Layer.effect(TerminalManager, make()).pipe(Layer.provide(ProcessRunner.layer));
+export const layerWithShellPolicy = Layer.effect(TerminalManager, make()).pipe(
+  Layer.provide(ProcessRunner.layer),
+);
+
+export const layer = layerWithShellPolicy.pipe(Layer.provide(ShellPolicy.layerDefault));

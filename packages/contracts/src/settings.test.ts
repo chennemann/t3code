@@ -370,3 +370,15 @@ describe("server model preferences", () => {
     expect(decodeServerSettingsPatch(input)).toEqual(input);
   });
 });
+
+describe("ServerSettings terminal shell policy", () => {
+  it("defaults to the platform-selected shell", () => {
+    expect(decodeServerSettings({}).terminalShellPath).toBe("");
+  });
+
+  it("accepts a trimmed shell path through settings patches", () => {
+    expect(
+      decodeServerSettingsPatch({ terminalShellPath: "  /bin/fish  " }).terminalShellPath,
+    ).toBe("/bin/fish");
+  });
+});
