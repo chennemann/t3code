@@ -9,9 +9,73 @@ import {
 } from "./composerContext.ts";
 
 const decodeRecord = Schema.decodeUnknownOption(ComposerContextRecord);
+const decodeRecordSync = Schema.decodeUnknownSync(ComposerContextRecord);
 const decodeContext = Schema.decodeUnknownSync(OrchestrationMessageContext);
 
 const base = { version: 1, contextId: "ctx_1" } as const;
+
+describe("image annotation bounds", () => {
+  const mark = { id: "circle-1", x: 0.1, y: 0.2, width: 0.4, height: 0.3, comment: "Change this." };
+  const record = {
+    ...base,
+    kind: "image",
+    label: "screenshot.png",
+    name: "screenshot.png",
+    attachmentId: "att_1",
+    mimeType: "image/png",
+    sizeBytes: 10,
+  };
+  it("round-trips editable rectangles, including marks whose comments are still empty", () => {
+    expect(
+      decodeRecordSync({
+        ...record,
+        annotations: [mark, { ...mark, id: "circle-2", comment: "" }],
+      }),
+    ).toMatchObject({ annotations: [mark, { ...mark, id: "circle-2", comment: "" }] });
+  });
+  it("preserves source dimensions for pixel coordinates and rejects invalid sizes", () => {
+    const sized = { ...mark, imageSize: { width: 3840, height: 2160 } };
+    expect(decodeRecordSync({ ...record, annotations: [sized] })).toMatchObject({
+      annotations: [sized],
+    });
+    for (const imageSize of [
+      { width: 0, height: 2160 },
+      { width: 3840, height: -1 },
+      { width: 1.5, height: 2160 },
+    ]) {
+      expect(
+        Option.isNone(decodeRecord({ ...record, annotations: [{ ...mark, imageSize }] })),
+      ).toBe(true);
+    }
+  });
+  it("rejects regions outside the image and bounds annotation payloads", () => {
+    for (const invalid of [
+      { ...mark, x: -0.1 },
+      { ...mark, x: 0.9 },
+      { ...mark, width: 0 },
+      { ...mark, y: Infinity },
+      { ...mark, comment: "x".repeat(8_001) },
+    ]) {
+      expect(Option.isNone(decodeRecord({ ...record, annotations: [invalid] }))).toBe(true);
+    }
+    expect(
+      Option.isNone(
+        decodeRecord({
+          ...record,
+          annotations: Array.from({ length: 101 }, (_, i) => ({ ...mark, id: String(i) })),
+        }),
+      ),
+    ).toBe(true);
+  });
+  it("preserves which annotations are already part of a flattened snapshot", () => {
+    expect(
+      decodeRecordSync({ ...record, annotations: [mark], burnedAnnotationCount: 1 }),
+    ).toMatchObject({ burnedAnnotationCount: 1, annotations: [mark] });
+    expect(
+      Option.isNone(decodeRecord({ ...record, annotations: [mark], burnedAnnotationCount: 2 })),
+    ).toBe(true);
+  });
+});
 
 const knownRecords: Record<(typeof COMPOSER_CONTEXT_KINDS)[number], Record<string, unknown>> = {
   image: {

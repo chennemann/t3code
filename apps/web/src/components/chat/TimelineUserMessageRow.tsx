@@ -47,6 +47,7 @@ import {
   buildAttachmentVideoPreview,
   buildExpandedImagePreview,
 } from "./ExpandedImagePreview";
+import { ImageAnnotationIndicator } from "./ImageAnnotationIndicator";
 import {
   SNAP_SHOT_ATTACHMENT_FRAME_CLASS,
   SnapShotAttachmentDetails,
@@ -120,10 +121,10 @@ function UserFileCard({
         </span>
         <span className="block text-xs text-muted-foreground tabular-nums">
           {file.downloadable === false ? (
-            "Sending…"
+            "Sendingâ€¦"
           ) : (
             <>
-              {!pastedText && `${extension} · `}
+              {!pastedText && `${extension} Â· `}
               {formatBytes(file.sizeBytes)}
             </>
           )}
@@ -438,7 +439,30 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
   const messageWithPreviews = projectPreviews(row.message, (attachment) =>
     previewUrlsById.get(attachment.id),
   );
-  const userImages = (messageWithPreviews.attachments ?? []).filter(isImageAttachment);
+  const imageAnnotationsById = new Map(
+    resolveUserMessageContext(row.message).records.flatMap((record) => {
+      const known = asKnownContextRecord(record);
+      return known?.kind === "image" && known.annotations
+        ? [
+            [
+              known.attachmentId,
+              {
+                annotations: known.annotations,
+                ...(known.burnedAnnotationCount
+                  ? { burnedAnnotationCount: known.burnedAnnotationCount }
+                  : {}),
+              },
+            ] as const,
+          ]
+        : [];
+    }),
+  );
+  const userImages = (messageWithPreviews.attachments ?? [])
+    .filter(isImageAttachment)
+    .map((image) => {
+      const annotations = imageAnnotationsById.get(image.id);
+      return annotations ? { ...image, ...annotations } : image;
+    });
   const userFiles = (row.message.attachments ?? []).filter(isFileAttachment);
   const userVideos = userFiles.filter(isVideoAttachment);
   const userAudio = userFiles.filter(
@@ -686,7 +710,7 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
           <div
             key={image.id}
             className={cn(
-              "bg-background/70",
+              "relative bg-background/70",
               image.source?.kind === "snap-shot" && image.previewUrl
                 ? cn(
                     "col-span-2",
@@ -754,6 +778,7 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
                 {image.name}
               </div>
             )}
+            <ImageAnnotationIndicator count={image.annotations?.length ?? 0} />
             {image.previewUrl && image.source?.kind === "snap-shot" ? (
               <SnapShotAttachmentDetails source={image.source} />
             ) : null}
@@ -948,7 +973,9 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
                         <span className="block truncate">{label}</span>
                         {file.downloadable === false || pastedText ? (
                           <span className="block text-xs text-muted-foreground tabular-nums">
-                            {file.downloadable === false ? "Sending…" : formatBytes(file.sizeBytes)}
+                            {file.downloadable === false
+                              ? "Sendingâ€¦"
+                              : formatBytes(file.sizeBytes)}
                           </span>
                         ) : null}
                       </span>
