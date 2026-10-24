@@ -99,6 +99,7 @@ import {
   hasChangedBackgroundActivitySettings,
   isProjectGroupingEnabled,
   projectGroupingModeFromToggle,
+  normalizeTerminalShellPath,
   readLastEnabledProjectGroupingMode,
   rememberEnabledProjectGroupingMode,
   syncAutoSettleDaysField,
@@ -577,6 +578,9 @@ export function useSettingsRestore(onRestored?: () => void) {
     ...(settings.ghqCloneLayout !== DEFAULT_UNIFIED_SETTINGS.ghqCloneLayout
       ? ["Clone into host folders"]
       : []),
+    ...(settings.terminalShellPath !== DEFAULT_UNIFIED_SETTINGS.terminalShellPath
+      ? ["Terminal shell"]
+      : []),
     ...(settings.confirmThreadUnpin !== DEFAULT_UNIFIED_SETTINGS.confirmThreadUnpin
       ? ["Unpin confirmation"]
       : []),
@@ -695,6 +699,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       newWorktreesStartFromOrigin: DEFAULT_UNIFIED_SETTINGS.newWorktreesStartFromOrigin,
       addProjectBaseDirectory: DEFAULT_UNIFIED_SETTINGS.addProjectBaseDirectory,
       ghqCloneLayout: DEFAULT_UNIFIED_SETTINGS.ghqCloneLayout,
+      terminalShellPath: DEFAULT_UNIFIED_SETTINGS.terminalShellPath,
       confirmThreadArchive: DEFAULT_UNIFIED_SETTINGS.confirmThreadArchive,
       confirmThreadDelete: DEFAULT_UNIFIED_SETTINGS.confirmThreadDelete,
       confirmThreadUnpin: DEFAULT_UNIFIED_SETTINGS.confirmThreadUnpin,
@@ -1143,6 +1148,40 @@ export function GeneralSettingsPanel() {
                 </SelectItem>
               </SelectPopup>
             </Select>
+          }
+        />
+      </SettingsSection>
+      <SettingsSection id="terminal" title="Terminal">
+        <SettingsRow
+          serverScoped
+          settingKeys={["terminalShellPath"]}
+          {...searchableSetting("terminal-shell")}
+          description="Pick the shell used for newly created terminal sessions. Leave empty for the platform default."
+          resetAction={
+            settings.terminalShellPath !== DEFAULT_UNIFIED_SETTINGS.terminalShellPath ? (
+              <SettingResetButton
+                label="terminal shell"
+                onClick={() =>
+                  updateSettings({
+                    terminalShellPath: DEFAULT_UNIFIED_SETTINGS.terminalShellPath,
+                  })
+                }
+              />
+            ) : null
+          }
+          control={
+            <DraftInput
+              size="sm"
+              className="w-full sm:w-72"
+              font="mono"
+              value={settings.terminalShellPath}
+              onCommit={(next) =>
+                updateSettings({ terminalShellPath: normalizeTerminalShellPath(next) })
+              }
+              placeholder="System default"
+              spellCheck={false}
+              aria-label="Terminal shell path"
+            />
           }
         />
       </SettingsSection>

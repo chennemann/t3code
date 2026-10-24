@@ -1,3 +1,4 @@
+import * as TerminalShellPolicy from "./downstream/features/terminalShell/ShellPolicy.ts";
 import * as ProviderEventLoggers from "@t3tools/provider-core/server/ProviderEventLoggers";
 import type { RelayManagedEndpointRuntimeConfig } from "@t3tools/contracts/relay";
 import * as Random from "effect/Random";
@@ -511,9 +512,10 @@ const layerPortScanner = PortScanner.layer.pipe(
   Layer.provide(layerBackground),
 );
 
-const layerTerminal = TerminalManager.layer(
+const layerTerminal = TerminalManager.layerWithShellPolicy(
   ProviderInstanceRegistryHydration.deriveProviderInstanceConfigMap,
 ).pipe(
+  Layer.provide(TerminalShellPolicy.layer),
   Layer.provide(layerPtyAdapter),
   Layer.provide(layerPortScanner),
   Layer.provide(layerNativeTelemetry),
