@@ -36,6 +36,7 @@ import {
 import { SettingsPageContainer, SettingsRow, SettingsSection } from "./settingsLayout";
 import { ManagedByOrganization } from "../ManagedPolicy";
 import { LocalEnvironmentSetting } from "./LocalEnvironmentSetting";
+import { ClientCertificateSettings } from "./ClientCertificateSettings";
 import { searchableSetting } from "./settingsSearch";
 import { EnvironmentIconMenu } from "./EnvironmentIconPicker";
 import { FoldedSettingsSection } from "./FoldedSettingsSection";
@@ -1498,6 +1499,7 @@ export function ConnectionsSettings({ view }: { readonly view: "environments" | 
           <LocalEnvironmentSetting />
         </SettingsSection>
       ) : null}
+      <ClientCertificateSettings />
       <SettingsSection
         {...searchableSetting("remote-environments")}
         title="Environments"
