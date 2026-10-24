@@ -46,6 +46,23 @@ node apps/server/dist/bin.mjs
 
 ## Desktop app
 
+For this fork, download the Windows x64 `.exe` installer or Linux x64 `.AppImage`
+from [the fork's releases](https://github.com/chennemann/t3code/releases/latest).
+Use the AppImage on Omarchy and other Arch-based distributions; the `.deb` is for
+Debian and Ubuntu. Package-manager commands below install the upstream app.
+
+On Omarchy, install FUSE support, make the downloaded AppImage executable, and
+launch it from a directory where you want to keep it:
+
+```bash
+sudo pacman -S --needed fuse2
+chmod +x ./T3-Code-*.AppImage
+./T3-Code-*.AppImage
+```
+
+Keep one AppImage in that directory so the wildcard selects a single file.
+The desktop app checks this fork for subsequent updates.
+
 Download from [GitHub Releases](https://github.com/pingdotgg/t3code/releases) or install via a package manager:
 
 | Platform                | Command                                                          |
