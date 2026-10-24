@@ -45,6 +45,7 @@ import {
   SNAP_SHOT_ATTACHMENT_FRAME_CLASS,
   SnapShotAttachmentDetails,
 } from "./SnapShotAttachmentDetails";
+import { ImageAnnotationIndicator } from "./ImageAnnotationIndicator";
 import { prepareVideoFirstFrame } from "../../lib/videoFirstFrame";
 
 function ComposerVideoThumbnail({ file }: { file: File }) {
@@ -198,7 +199,9 @@ export function ComposerAttachmentMediaRow({
                   aria-label={`Preview ${image.name}`}
                   disabled={!ready}
                   onClick={() => {
-                    const preview = buildExpandedImagePreview(images, image.id);
+                    const preview = buildExpandedImagePreview(images, image.id, {
+                      fromComposer: true,
+                    });
                     if (!preview) return;
                     onExpandImage(preview);
                   }}
@@ -229,6 +232,7 @@ export function ComposerAttachmentMediaRow({
                   {image.name}
                 </div>
               )}
+              <ImageAnnotationIndicator count={ready?.annotations?.length ?? 0} />
               {source?.kind === "snap-shot" ? (
                 <SnapShotAttachmentDetails
                   source={source}
@@ -574,7 +578,7 @@ export function ComposerRestingImagePreviews({
           aria-label={`Preview ${image.name}`}
           onPointerDown={(event) => event.preventDefault()}
           onClick={() => {
-            const preview = buildExpandedImagePreview(allImages, image.id);
+            const preview = buildExpandedImagePreview(allImages, image.id, { fromComposer: true });
             if (preview) onExpandImage(preview);
           }}
         >
@@ -610,6 +614,7 @@ export function ComposerRestingImagePreviews({
               className="m-auto size-3.5"
             />
           )}
+          <ImageAnnotationIndicator count={image.annotations?.length ?? 0} />
         </button>
       ))}
       {counts.overflowCount > 0 ? (

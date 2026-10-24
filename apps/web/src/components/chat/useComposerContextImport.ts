@@ -222,6 +222,10 @@ export function useComposerContextImport(input: {
             sizeBytes: file.size,
             previewUrl: URL.createObjectURL(file),
             file,
+            ...(record.annotations ? { annotations: record.annotations } : {}),
+            ...(record.burnedAnnotationCount
+              ? { burnedAnnotationCount: record.burnedAnnotationCount }
+              : {}),
           },
         ],
         {

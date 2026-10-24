@@ -1095,6 +1095,39 @@ export function ChatSettingsPanel() {
     <SettingsPageContainer>
       <SettingsSection id="composer" title="Composer">
         <SettingsRow
+          {...searchableSetting("image-open-action")}
+          description="Choose whether clicking a chat image opens zoom controls or editable annotations. You can switch modes in the preview."
+          resetAction={
+            settings.imageOpenAction !== DEFAULT_UNIFIED_SETTINGS.imageOpenAction ? (
+              <SettingResetButton
+                label="image open action"
+                onClick={() =>
+                  updateSettings({ imageOpenAction: DEFAULT_UNIFIED_SETTINGS.imageOpenAction })
+                }
+              />
+            ) : null
+          }
+          control={
+            <Select
+              value={settings.imageOpenAction}
+              onValueChange={(value) => {
+                if (value === "zoom" || value === "annotate")
+                  updateSettings({ imageOpenAction: value });
+              }}
+            >
+              <SelectTrigger size="sm" className="w-full sm:w-56" aria-label="Image open action">
+                <SelectValue>
+                  {settings.imageOpenAction === "annotate" ? "Annotate" : "Zoom"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectPopup align="end" alignItemWithTrigger={false}>
+                <SelectItem value="zoom">Zoom</SelectItem>
+                <SelectItem value="annotate">Annotate</SelectItem>
+              </SelectPopup>
+            </Select>
+          }
+        />
+        <SettingsRow
           {...searchableSetting("composer-rich-text")}
           description="Show formatted Markdown as you type."
           resetAction={

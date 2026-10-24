@@ -35,8 +35,10 @@ import {
   releaseDraftAttachments,
   startAttachmentUpload,
 } from "../../lib/attachmentUploadQueue";
+import { appendImageAnnotationComments } from "../../lib/appendImageAnnotationComments";
 import { buildMessageContext } from "../../lib/composerContextRecords";
 import { readFileAsDataUrl } from "../../lib/imageCompression";
+import { prepareAnnotatedAttachmentsForSend } from "../../lib/prepareAnnotatedAttachmentsForSend";
 import type { TerminalContextDraft } from "../../lib/terminalContext";
 import type { ReviewCommentContext } from "../../reviewCommentContext";
 import { appAtomRegistry } from "../../rpc/atomRegistry";
@@ -90,8 +92,9 @@ async function submitQueuedRunEdit(input: {
   readonly editQueuedRun: ReturnType<typeof useEditQueuedRunCommand>;
 }): Promise<string | null> {
   const { environmentId, draftTarget, editing, content } = input;
-  const editText = content.prompt.trim();
+  const editText = appendImageAnnotationComments(content.prompt.trim(), content.images);
   const newAttachments = [...content.images, ...content.files];
+  let preparedAttachments: Array<ComposerImageAttachment | ComposerFileAttachment> = newAttachments;
   const uploadFiles = async (files: ReadonlyArray<ComposerFileAttachment>) => {
     const validateFiles = () => {
       const config = appAtomRegistry.get(environmentServerConfigsAtom).get(environmentId) ?? null;
@@ -113,9 +116,10 @@ async function submitQueuedRunEdit(input: {
     return uploaded;
   };
   try {
+    preparedAttachments = await prepareAnnotatedAttachmentsForSend(newAttachments);
     const uploads = await prepareQueuedEditAttachments({
       existingAttachments: editing.existingAttachments,
-      images: content.images,
+      images: preparedAttachments.filter((attachment) => attachment.type === "image"),
       files: content.files,
       readImage: readFileAsDataUrl,
       uploadFiles,
@@ -133,8 +137,8 @@ async function submitQueuedRunEdit(input: {
         reviewComments: content.reviewComments,
         previewAnnotations: content.previewAnnotations,
         threadContexts: content.threadContexts,
-        attachments: newAttachments.map((attachment, index) => ({
-          attachment,
+        attachments: preparedAttachments.map((attachment, index) => ({
+          attachment: { ...attachment, id: newAttachments[index]?.id ?? attachment.id },
           attachmentId: uploads[editing.existingAttachments.length + index]?.id ?? attachment.id,
         })),
       })?.records ?? [];
@@ -163,6 +167,10 @@ async function submitQueuedRunEdit(input: {
     return result._tag === "Failure" ? "Could not save the edited queued message." : null;
   } catch (error) {
     return error instanceof Error ? error.message : "Could not save the edited queued message.";
+  } finally {
+    releaseDraftAttachments(
+      preparedAttachments.filter((attachment, index) => attachment !== newAttachments[index]),
+    );
   }
 }
 

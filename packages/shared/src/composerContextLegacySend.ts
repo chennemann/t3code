@@ -1,6 +1,9 @@
 import type { ComposerContextRecord, ElementContextDetails } from "@t3tools/contracts";
 
-import { collectComposerContextReferences } from "./composerContextReferences.ts";
+import {
+  collectComposerContextReferences,
+  formatImageAnnotationContext,
+} from "./composerContextReferences.ts";
 
 /** Embeds context in message text for older servers that drop records and cannot resolve inline links. */
 export function serializeLegacyContextMessage(input: {
@@ -22,6 +25,11 @@ export function serializeLegacyContextMessage(input: {
   }
 
   const blocks = [
+    ...input.records.flatMap((record) =>
+      record.kind === "image" && "annotations" in record && record.annotations?.length
+        ? [`Image: ${record.name}\n${formatImageAnnotationContext(record.annotations)}`]
+        : [],
+    ),
     renderBlock(
       "terminal_context",
       input.records.filter((record) => record.kind === "terminal").map(renderTerminalEntry),

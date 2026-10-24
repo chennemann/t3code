@@ -614,6 +614,10 @@ export function useComposerStash(input: {
           mimeType: result.image.mimeType,
           sizeBytes: result.image.sizeBytes,
           dataUrl: result.image.dataUrl,
+          ...(image.annotations ? { annotations: image.annotations } : {}),
+          ...(image.burnedAnnotationCount
+            ? { burnedAnnotationCount: image.burnedAnnotationCount }
+            : {}),
           ...(image.source
             ? { source: resizeSnapShotSource(image.source, result.image.imageSize) }
             : {}),

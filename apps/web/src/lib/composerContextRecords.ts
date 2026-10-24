@@ -306,7 +306,16 @@ export function attachmentContextRecord(
     mimeType: attachment.mimeType,
     sizeBytes: attachment.sizeBytes,
   };
-  return attachment.type === "image" ? { ...base, kind: "image" } : { ...base, kind: "file" };
+  return attachment.type === "image"
+    ? {
+        ...base,
+        kind: "image",
+        ...(attachment.annotations?.length ? { annotations: attachment.annotations } : {}),
+        ...(attachment.burnedAnnotationCount
+          ? { burnedAnnotationCount: attachment.burnedAnnotationCount }
+          : {}),
+      }
+    : { ...base, kind: "file" };
 }
 
 export function buildMessageContext(input: {
