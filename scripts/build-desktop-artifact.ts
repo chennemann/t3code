@@ -23,6 +23,8 @@ import rootPackageJson from "../package.json" with { type: "json" };
 import desktopPackageJson from "../apps/desktop/package.json" with { type: "json" };
 import gnomeCaptureBundle from "../apps/desktop/gnome-extension/bundle.json" with { type: "json" };
 import serverPackageJson from "../apps/server/package.json" with { type: "json" };
+import webPackageJson from "../apps/web/package.json" with { type: "json" };
+import contractsPackageJson from "../packages/contracts/package.json" with { type: "json" };
 
 import {
   ReleasePackageManifestError,
@@ -117,6 +119,8 @@ const decodeReleasePackageManifest = Schema.decodeEffect(
 const decodeWorkspaceConfig = Schema.decodeEffect(fromYaml(WorkspaceConfig));
 const encodeStageWorkspaceConfig = Schema.encodeEffect(fromYaml(StageWorkspaceConfig));
 
+// Decodes the repo's pnpm-workspace.yaml. A PR CI test calls this too, so a bad
+// entry fails the PR instead of the nightly desktop build.
 export const readWorkspaceConfig = Effect.fn("readWorkspaceConfig")(function* () {
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
@@ -695,6 +699,50 @@ export class DesktopBuildNoArtifactsProducedError extends Schema.TaggedError<Des
 ) {
   override get message(): string {
     return `Build completed but no files were produced in ${this.distPath}`;
+  }
+}
+
+const DesktopBuildVersionMismatch = Schema.Struct({
+  packagePath: Schema.String,
+  actualVersion: Schema.String,
+});
+
+export class DesktopBuildVersionMismatchError extends Schema.TaggedError<DesktopBuildVersionMismatchError>()(
+  "DesktopBuildVersionMismatchError",
+  {
+    expectedVersion: Schema.String,
+    mismatches: Schema.Array(DesktopBuildVersionMismatch),
+  },
+) {
+  override get message(): string {
+    const details = this.mismatches
+      .map(({ packagePath, actualVersion }) => `${packagePath}=${actualVersion}`)
+      .join(", ");
+    return `Desktop artifact version ${this.expectedVersion} does not match release package versions: ${details}. Run scripts/update-release-package-versions.ts first.`;
+  }
+}
+
+export class DesktopServerBundleVersionMismatchError extends Schema.TaggedError<DesktopServerBundleVersionMismatchError>()(
+  "DesktopServerBundleVersionMismatchError",
+  {
+    entryPath: Schema.String,
+    expectedVersion: Schema.String,
+    actualOutput: Schema.String,
+  },
+) {
+  override get message(): string {
+    return `Compiled server bundle at ${this.entryPath} reported '${this.actualOutput}' instead of 't3 v${this.expectedVersion}'.`;
+  }
+}
+
+export class DesktopUpdateFeedConfigurationMissingError extends Schema.TaggedError<DesktopUpdateFeedConfigurationMissingError>()(
+  "DesktopUpdateFeedConfigurationMissingError",
+  {
+    version: Schema.String,
+  },
+) {
+  override get message(): string {
+    return `Desktop artifact ${this.version} has no update feed. Set T3CODE_DESKTOP_UPDATE_REPOSITORY (owner/repo) before building.`;
   }
 }
 
@@ -1778,6 +1826,35 @@ const runCommand = Effect.fn("runCommand")(function* (
       ...(stderr.trim() ? { stderrTail: stderr } : {}),
     });
   }
+
+  return { stdout, stderr } as const;
+});
+
+export const verifyServerBundleVersion = Effect.fn("verifyServerBundleVersion")(function* (input: {
+  readonly entryPath: string;
+  readonly expectedVersion: string;
+  readonly verbose: boolean;
+}) {
+  const result = yield* runCommand(
+    ChildProcess.make(
+      process.execPath,
+      ["--no-global-search-paths", input.entryPath, "--version"],
+      {
+        stdout: "pipe",
+        stderr: "pipe",
+        env: { ...process.env, NODE_PATH: "" },
+      },
+    ),
+    { label: "compiled server version check", verbose: input.verbose },
+  );
+  const actualOutput = `${result.stdout}${result.stderr}`.trim();
+  if (actualOutput !== `t3 v${input.expectedVersion}`) {
+    return yield* new DesktopServerBundleVersionMismatchError({
+      entryPath: input.entryPath,
+      expectedVersion: input.expectedVersion,
+      actualOutput,
+    });
+  }
 });
 
 export class DesktopBuildAlreadyRunningError extends Schema.TaggedError<DesktopBuildAlreadyRunningError>()(
@@ -2586,7 +2663,10 @@ export function stageLinuxIconSize(
   const resize = (command: string) =>
     runCommand(
       ChildProcess.make(command, [sourcePng, "-resize", `${iconSize}x${iconSize}`, targetPng]),
-      { label: `${command} linux icon ${iconSize}x${iconSize}`, verbose },
+      {
+        label: `${command} linux icon ${iconSize}x${iconSize}`,
+        verbose,
+      },
     );
 
   return resize("magick").pipe(
@@ -2677,6 +2757,22 @@ export function resolveDesktopRuntimeDependencies(
     catalog,
     "apps/desktop",
   );
+}
+
+const desktopBuildPackageVersions = {
+  "apps/server/package.json": serverPackageJson.version,
+  "apps/desktop/package.json": desktopPackageJson.version,
+  "apps/web/package.json": webPackageJson.version,
+  "packages/contracts/package.json": contractsPackageJson.version,
+} as const;
+
+export function findDesktopBuildVersionMismatches(
+  expectedVersion: string,
+  packageVersions: Readonly<Record<string, string>> = desktopBuildPackageVersions,
+): ReadonlyArray<{ readonly packagePath: string; readonly actualVersion: string }> {
+  return Object.entries(packageVersions)
+    .filter(([, actualVersion]) => actualVersion !== expectedVersion)
+    .map(([packagePath, actualVersion]) => ({ packagePath, actualVersion }));
 }
 
 export const resolveGitHubPublishConfig = Effect.fn("resolveGitHubPublishConfig")(function* (
@@ -2812,6 +2908,8 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
           url: resolveMockUpdateServerUrl(mockUpdateServerPort),
         },
       ];
+    } else {
+      return yield* new DesktopUpdateFeedConfigurationMissingError({ version });
     }
   }
 
@@ -3598,6 +3696,13 @@ const buildDesktopArtifactUnlocked = Effect.fn("buildDesktopArtifactUnlocked")(f
   });
 
   const appVersion = options.version ?? serverPackageJson.version;
+  const versionMismatches = findDesktopBuildVersionMismatches(appVersion);
+  if (versionMismatches.length > 0) {
+    return yield* new DesktopBuildVersionMismatchError({
+      expectedVersion: appVersion,
+      mismatches: versionMismatches,
+    });
+  }
   const iconAssets = resolveDesktopBuildIconAssets(appVersion);
   const commitHash = yield* resolveGitCommitHash(repoRoot);
   const mkdir = options.keepStage ? fs.makeTempDirectory : fs.makeTempDirectoryScoped;
@@ -3632,6 +3737,12 @@ const buildDesktopArtifactUnlocked = Effect.fn("buildDesktopArtifactUnlocked")(f
       });
     }
   }
+
+  yield* verifyServerBundleVersion({
+    entryPath: path.join(distDirs.serverDist, "bin.mjs"),
+    expectedVersion: appVersion,
+    verbose: options.verbose,
+  });
 
   // Inlined native loaders resolve relative to the bundle and can silently fall back to slower JS; reject them.
   {
