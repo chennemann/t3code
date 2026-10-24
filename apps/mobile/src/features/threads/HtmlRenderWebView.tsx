@@ -6,6 +6,7 @@ import {
   htmlRenderFrameHeight,
   htmlRenderThemeFragment,
   htmlRenderThemeMessage,
+  readHtmlRenderImageGallery,
   type HtmlRenderReference,
   type HtmlRenderTheme,
 } from "@t3tools/shared/htmlRender";
@@ -13,6 +14,7 @@ import { useEffect, useRef, useState } from "react";
 import { Platform, Pressable, View, type ColorValue } from "react-native";
 import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
+import { FilePreviewModal, type FilePreviewSource } from "../../components/FilePreviewModal";
 import { SymbolView } from "../../components/ui/AppSymbol";
 import { AppText as Text } from "../../components/ui/AppText";
 import { mobileHtmlRenderTheme } from "../../lib/htmlRenderTheme";
@@ -53,6 +55,25 @@ type Overflow = { readonly x: boolean; readonly y: boolean };
 
 const NO_OVERFLOW: Overflow = { x: false, y: false };
 
+/** A tapped page image arrives with its complete gallery; see htmlRenderGallery.ts. */
+function readImageGalleryMessage(data: string): FilePreviewSource | null {
+  let message: unknown;
+  try {
+    message = JSON.parse(data);
+  } catch {
+    return null;
+  }
+  const request = readHtmlRenderImageGallery(message);
+  if (!request) return null;
+  const gallery = request.images.map(({ src, name }) => ({
+    kind: "image" as const,
+    uri: src,
+    name,
+    actionsSource: { uri: src, name, mimeType: "image/*" },
+  }));
+  return { ...gallery[request.index]!, gallery };
+}
+
 function readOverflowMessage(data: string): Overflow | null {
   try {
     const message: unknown = JSON.parse(data);
@@ -84,6 +105,7 @@ export function HtmlRenderWebView(props: {
   const [generation, setGeneration] = useState(0);
   const [loaded, setLoaded] = useState(false);
   const [overflow, setOverflow] = useState(NO_OVERFLOW);
+  const [imagePreview, setImagePreview] = useState<FilePreviewSource | null>(null);
   const webView = useRef<WebView<object>>(null);
   const crashes = useRef(0);
   const shownTheme = useRef<HtmlRenderTheme | null>(null);
@@ -150,16 +172,20 @@ export function HtmlRenderWebView(props: {
         onHttpError={props.onLoadError}
         onContentProcessDidTerminate={restart}
         onRenderProcessGone={restart}
-        {...(props.nested
-          ? {
-              injectedJavaScript: OVERFLOW_SCRIPT,
-              onMessage: (event: WebViewMessageEvent) => {
-                const next = readOverflowMessage(event.nativeEvent.data);
-                if (next !== null) setOverflow(next);
-              },
-            }
-          : {})}
+        injectedJavaScript={props.nested ? OVERFLOW_SCRIPT : undefined}
+        onMessage={(event: WebViewMessageEvent) => {
+          const gallery = readImageGalleryMessage(event.nativeEvent.data);
+          if (gallery) {
+            setImagePreview(gallery);
+            return;
+          }
+          if (props.nested) {
+            const next = readOverflowMessage(event.nativeEvent.data);
+            if (next !== null) setOverflow(next);
+          }
+        }}
       />
+      <FilePreviewModal source={imagePreview} onRequestClose={() => setImagePreview(null)} />
       {loaded ? null : (
         <View pointerEvents="none" className="absolute inset-0 items-center justify-center">
           <AppActivityIndicator />
