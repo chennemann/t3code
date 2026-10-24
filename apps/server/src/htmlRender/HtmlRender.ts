@@ -25,7 +25,6 @@ import * as Option from "effect/Option";
 import type * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
 import * as Semaphore from "effect/Semaphore";
-import * as Stream from "effect/Stream";
 import type * as ChildProcessSpawner from "effect/process/ChildProcessSpawner";
 
 import { resolveAttachmentRelativePath } from "../attachmentPaths.ts";
@@ -36,35 +35,12 @@ import * as HeadlessChrome from "./headlessChrome.ts";
 import * as PreviewBrowser from "../preview/PreviewBrowser.ts";
 import * as PreviewBrowserHost from "../preview/PreviewBrowserHost.ts";
 
-const MIB = 1024 * 1024;
-const MAX_IMAGE_BYTES = 10 * MIB;
-const MAX_PAGE_BYTES = 25 * MIB;
-const formatMib = (bytes: number) => `${(bytes / MIB).toFixed(1)} MiB`;
-
 export class HtmlRenderImagesNotFoundError extends Schema.TaggedError<HtmlRenderImagesNotFoundError>()(
   "HtmlRenderImagesNotFoundError",
   { paths: Schema.Array(Schema.String) },
 ) {
   override get message(): string {
     return `These local images could not be read: ${this.paths.join(", ")}. Use absolute paths to existing image files, or remove them.`;
-  }
-}
-
-export class HtmlRenderImageTooLargeError extends Schema.TaggedError<HtmlRenderImageTooLargeError>()(
-  "HtmlRenderImageTooLargeError",
-  { path: Schema.String, sizeBytes: Schema.Number },
-) {
-  override get message(): string {
-    return `${this.path} is ${formatMib(this.sizeBytes)}; each local image must be at most ${formatMib(MAX_IMAGE_BYTES)}.`;
-  }
-}
-
-export class HtmlRenderPageTooLargeError extends Schema.TaggedError<HtmlRenderPageTooLargeError>()(
-  "HtmlRenderPageTooLargeError",
-  { sizeBytes: Schema.Number },
-) {
-  override get message(): string {
-    return `With its images inlined the page is ${formatMib(this.sizeBytes)}; the limit is ${formatMib(MAX_PAGE_BYTES)}. Use smaller images.`;
   }
 }
 
@@ -92,7 +68,6 @@ const rejectViewportHeight = (html: string) => {
   }
   return Effect.void;
 };
-
 export class HtmlRenderStoreError extends Schema.TaggedError<HtmlRenderStoreError>()(
   "HtmlRenderStoreError",
   { cause: Schema.Defect() },
@@ -102,11 +77,7 @@ export class HtmlRenderStoreError extends Schema.TaggedError<HtmlRenderStoreErro
   }
 }
 
-export type HtmlRenderPrepareError =
-  | HtmlRenderImagesNotFoundError
-  | HtmlRenderImageTooLargeError
-  | HtmlRenderPageTooLargeError
-  | HtmlRenderViewportHeightError;
+export type HtmlRenderPrepareError = HtmlRenderImagesNotFoundError | HtmlRenderViewportHeightError;
 
 export interface HtmlPreview {
   readonly png: string;
@@ -246,60 +217,32 @@ const inlineLocalImages = Effect.fn("HtmlRender.inlineLocalImages")(function* (h
       ),
     { concurrency: 8 },
   );
-  const oversized = files.find((file) => file.size !== undefined && file.size > MAX_IMAGE_BYTES);
-  if (oversized?.size !== undefined) {
-    return yield* new HtmlRenderImageTooLargeError({
-      path: oversized.path,
-      sizeBytes: oversized.size,
-    });
-  }
-  const sizes = new Map(files.map((file) => [file.path, file.size]));
-  const pageBytes = references.reduce((total, reference) => {
-    const size = sizes.get(reference.path);
-    return size === undefined
-      ? total
-      : total +
-          dataUriPrefix(reference.path).length +
-          Math.ceil(size / 3) * 4 -
-          Buffer.byteLength(reference.path);
-  }, Buffer.byteLength(html));
-  if (pageBytes > MAX_PAGE_BYTES) {
-    return yield* new HtmlRenderPageTooLargeError({ sizeBytes: pageBytes });
-  }
-  // Files can grow after stat; bound each read and stop when accumulated images cannot fit.
-  let readBytes = 0;
-  const images = yield* Effect.forEach(
+  // Keep original screenshot bytes, regardless of resolution or gallery size.
+  // Read each distinct path once and bound concurrent reads to avoid a burst.
+  const entries = yield* Effect.forEach(
     files.filter((file) => file.size !== undefined),
     (file) =>
-      Effect.gen(function* () {
-        const read = yield* fileSystem
-          .stream(filePathFor(file.path), { bytesToRead: MAX_IMAGE_BYTES + 1 })
-          .pipe(Stream.mkUint8Array, Effect.option);
-        if (Option.isNone(read) || !isImageBytes(read.value)) return [];
-        const bytes = read.value;
-        if (bytes.byteLength > MAX_IMAGE_BYTES) {
-          return yield* new HtmlRenderImageTooLargeError({
-            path: file.path,
-            sizeBytes: bytes.byteLength,
-          });
-        }
-        readBytes += Math.ceil(bytes.byteLength / 3) * 4;
-        if (readBytes > MAX_PAGE_BYTES) {
-          return yield* new HtmlRenderPageTooLargeError({ sizeBytes: readBytes });
-        }
-        return [{ path: file.path, bytes }];
-      }),
-    { concurrency: 4 },
-  ).pipe(Effect.map((entries) => entries.flat()));
-  const dataUris = new Map(
-    images.map(
-      (image) =>
-        [
-          image.path,
-          dataUriPrefix(image.path) + Buffer.from(image.bytes).toString("base64"),
-        ] as const,
-    ),
+      fileSystem.readFile(filePathFor(file.path)).pipe(
+        Effect.option,
+        Effect.map((read) =>
+          Option.isSome(read) && isImageBytes(read.value)
+            ? [
+                [
+                  file.path,
+                  dataUriPrefix(file.path) +
+                    Buffer.from(
+                      read.value.buffer,
+                      read.value.byteOffset,
+                      read.value.byteLength,
+                    ).toString("base64"),
+                ] as const,
+              ]
+            : [],
+        ),
+      ),
+    { concurrency: 1 },
   );
+  const dataUris = new Map(entries.flat());
   const parts: Array<string> = [];
   let cursor = 0;
   for (const reference of references) {
@@ -310,10 +253,6 @@ const inlineLocalImages = Effect.fn("HtmlRender.inlineLocalImages")(function* (h
   }
   parts.push(html.slice(cursor));
   const inlined = parts.join("");
-  const inlinedBytes = Buffer.byteLength(inlined);
-  if (inlinedBytes > MAX_PAGE_BYTES) {
-    return yield* new HtmlRenderPageTooLargeError({ sizeBytes: inlinedBytes });
-  }
   return {
     html: inlined,
     missing: files.filter((file) => !dataUris.has(file.path)).map((file) => file.path),
