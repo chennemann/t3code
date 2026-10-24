@@ -209,7 +209,7 @@ const historyLogPath = (logsDir: string, threadId = "thread-1") =>
   );
 
 interface CreateManagerOptions {
-  shellResolver?: () => string;
+  shellResolver?: Effect.Effect<string>;
   env?: NodeJS.ProcessEnv;
   subprocessInspector?: (terminalPid: number) => Effect.Effect<{
     readonly hasRunningSubprocess: boolean;
@@ -398,14 +398,18 @@ it("bounds long partial lines and joins surrogate pairs across chunk boundaries"
 
 it.layer(
   Layer.merge(NodeServices.layer, ProcessRunner.layer.pipe(Layer.provide(NodeServices.layer))),
-  { excludeTestServices: true },
+  {
+    excludeTestServices: true,
+  },
 )("TerminalManager", (it) => {
   it.effect("spawns lazily and reuses running terminal per thread", () =>
     Effect.gen(function* () {
       const { manager, ptyAdapter } = yield* createManager();
       const [first, second] = yield* Effect.all(
         [manager.open(openInput()), manager.open(openInput())],
-        { concurrency: "unbounded" },
+        {
+          concurrency: "unbounded",
+        },
       );
       const third = yield* manager.open(openInput());
 
@@ -1054,7 +1058,7 @@ it.layer(
       const missingShell =
         platform === "win32" ? "C:\\definitely\\missing-shell.exe" : "/definitely/missing-shell -l";
       const { manager, ptyAdapter } = yield* createManager(5, {
-        shellResolver: () => missingShell,
+        shellResolver: Effect.succeed(missingShell),
       });
       ptyAdapter.spawnFailures.push(new Error("posix_spawnp failed."));
 
@@ -1154,7 +1158,7 @@ it.layer(
       const ptyAdapter = new FakePtyAdapter();
       const { manager } = yield* createManager(5, {
         ptyAdapter,
-        shellResolver: () => "C:\\missing\\custom-shell.exe",
+        shellResolver: Effect.succeed("C:\\missing\\custom-shell.exe"),
         env: {
           ComSpec: "C:\\Windows\\System32\\cmd.exe",
           PATH: "C:\\Windows\\System32",
