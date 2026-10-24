@@ -5,6 +5,13 @@ import {
   type ThemeColors,
 } from "./themePalettes.ts";
 import { EVENT_CODE_SHORTCUT_KEYS } from "./keybindings.ts";
+import { HTML_RENDER_GALLERY_SCRIPT } from "./htmlRenderGallery.ts";
+
+export {
+  HTML_RENDER_IMAGE_GUIDE,
+  readHtmlRenderImageGallery,
+  type HtmlRenderImage,
+} from "./htmlRenderGallery.ts";
 
 export const HTML_RENDER_TOOL_NAME = "html_render";
 export const HTML_RENDER_MIN_HEIGHT = 80;
@@ -380,7 +387,7 @@ function bootstrapMarkup(markup: string): string {
       ? ""
       : '<meta name="viewport" content="width=device-width, initial-scale=1">',
     `<style id="t3-theme">${defaultCss}</style>`,
-    `<script>${BOOTSTRAP_SCRIPT}</script>`,
+    `<script>${HTML_RENDER_GALLERY_SCRIPT}${BOOTSTRAP_SCRIPT}</script>`,
   ].join("");
 }
 
