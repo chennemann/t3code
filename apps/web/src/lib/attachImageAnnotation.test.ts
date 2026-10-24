@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import {
   EnvironmentId,
   ThreadId,
@@ -50,6 +50,7 @@ describe("editable image annotations", () => {
     useComposerDraftStore.setState({ draftsByThreadKey: {}, draftThreadsByThreadKey: {} }),
   );
   afterEach(() => {
+    vi.unstubAllGlobals();
     for (const attachment of useComposerDraftStore.getState().getComposerDraft(target)?.images ??
       [])
       URL.revokeObjectURL(attachment.previewUrl);
@@ -57,6 +58,48 @@ describe("editable image annotations", () => {
     useComposerDraftStore.setState({ draftsByThreadKey: {}, draftThreadsByThreadKey: {} });
     useAttachmentUploadStore.setState({ uploadsByImageId: {} });
     removeLocalStorageItem(COMPOSER_DRAFT_STORAGE_KEY);
+  });
+
+  it("saves an inlined gallery image when connect-src blocks fetching data URLs", async () => {
+    const fetchBlockedByCsp = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+    vi.stubGlobal("fetch", fetchBlockedByCsp);
+    const store = useComposerDraftStore.getState();
+    store.setPrompt(target, "Review these screens.");
+    await attachImageAnnotation(
+      target,
+      {
+        src: "data:image/png;base64,AAEC/w==",
+        name: "gallery-screen.png",
+      },
+      [mark],
+    );
+    const draft = store.getComposerDraft(target)!;
+    expect(draft.images).toHaveLength(1);
+    expect(draft.images[0]?.annotations).toEqual([mark]);
+    expect(draft.images[0]?.mimeType).toBe("image/png");
+    expect(new Uint8Array(await draft.images[0]!.file.arrayBuffer())).toEqual(
+      new Uint8Array([0, 1, 2, 255]),
+    );
+    expect(draft.prompt).toBe("Review these screens.");
+    expect(fetchBlockedByCsp).not.toHaveBeenCalled();
+  });
+
+  it("saves a percent-encoded embedded SVG without fetching it", async () => {
+    const fetchBlockedByCsp = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+    vi.stubGlobal("fetch", fetchBlockedByCsp);
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg"><text>Review ✓</text></svg>';
+    await attachImageAnnotation(
+      target,
+      {
+        src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,
+        name: "diagram.svg",
+      },
+      [mark],
+    );
+    const attachment = useComposerDraftStore.getState().getComposerDraft(target)!.images[0]!;
+    expect(attachment.file.type).toBe("image/svg+xml");
+    expect(await attachment.file.text()).toBe(svg);
+    expect(fetchBlockedByCsp).not.toHaveBeenCalled();
   });
 
   it("attaches the original agent image with editable marks and leaves the prompt alone", async () => {
