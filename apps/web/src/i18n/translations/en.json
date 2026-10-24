@@ -12984,5 +12984,9 @@
   "201490988858b511": "withdrawn by {by}",
   "99451a5d2d40440f": "Withdrawn by {by}.",
   "3ee30a50b70fffab": "Withdrawn by {by}: {reason}",
-  "92e129bf413a1220": "withdrawn"
+  "92e129bf413a1220": "withdrawn",
+  "3a876d731a1c0340": "Pick the shell used for newly created terminal sessions. Leave empty for the platform default.",
+  "dae5122010cb296a": "Reset terminal shell",
+  "1c733fd2752b26da": "Terminal shell path",
+  "f2ca6e0ce2a6297b": "Terminal shell"
 }

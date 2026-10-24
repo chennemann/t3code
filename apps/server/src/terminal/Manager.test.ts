@@ -241,7 +241,7 @@ const historyLogPath = (logsDir: string, threadId = "thread-1") =>
   );
 
 interface CreateManagerOptions {
-  shellResolver?: () => string;
+  shellResolver?: Effect.Effect<string>;
   env?: NodeJS.ProcessEnv;
   subprocessInspector?: (terminalPid: number) => Effect.Effect<{
     readonly hasRunningSubprocess: boolean;
@@ -680,7 +680,9 @@ it.layer(
       const { manager, ptyAdapter } = yield* createManager();
       const [first, second] = yield* Effect.all(
         [manager.open(openInput()), manager.open(openInput())],
-        { concurrency: "unbounded" },
+        {
+          concurrency: "unbounded",
+        },
       );
       const third = yield* manager.open(openInput());
 
@@ -1139,7 +1141,7 @@ it.layer(
   it.effect("keeps a terminal whose shell was replaced by exec open on settlement", () =>
     Effect.gen(function* () {
       const { manager, ptyAdapter } = yield* createManager(5, {
-        shellResolver: () => "/bin/bash",
+        shellResolver: Effect.succeed("/bin/bash"),
         processTable: Effect.succeed([{ pid: 9000, ppid: 1, name: "node" }]),
       }).pipe(Effect.provide(layerWithHostPlatform("linux")));
       yield* manager.open(openInput());
@@ -1166,7 +1168,7 @@ it.layer(
     ({ platform, foregroundProcessGroup, killed }) =>
       Effect.gen(function* () {
         const { manager, ptyAdapter } = yield* createManager(5, {
-          shellResolver: () => "/bin/bash",
+          shellResolver: Effect.succeed("/bin/bash"),
           processTable: Effect.succeed([
             { pid: 9000, ppid: 1, name: "bash" },
             { pid: 100, ppid: 9000, name: "bash" },
@@ -2302,7 +2304,7 @@ it.layer(
       const missingShell =
         platform === "win32" ? "C:\\definitely\\missing-shell.exe" : "/definitely/missing-shell -l";
       const { manager, ptyAdapter } = yield* createManager(5, {
-        shellResolver: () => missingShell,
+        shellResolver: Effect.succeed(missingShell),
       });
       ptyAdapter.spawnFailures.push(new Error("posix_spawnp failed."));
 
@@ -2515,7 +2517,7 @@ it.layer(
                 return ptyAdapter.spawn(input);
               },
             },
-            shellResolver: () => "/bin/sh",
+            shellResolver: Effect.succeed("/bin/sh"),
             env: { ...process.env, T3CODE_TERMINAL_SHELL: shell, PATH: searchPath },
           });
           const snapshot = yield* manager.open(openInput({ cwd: cwd ?? baseDir }));
@@ -3068,7 +3070,7 @@ it.layer(
         ["win32", "pwsh.exe", POWERSHELL_ARGS],
       ] as const) {
         const { manager, ptyAdapter } = yield* createManager(5, {
-          shellResolver: () => shell,
+          shellResolver: Effect.succeed(shell),
         }).pipe(Effect.provide(layerWithHostPlatform(platform)));
         yield* manager.open(openInput());
         expect.soft(ptyAdapter.spawnInputs[0]?.args, `${platform} ${shell}`).toEqual(args);

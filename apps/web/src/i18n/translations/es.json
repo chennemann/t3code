@@ -12970,5 +12970,9 @@
   "201490988858b511": "retirada por {by}",
   "99451a5d2d40440f": "Retirada por {by}.",
   "3ee30a50b70fffab": "Retirada por {by}: {reason}",
-  "92e129bf413a1220": "retirada"
+  "92e129bf413a1220": "retirada",
+  "3a876d731a1c0340": "Elige el shell para las nuevas sesiones de terminal. Déjalo vacío para usar el predeterminado de la plataforma.",
+  "dae5122010cb296a": "Restablecer shell del terminal",
+  "1c733fd2752b26da": "Ruta del shell del terminal",
+  "f2ca6e0ce2a6297b": "Shell del terminal"
 }
