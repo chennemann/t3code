@@ -1,6 +1,7 @@
 import { OrchestratorMcpFailure } from "@t3tools/contracts";
 import {
   HTML_RENDER_COLUMN_WIDTH,
+  HTML_RENDER_IMAGE_GUIDE,
   HTML_RENDER_LAYOUT_GUIDE,
   HTML_RENDER_MAX_FIT_HEIGHT,
   HTML_RENDER_MAX_HEIGHT,
@@ -25,7 +26,8 @@ const HtmlPath = Schema.String.annotate({
 });
 
 const PAGE_RULES =
-  "Self-contained: inline <style> and <script>. Local images as absolute paths are inlined. Remote URLs load as-is.";
+  "Self-contained: inline <style> and <script>. Local images as absolute paths are inlined. Remote URLs load as-is. " +
+  HTML_RENDER_IMAGE_GUIDE;
 
 export const HtmlPreviewTool = Tool.make("html_preview", {
   description: `Check an HTML page before html_render. Returns PNG, contentHeight, and console output. ${PAGE_RULES} Theme and layout rules are in html_render.`,
