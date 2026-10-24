@@ -10,6 +10,11 @@ import {
 import * as DesktopIpc from "./DesktopIpc.ts";
 import { installNotificationBadge } from "./methods/notificationBadge.ts";
 import { getClientSettings, setClientSettings } from "./methods/clientSettings.ts";
+import {
+  getClientCertificates,
+  prepareClientCertificate,
+  forgetClientCertificate,
+} from "./methods/clientCertificates.ts";
 import { getConnectionCatalog, setConnectionCatalog } from "./methods/connectionCatalog.ts";
 import {
   getHostEnvironmentId,
@@ -121,6 +126,9 @@ export const installDesktopIpcHandlers = Effect.fn("desktop.ipc.installHandlers"
   yield* ipc.handle(startFileDrag);
   yield* ipc.handle(restartAudioService);
   yield* ipc.handle(getClientSettings);
+  yield* ipc.handle(getClientCertificates);
+  yield* ipc.handle(prepareClientCertificate);
+  yield* ipc.handle(forgetClientCertificate);
   yield* ipc.handle(setClientSettings);
   yield* ipc.handle(getConnectionCatalog);
   yield* ipc.handle(getSnapShotState);

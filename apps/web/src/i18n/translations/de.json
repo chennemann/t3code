@@ -13054,5 +13054,20 @@
   "9a91815046516a49": "Aktion beim Öffnen von Bildern",
   "64c2b6346fd9f94e": "Kommentieren",
   "b3c7b7342f92fb6b": "Zoomen",
-  "049e7606a0eef612": "Kommentieren"
+  "049e7606a0eef612": "Kommentieren",
+  "a27ff4ba4ba2262c": "Bereit zum Koppeln mit {name}.",
+  "f202af159f75247d": "Bereit zum Koppeln mit dem ausgewählten Zertifikat.",
+  "cf4c3eda5ea382e7": "TLS-Verbindung bereit. Keine Clientzertifikat-Auswahl gespeichert.",
+  "9e30d9b90ffb2294": "Zertifikat wird ausgewählt…",
+  "b257ecf8a076d094": "Clientzertifikat auswählen…",
+  "a8f6c0428042cd5e": "Falls dieser Server ein Clientzertifikat benötigt, wählen Sie es vor dem Koppeln aus. Installieren Sie zuerst Ihre .p12- oder .pfx-Datei auf diesem Computer.",
+  "cde4ba7042601141": "Das Clientzertifikat konnte nicht vergessen werden.",
+  "ab8176c4303a3518": "Läuft am {date} ab",
+  "676a671832b4f71e": "T3 Code startet neu, um bestehende Zertifikatsitzungen für {origin} zu löschen. Beim nächsten Anfordern durch diesen Server wählen Sie erneut ein Zertifikat. Das installierte Zertifikat bleibt auf Ihrem Computer.",
+  "98d1359faa129cf3": "Vergessen und neu starten",
+  "ff8a3e07f7f1ddb3": "Wenn ein Server ein Clientzertifikat anfordert, wählen Sie eines auf diesem Computer aus. Gespeicherte Auswahlen gelten nur für diese T3 Code-Installation und die genaue Serveradresse samt Port.",
+  "cb053078f01f815a": "Keine gespeicherten Zertifikate. Wählen Sie beim Hinzufügen einer Umgebung vor dem Koppeln „Clientzertifikat auswählen“.",
+  "e7537980f5d59fce": "Vergessen…",
+  "db290991043b6b62": "Dieses Zertifikat vergessen und neu starten?",
+  "d858a580cd4e166f": "Clientzertifikate"
 }

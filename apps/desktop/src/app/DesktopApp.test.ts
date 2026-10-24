@@ -26,6 +26,7 @@ vi.mock("../updates/DesktopRemoteUpdates.ts", () => ({ listen: Effect.void }));
 vi.mock("./DesktopStartupRecovery.ts", () => ({ listen: Effect.void }));
 
 import * as DesktopApp from "./DesktopApp.ts";
+import * as DesktopClientCertificates from "../certificates/DesktopClientCertificates.ts";
 import * as DesktopAppActivation from "./DesktopAppActivation.ts";
 import * as DesktopAppIdentity from "./DesktopAppIdentity.ts";
 import * as DesktopClerk from "./DesktopClerk.ts";
@@ -208,6 +209,9 @@ const runStubbedDesktop = (stub: StubbedDesktop) =>
           Layer.mock(DesktopBackendConfiguration.DesktopBackendConfiguration, {}),
           Layer.mock(DesktopCliCommand.DesktopCliCommand, {}),
           Layer.mock(DesktopClientSettings.DesktopClientSettings, {}),
+          Layer.mock(DesktopClientCertificates.DesktopClientCertificates, {
+            register: Effect.void,
+          }),
           Layer.mock(DesktopConnectionCatalogStore.DesktopConnectionCatalogStore, {}),
           Layer.mock(DesktopIpc.DesktopIpc, {}),
           Layer.mock(DesktopLocalEnvironmentAuth.DesktopLocalEnvironmentAuth, {

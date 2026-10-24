@@ -13054,5 +13054,20 @@
   "9a91815046516a49": "Ação ao abrir imagem",
   "64c2b6346fd9f94e": "Anotar",
   "b3c7b7342f92fb6b": "Ampliar",
-  "049e7606a0eef612": "Anotar"
+  "049e7606a0eef612": "Anotar",
+  "a27ff4ba4ba2262c": "Pronto para parear usando {name}.",
+  "f202af159f75247d": "Pronto para parear usando o certificado selecionado.",
+  "cf4c3eda5ea382e7": "Conexão TLS pronta. Nenhuma escolha de certificado de cliente foi salva.",
+  "9e30d9b90ffb2294": "Escolhendo certificado…",
+  "b257ecf8a076d094": "Escolher certificado de cliente…",
+  "a8f6c0428042cd5e": "Se este servidor exigir um certificado de cliente, escolha um antes de parear. Primeiro instale seu .p12 ou .pfx neste computador.",
+  "cde4ba7042601141": "Não foi possível esquecer o certificado de cliente.",
+  "ab8176c4303a3518": "Expira em {date}",
+  "676a671832b4f71e": "O T3 Code será reiniciado para limpar as sessões de certificado existentes de {origin}. Você escolherá um certificado na próxima solicitação deste servidor. O certificado instalado permanece no computador.",
+  "98d1359faa129cf3": "Esquecer e reiniciar",
+  "ff8a3e07f7f1ddb3": "Quando um servidor solicitar um certificado de cliente, escolha um instalado neste computador. As escolhas salvas valem apenas para esta instalação do T3 Code e para o endereço e a porta exatos do servidor.",
+  "cb053078f01f815a": "Nenhum certificado salvo. Use Escolher certificado de cliente ao adicionar um ambiente para selecioná-lo antes de parear.",
+  "e7537980f5d59fce": "Esquecer…",
+  "db290991043b6b62": "Esquecer este certificado e reiniciar?",
+  "d858a580cd4e166f": "Certificados de cliente"
 }

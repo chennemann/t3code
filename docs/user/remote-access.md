@@ -10,6 +10,40 @@ T3 Connect links your host to your other devices without router port-forwarding.
 - **CLI / headless host**: Run `t3 up` (or `t3 connect` / `t3 up --connect --lan --yes` for non-interactive scripts) and complete the printed sign-in link on any device. Check status with `t3 status [--json]`.
 - **Other devices**: Sign in to the same T3 Connect account and pick the environment.
 
+## Client certificates
+
+The desktop app can authenticate to servers that require a TLS client certificate
+(mTLS), including sites opened in its Browser panel. Install your `.p12` or `.pfx`
+certificate on the computer first:
+
+- **Windows:** open the file and import it into **Current User → Personal**.
+- **Omarchy / Arch Linux:** install `nss` with `sudo pacman -S --needed nss`, then
+  import it into your user's NSS database:
+
+  ```bash
+  nss_db="$HOME/.local/share/pki/nssdb"
+  if [ -d "$HOME/.pki/nssdb" ]; then
+    nss_db="$HOME/.pki/nssdb"
+  fi
+  mkdir -p "$nss_db"
+  pk12util -d "sql:$nss_db" -i /path/to/laptop-client.p12
+  ```
+
+Restart T3 Code after importing. When adding an environment, enter its HTTPS host
+and click **Choose client certificate** before pairing. This works before a T3
+connection is established and does not consume your pairing code. Choose the
+installed certificate from the dialog. Leave **Remember for this server in T3 Code**
+checked to reuse that choice for the same HTTPS server and port. Other domains and ports ask
+separately. Your private key stays in the platform certificate store.
+Other connections, including the Browser panel, also show the certificate dialog
+when a server requests one.
+
+Review remembered choices under **Settings → Connections → Client certificates**.
+Choose **Forget** to select a different certificate; this restarts the app to
+clear existing TLS sessions. Replacing an installed certificate also prompts you
+to choose again. These choices apply to the desktop app's connections, not to
+provider CLIs or a standalone web or mobile client.
+
 ### Approve new devices
 
 By default, any device signed into your T3 Connect account can connect. Turn on **Require approval for new devices** in **Settings → Sharing & access** on the host so new devices must present a short code (valid 10 minutes) that you approve from an existing device or via `t3 auth connect-device approve <code>`. Revoke devices anytime in **Settings → Sharing & access** or `t3 auth connect-device revoke <code>`.

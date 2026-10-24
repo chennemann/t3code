@@ -13061,5 +13061,20 @@
   "9a91815046516a49": "Åtgärd vid bildöppning",
   "64c2b6346fd9f94e": "Kommentera",
   "b3c7b7342f92fb6b": "Zooma",
-  "049e7606a0eef612": "Kommentera"
+  "049e7606a0eef612": "Kommentera",
+  "a27ff4ba4ba2262c": "Redo att parkoppla med {name}.",
+  "f202af159f75247d": "Redo att parkoppla med valt certifikat.",
+  "cf4c3eda5ea382e7": "TLS-anslutningen är klar. Inget klientcertifikatval sparades.",
+  "9e30d9b90ffb2294": "Väljer certifikat…",
+  "b257ecf8a076d094": "Välj klientcertifikat…",
+  "a8f6c0428042cd5e": "Om servern kräver ett klientcertifikat väljer du ett före parkoppling. Installera först din .p12 eller .pfx på den här datorn.",
+  "cde4ba7042601141": "Det gick inte att glömma klientcertifikatet.",
+  "ab8176c4303a3518": "Går ut {date}",
+  "676a671832b4f71e": "T3 Code startar om för att rensa befintliga certifikatsessioner för {origin}. Du väljer ett certifikat nästa gång servern begär ett. Det installerade certifikatet finns kvar på datorn.",
+  "98d1359faa129cf3": "Glöm och starta om",
+  "ff8a3e07f7f1ddb3": "När en server begär ett klientcertifikat väljer du ett som är installerat på datorn. Sparade val gäller bara den här T3 Code-installationen och serverns exakta adress och port.",
+  "cb053078f01f815a": "Inga sparade certifikat. Använd Välj klientcertifikat när du lägger till en miljö för att välja före parkoppling.",
+  "e7537980f5d59fce": "Glöm…",
+  "db290991043b6b62": "Glömma certifikatet och starta om?",
+  "d858a580cd4e166f": "Klientcertifikat"
 }
