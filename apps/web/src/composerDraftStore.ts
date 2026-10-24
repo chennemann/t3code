@@ -24,6 +24,9 @@ import {
   type ScopedThreadRef,
   ThreadId,
   SnapShotSource,
+  ImageAnnotations,
+  NonNegativeInt,
+  type ImageAnnotation,
 } from "@t3tools/contracts";
 import {
   parseScopedProjectKey,
@@ -152,6 +155,8 @@ export const PersistedComposerImageAttachment = Schema.Struct({
   sizeBytes: Schema.Number,
   source: Schema.optional(SnapShotSource),
   dataUrl: Schema.String,
+  annotations: Schema.optional(ImageAnnotations),
+  burnedAnnotationCount: Schema.optional(NonNegativeInt),
 });
 export type PersistedComposerImageAttachment = typeof PersistedComposerImageAttachment.Type;
 
@@ -544,6 +549,11 @@ interface ComposerDraftStoreState {
     images: ComposerImageAttachment[],
     options?: { allowDuplicates?: boolean },
   ) => string[];
+  setImageAnnotations: (
+    threadRef: ComposerThreadTarget,
+    imageId: string,
+    annotations: ReadonlyArray<ImageAnnotation>,
+  ) => boolean;
   removeImage: (threadRef: ComposerThreadTarget, imageId: string) => void;
   /** Returns the ids of files appended; a re-pick that replaces a marker is not listed. */
   addFiles: (
@@ -1187,6 +1197,7 @@ function revokeDraftThreadPreviewUrls(draft: ComposerThreadDraftState | undefine
   }
 }
 
+const isImageAnnotations = Schema.is(ImageAnnotations);
 function normalizePersistedAttachment(value: unknown): PersistedComposerImageAttachment | null {
   if (!value || typeof value !== "object") {
     return null;
@@ -1216,6 +1227,14 @@ function normalizePersistedAttachment(value: unknown): PersistedComposerImageAtt
     sizeBytes,
     dataUrl,
     ...(isSnapShotSource(candidate.source) ? { source: candidate.source } : {}),
+    ...(isImageAnnotations(candidate.annotations) ? { annotations: candidate.annotations } : {}),
+    ...(Number.isSafeInteger(candidate.burnedAnnotationCount) &&
+    typeof candidate.burnedAnnotationCount === "number" &&
+    candidate.burnedAnnotationCount >= 0 &&
+    candidate.burnedAnnotationCount <=
+      (isImageAnnotations(candidate.annotations) ? candidate.annotations.length : 0)
+      ? { burnedAnnotationCount: candidate.burnedAnnotationCount }
+      : {}),
   };
 }
 
@@ -1919,7 +1938,10 @@ function normalizePersistedDraftsByThreadId(
             })();
     nextDraftsByThreadKey[normalizedThreadKey] = {
       prompt,
-      attachments,
+      attachments: attachments.map((attachment) => ({
+        ...attachment,
+        annotations: attachment.annotations?.map((mark) => ({ ...mark })),
+      })),
       ...(files.length > 0 ? { files } : {}),
       ...(terminalContexts.length > 0 ? { terminalContexts } : {}),
       ...(previewAnnotations.length > 0 ? { previewAnnotations } : {}),
@@ -2035,7 +2057,10 @@ export function partializeComposerDraftStoreState(
     }
     const persistedDraft: DeepMutable<PersistedComposerThreadDraftState> = {
       prompt: draft.prompt,
-      attachments: draft.persistedAttachments,
+      attachments: draft.persistedAttachments.map((attachment) => ({
+        ...attachment,
+        annotations: attachment.annotations?.map((mark) => ({ ...mark })),
+      })),
       ...(draft.files.length > 0
         ? {
             files: draft.files.map((file) => ({
@@ -2238,9 +2263,14 @@ function verifyPersistedAttachments(
       return state;
     }
     const imageIdSet = new Set(current.images.map((image) => image.id));
-    const persistedAttachments = attachments.filter(
-      (attachment) => imageIdSet.has(attachment.id) && persistedIdSet.has(attachment.id),
-    );
+    const persistedAttachments = attachments
+      .filter((attachment) => imageIdSet.has(attachment.id) && persistedIdSet.has(attachment.id))
+      .map((attachment) => ({
+        ...attachment,
+        annotations: current.images.find((image) => image.id === attachment.id)?.annotations,
+        burnedAnnotationCount: current.images.find((image) => image.id === attachment.id)
+          ?.burnedAnnotationCount,
+      }));
     const nonPersistedImageIds: string[] = [];
     for (const image of current.images) {
       if (!persistedIdSet.has(image.id)) {
@@ -2311,6 +2341,10 @@ export function hydrateImagesFromPersisted(
         previewUrl: attachment.dataUrl,
         file,
         ...(attachment.source ? { source: attachment.source } : {}),
+        ...(attachment.annotations ? { annotations: attachment.annotations } : {}),
+        ...(attachment.burnedAnnotationCount
+          ? { burnedAnnotationCount: attachment.burnedAnnotationCount }
+          : {}),
       } satisfies ComposerImageAttachment,
     ];
   });
@@ -3251,6 +3285,28 @@ const composerDraftStore = create<ComposerDraftStoreState>()(
           });
           return acceptedIds;
         },
+        setImageAnnotations: (threadRef, imageId, annotations) => {
+          const threadKey = resolveComposerDraftKey(get(), threadRef);
+          const current = threadKey ? get().draftsByThreadKey[threadKey] : undefined;
+          const previous = current?.images.find((candidate) => candidate.id === imageId);
+          if (!threadKey || !current || !previous) return false;
+          const saved = annotations.map((mark) => ({ ...mark }));
+          set({
+            draftsByThreadKey: {
+              ...get().draftsByThreadKey,
+              [threadKey]: {
+                ...current,
+                images: current.images.map((candidate) =>
+                  candidate.id === imageId ? { ...candidate, annotations: saved } : candidate,
+                ),
+                persistedAttachments: current.persistedAttachments.map((candidate) =>
+                  candidate.id === imageId ? { ...candidate, annotations: saved } : candidate,
+                ),
+              },
+            },
+          });
+          return true;
+        },
         removeImage: (threadRef, imageId) => {
           const threadKey = resolveComposerDraftKey(get(), threadRef) ?? "";
           if (threadKey.length === 0) {
@@ -3922,7 +3978,13 @@ const composerDraftStore = create<ComposerDraftStoreState>()(
             }
             const nextDraft: ComposerThreadDraftState = {
               ...current,
-              persistedAttachments: attachments,
+              persistedAttachments: attachments.map((attachment) => ({
+                ...attachment,
+                annotations: current.images.find((image) => image.id === attachment.id)
+                  ?.annotations,
+                burnedAnnotationCount: current.images.find((image) => image.id === attachment.id)
+                  ?.burnedAnnotationCount,
+              })),
               nonPersistedImageIds: current.nonPersistedImageIds.filter(
                 (id) => !attachmentIdSet.has(id),
               ),

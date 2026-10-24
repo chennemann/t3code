@@ -3887,7 +3887,7 @@ export default function ChatView(props: ChatViewProps) {
       <RevertConfirmHost threadKey={routeThreadKey} onConfirm={onConfirmRevertStable} />
       <LinkPullRequestDialogHost />
       <ThreadVisitWatermark threadRef={routeThreadRef} />
-      <ExpandedImageDialogHost threadKey={routeThreadKey} />
+      <ExpandedImageDialogHost threadKey={routeThreadKey} composerTarget={composerDraftTarget} />
     </div>
   );
   return (
