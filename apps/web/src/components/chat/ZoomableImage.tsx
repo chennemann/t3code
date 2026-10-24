@@ -7,6 +7,11 @@ import {
 } from "../../lib/windowControlsOverlay";
 
 import { AttachmentImage } from "../media/AttachmentImage";
+import {
+  ANNOTATION_COLOR,
+  annotationLabel,
+  type ImageAnnotation,
+} from "../../lib/imageAnnotations";
 
 const MAX_ZOOM = 8;
 
@@ -43,12 +48,16 @@ export function ZoomableImage({
   name,
   mimeType,
   onError,
+  annotations,
+  burnedAnnotationCount = 0,
   ref,
 }: {
   src: string;
   name: string;
   mimeType?: string | undefined;
   onError: () => void;
+  annotations?: ReadonlyArray<ImageAnnotation> | undefined;
+  burnedAnnotationCount?: number | undefined;
   ref?: Ref<ZoomableImageHandle>;
 }) {
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -232,24 +241,63 @@ export function ZoomableImage({
           setDragging(false);
         }}
       >
-        <AttachmentImage
-          name={name}
-          mimeType={mimeType}
-          src={src}
-          alt={name}
-          draggable={false}
-          className="block max-w-none select-none"
-          style={
-            naturalSize.width ? { width, height } : { maxWidth: "var(--media-width)", maxHeight }
-          }
-          onLoad={(event) => {
-            setNaturalSize({
-              width: event.currentTarget.naturalWidth,
-              height: event.currentTarget.naturalHeight,
-            });
-          }}
-          onError={onError}
-        />
+        <div className="relative" style={naturalSize.width ? { width, height } : undefined}>
+          <AttachmentImage
+            name={name}
+            mimeType={mimeType}
+            src={src}
+            alt={name}
+            draggable={false}
+            className="block max-w-none select-none"
+            style={
+              naturalSize.width ? { width, height } : { maxWidth: "var(--media-width)", maxHeight }
+            }
+            onLoad={(event) => {
+              setNaturalSize({
+                width: event.currentTarget.naturalWidth,
+                height: event.currentTarget.naturalHeight,
+              });
+            }}
+            onError={onError}
+          />
+          {naturalSize.width > 0 && Boolean(annotations?.length) && (
+            <svg
+              aria-label="Saved image annotations"
+              className="pointer-events-none absolute inset-0 h-full w-full"
+              viewBox={`0 0 ${naturalSize.width} ${naturalSize.height}`}
+            >
+              {annotations?.map((mark, index) => {
+                if (index < burnedAnnotationCount) return null;
+                const label = annotationLabel(mark, naturalSize.width, naturalSize.height);
+                return (
+                  <g key={mark.id}>
+                    <ellipse
+                      cx={(mark.x + mark.width / 2) * naturalSize.width}
+                      cy={(mark.y + mark.height / 2) * naturalSize.height}
+                      rx={(mark.width * naturalSize.width) / 2}
+                      ry={(mark.height * naturalSize.height) / 2}
+                      fill="none"
+                      stroke={ANNOTATION_COLOR}
+                      strokeWidth={Math.max(3, label.radius / 5)}
+                    />
+                    <circle cx={label.x} cy={label.y} r={label.radius} fill={ANNOTATION_COLOR} />
+                    <text
+                      x={label.x}
+                      y={label.y}
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      fill="var(--color-white)"
+                      fontSize={label.radius * 1.2}
+                      fontWeight="600"
+                    >
+                      {index + 1}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          )}
+        </div>
       </div>
       <span className="sr-only" aria-live="polite">
         {Math.round(zoom * 100)}% zoom

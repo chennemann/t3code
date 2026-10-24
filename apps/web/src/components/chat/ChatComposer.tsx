@@ -589,7 +589,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     focusComposer,
     scheduleComposerFocus,
     setThreadError,
-    onExpandImage,
+    onExpandImage: expandImage,
     onFileOpen,
     editingQueuedAttachments,
     onRemoveEditingQueuedAttachment,
@@ -638,6 +638,8 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
           activePendingProgress.activeQuestion.id,
         )
       : null;
+  const onExpandImage = (preview: ExpandedImagePreview) =>
+    expandImage({ ...preview, annotationDisabled: questionAttachmentTarget !== null });
   const attachmentDraftTarget = questionAttachmentTarget ?? composerDraftTarget;
   const attachmentDraft = useComposerThreadDraft(attachmentDraftTarget);
   const questionTakesSnapShots =
@@ -717,7 +719,7 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
     environmentId,
     cwd: gitCwd ?? undefined,
     expandImage: (imageId: string) => {
-      const preview = buildExpandedImagePreview(composerImages, imageId);
+      const preview = buildExpandedImagePreview(composerImages, imageId, { fromComposer: true });
       if (preview) onExpandImage(preview);
     },
     openFile: setPreviewFileId,
@@ -1535,6 +1537,10 @@ export const ChatComposer = memo(function ChatComposer(props: ChatComposerProps)
                 sizeBytes: image.sizeBytes,
                 dataUrl,
                 ...(image.source ? { source: image.source } : {}),
+                ...(image.annotations ? { annotations: image.annotations } : {}),
+                ...(image.burnedAnnotationCount
+                  ? { burnedAnnotationCount: image.burnedAnnotationCount }
+                  : {}),
               });
             } catch {
               const existingPersisted = existingPersistedById.get(image.id);
