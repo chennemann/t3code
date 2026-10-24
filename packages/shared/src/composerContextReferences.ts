@@ -8,6 +8,7 @@ import {
   type KnownComposerContextRecord,
   type ScopedThreadRef,
   type ThreadContextRecord,
+  type ImageAnnotation,
 } from "@t3tools/contracts";
 
 import { replaceThreadLinks, threadLinkCandidates } from "./threadLinks.ts";
@@ -287,6 +288,30 @@ function formatElementDetails(element: ElementContextDetails): string[] {
   return lines;
 }
 
+/** Formats rectangle coordinates against the source screenshot, including older saved marks. */
+export function formatImageAnnotationBounds(mark: ImageAnnotation): string {
+  if (!mark.imageSize)
+    return `x=${mark.x}, y=${mark.y}, width=${mark.width}, height=${mark.height} (fractions)`;
+  const x = Math.round(mark.x * mark.imageSize.width);
+  const y = Math.round(mark.y * mark.imageSize.height);
+  const right = Math.round((mark.x + mark.width) * mark.imageSize.width);
+  const bottom = Math.round((mark.y + mark.height) * mark.imageSize.height);
+  return `x=${x}, y=${y}, width=${right - x}, height=${bottom - y} px (source ${mark.imageSize.width}×${mark.imageSize.height})`;
+}
+
+/** The original image accompanies these rectangles; numbers match its overlay. */
+export function formatImageAnnotationContext(annotations: ReadonlyArray<ImageAnnotation>): string {
+  return annotations.length === 0
+    ? ""
+    : [
+        "Image annotations (rectangle bounds; origin is top-left of the source image, x increases right, y increases down):",
+        ...annotations.map(
+          (mark, index) =>
+            `${index + 1}. ${formatImageAnnotationBounds(mark)}\n${mark.comment.trim()}`,
+        ),
+      ].join("\n");
+}
+
 function formatComposerContextProviderPayload(record: KnownComposerContextRecord): string {
   switch (record.kind) {
     case "image":
@@ -296,6 +321,9 @@ function formatComposerContextProviderPayload(record: KnownComposerContextRecord
         `mimeType: ${record.mimeType}`,
         `sizeBytes: ${record.sizeBytes}`,
         `attachmentId: ${record.attachmentId}`,
+        ...(record.kind === "image" && record.annotations?.length
+          ? [formatImageAnnotationContext(record.annotations)]
+          : []),
       ].join("\n");
     case "terminal": {
       const lineCount = Math.max(0, record.lineEnd - record.lineStart + 1);
@@ -377,7 +405,13 @@ export function projectComposerContextForProvider(input: {
   records: ReadonlyArray<ComposerContextRecord>;
 }): string {
   const occurrences = collectComposerContextReferences(input.text);
-  if (occurrences.length === 0) return input.text;
+  if (
+    occurrences.length === 0 &&
+    !input.records.some(
+      (record) => record.kind === "image" && "annotations" in record && record.annotations?.length,
+    )
+  )
+    return input.text;
   const recordsById = new Map<ComposerContextId, ComposerContextRecord | undefined>();
   for (const record of input.records) {
     recordsById.set(record.contextId, recordsById.has(record.contextId) ? undefined : record);
@@ -401,6 +435,20 @@ export function projectComposerContextForProvider(input: {
       record,
     );
     entries.push(entry);
+  }
+  // Attachment annotations live beside the image, without requiring a chip in the prose.
+  for (const record of input.records) {
+    if (
+      record.kind !== "image" ||
+      !("annotations" in record) ||
+      !record.annotations?.length ||
+      seen.has(record.contextId)
+    )
+      continue;
+    seen.add(record.contextId);
+    entries.push(
+      formatEnvelopeEntry(record.kind, record.contextId, recordsById.get(record.contextId)),
+    );
   }
   if (entries.length === 0) return body;
   return `${body}\n\n<${CONTEXT_ENVELOPE_TAG} version="1">\n${entries.join("\n")}\n</${CONTEXT_ENVELOPE_TAG}>`;
