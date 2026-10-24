@@ -1,13 +1,20 @@
 import { memo, useRef, useState, type ReactNode, type KeyboardEvent } from "react";
 import { flushSync } from "react-dom";
 import { useGT } from "gt-react";
-import { ChevronLeftIcon, ChevronRightIcon, CircleIcon, ImageIcon, TextIcon, XIcon } from "lucide-react";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  SquareDashedIcon,
+  ImageIcon,
+  TextIcon,
+  XIcon,
+} from "lucide-react";
 import { registerThreadOverlay } from "./threadOverlayRetention";
 import { mediaReferenceFileName } from "@t3tools/client-runtime/media-reference";
 import { mediaMimeType, mediaMimeTypeFromExtension } from "@t3tools/shared/mediaPreview";
 import { Button } from "../ui/button";
 import { Dialog, DialogPopup, DialogTitle } from "../ui/dialog";
-import type { ExpandedImageItem, ExpandedImagePreview } from "./ExpandedImagePreview";
+import { type ExpandedImageItem, type ExpandedImagePreview } from "./ExpandedImagePreview";
 import { resolveExternalWebLinkHost } from "./externalLinkContextMenu";
 import { useAssetUrlRefresh, useAssetUrlState } from "../../assets/assetUrls";
 import { OpenMediaLink } from "../media/OpenMediaLink";
@@ -32,6 +39,11 @@ import { attachImageAnnotation } from "../../lib/attachImageAnnotation";
 import type { ComposerThreadTarget } from "../../composerDraftStore";
 import type { ImageAnnotation } from "../../lib/imageAnnotations";
 import { useClientSettings } from "../../hooks/useSettings";
+
+// JavaScript `%` keeps the sign of the dividend, and a negative index blanks the dialog.
+function wrapExpandedImageIndex(index: number, imageCount: number): number {
+  return imageCount > 0 ? ((index % imageCount) + imageCount) % imageCount : 0;
+}
 
 interface ExpandedImageDialogProps {
   preview: ExpandedImagePreview;
@@ -97,7 +109,7 @@ export const ExpandedImageDialog = memo(function ExpandedImageDialog({
       composerTarget &&
       !preview.annotationDisabled &&
       preview.images[preview.index]?.type !== "video" &&
-      imageOpenAction === "annotate",
+      preview.images[preview.index]?.src,
     ),
   );
   const [annotationBusy, setAnnotationBusy] = useState(false);
@@ -114,7 +126,7 @@ export const ExpandedImageDialog = memo(function ExpandedImageDialog({
     Record<string, ReadonlyArray<ImageAnnotation>>
   >({});
   const savedComposerIds = useRef(new Map<string, string>());
-  const closeDestination = useRef<"close" | "zoom">("close");
+  const closeDestination = useRef<"close" | -1 | 1>("close");
   const annotationEditorRef = useRef<ImageAnnotationEditorHandle>(null);
   const [imageOffset, setImageOffset] = useState(0);
   const [failedImageSrc, setFailedImageSrc] = useState<string | null>(null);
@@ -131,10 +143,8 @@ export const ExpandedImageDialog = memo(function ExpandedImageDialog({
     if (target?.isConnected) target.focus({ preventScroll: true, focusVisible });
   };
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-  // JavaScript `%` keeps the sign of the dividend, and a negative index blanks the dialog.
   const imageCount = preview.images.length;
-  const index =
-    imageCount > 0 ? (((preview.index + imageOffset) % imageCount) + imageCount) % imageCount : 0;
+  const index = wrapExpandedImageIndex(preview.index + imageOffset, imageCount);
   const item = preview.images[index];
   const visibleAnnotations = item?.src
     ? (savedAnnotations[item.src] ?? item.annotations)
@@ -233,59 +243,126 @@ export const ExpandedImageDialog = memo(function ExpandedImageDialog({
           if (event.target === event.currentTarget) requestClose();
         }}
       >
-        <DialogTitle className="sr-only">{isVideo ? gt("Expanded video preview") : gt("Expanded image preview")}</DialogTitle>
+        <DialogTitle className="sr-only">
+          {isVideo ? gt("Expanded video preview") : gt("Expanded image preview")}
+        </DialogTitle>
         {annotating && item.src && composerTarget ? (
-          <ImageAnnotationEditor
-            ref={annotationEditorRef}
-            key={item.src}
-            src={item.src}
-            name={item.name}
-            initialMarks={annotationInitialMarks}
-            priorMarks={priorAnnotations}
-            onDraftChange={(marks) => {
-              if (item.src) annotationDrafts.current.set(item.src, marks);
-            }}
-            onBusyChange={setAnnotationBusy}
-            onZoom={() => {
-              closeDestination.current = "zoom";
-              void annotationEditorRef.current?.close();
-            }}
-            onApply={async ({ annotations, changed }) => {
-              const savedMarks = [...priorAnnotations, ...annotations];
-              const destination = closeDestination.current;
-              closeDestination.current = "close";
-              const id = changed
-                ? await attachImageAnnotation(
-                    composerTarget,
-                    {
-                      src: item.src!,
-                      name: item.name,
-                      burnedAnnotationCount: item.burnedAnnotationCount,
-                    },
-                    savedMarks,
-                    item.composerImageId ?? savedComposerIds.current.get(item.src!),
-                  )
-                : undefined;
-              if (id) savedComposerIds.current.set(item.src!, id);
-              setSavedAnnotations((saved) => ({ ...saved, [item.src!]: savedMarks }));
-              if (destination === "zoom") {
-                setAnnotating(false);
-              } else close();
-            }}
-          />
+          <MediaActions source={actionsSource}>
+            <div className="contents">
+              <ImageAnnotationEditor
+                ref={annotationEditorRef}
+                key={item.src}
+                src={item.src}
+                name={item.name}
+                initialAction={imageOpenAction}
+                details={
+                  item.source ? (
+                    <SnapShotContentsButton source={item.source} side="top" />
+                  ) : undefined
+                }
+                onNavigate={
+                  imageCount > 1
+                    ? (direction) => {
+                        closeDestination.current = direction;
+                        void annotationEditorRef.current?.close();
+                      }
+                    : undefined
+                }
+                initialMarks={annotationInitialMarks}
+                priorMarks={priorAnnotations}
+                onDraftChange={(marks) => {
+                  if (item.src) annotationDrafts.current.set(item.src, marks);
+                }}
+                onBusyChange={setAnnotationBusy}
+                onDiscard={() => {
+                  if (item.src) {
+                    const saved = savedAnnotations[item.src] ?? item.annotations ?? [];
+                    annotationDrafts.current.set(
+                      item.src,
+                      saved.slice(item.burnedAnnotationCount ?? 0),
+                    );
+                  }
+                  setAnnotating(false);
+                }}
+                navigation={
+                  imageCount > 1 ? (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="overlay"
+                        size="icon-sm"
+                        aria-label={gt("Previous media")}
+                        disabled={annotationBusy}
+                        onClick={() => {
+                          closeDestination.current = -1;
+                          void annotationEditorRef.current?.close();
+                        }}
+                      >
+                        <ChevronLeftIcon />
+                      </Button>
+                      <span className="text-xs" aria-live="polite">
+                        {index + 1}/{imageCount}
+                      </span>
+                      <Button
+                        variant="overlay"
+                        size="icon-sm"
+                        aria-label={gt("Next media")}
+                        disabled={annotationBusy}
+                        onClick={() => {
+                          closeDestination.current = 1;
+                          void annotationEditorRef.current?.close();
+                        }}
+                      >
+                        <ChevronRightIcon />
+                      </Button>
+                    </div>
+                  ) : undefined
+                }
+                onApply={async ({ annotations, changed }) => {
+                  const savedMarks = [...priorAnnotations, ...annotations];
+                  const destination = closeDestination.current;
+                  closeDestination.current = "close";
+                  const id = changed
+                    ? await attachImageAnnotation(
+                        composerTarget,
+                        {
+                          src: item.src!,
+                          name: item.name,
+                          burnedAnnotationCount: item.burnedAnnotationCount,
+                        },
+                        savedMarks,
+                        item.composerImageId ?? savedComposerIds.current.get(item.src!),
+                      )
+                    : undefined;
+                  if (id) savedComposerIds.current.set(item.src!, id);
+                  setSavedAnnotations((saved) => ({ ...saved, [item.src!]: savedMarks }));
+                  if (typeof destination === "number") {
+                    const next =
+                      preview.images[wrapExpandedImageIndex(index + destination, imageCount)]!;
+                    if (next.type === "video" || next.src === null) setAnnotating(false);
+                    setAnnotationInitialMarks(
+                      annotationDrafts.current.get(next.src!) ??
+                        next.annotations?.slice(next.burnedAnnotationCount ?? 0) ??
+                        [],
+                    );
+                    navigateImage(destination);
+                  } else close();
+                }}
+              />
+            </div>
+          </MediaActions>
         ) : (
           <>
-        <Button
-          type="button"
-          ref={closeButtonRef}
-          size="icon"
-          variant="media-close"
-          className="absolute end-0 top-0 z-20 max-[8rem]:end-auto max-[8rem]:left-1/2 max-[8rem]:-translate-x-1/2"
-          onClick={close}
-          aria-label={isVideo ? gt("Close video preview") : gt("Close image preview")}
-        >
-          <XIcon aria-hidden="true" />
-        </Button>
+            <Button
+              type="button"
+              ref={closeButtonRef}
+              size="icon"
+              variant="media-close"
+              className="absolute end-0 top-0 z-20 max-[8rem]:end-auto max-[8rem]:left-1/2 max-[8rem]:-translate-x-1/2"
+              onClick={close}
+              aria-label={isVideo ? gt("Close video preview") : gt("Close image preview")}
+            >
+              <XIcon aria-hidden="true" />
+            </Button>
             {preview.images.length > 1 && (
               <Button
                 type="button"
@@ -388,22 +465,22 @@ export const ExpandedImageDialog = memo(function ExpandedImageDialog({
                           setAnnotating(true);
                         }}
                       >
-                        <CircleIcon />
+                        <SquareDashedIcon />
                         {(visibleAnnotations?.length ?? 0) > priorAnnotations.length
-                          ? "Edit annotations"
-                          : "Annotate image"}
+                          ? gt("Edit annotations")
+                          : gt("Annotate image")}
                       </Button>
                     </div>
                   )}
                 {visibleAnnotations?.length && item.type !== "video" ? (
                   <aside
-                    aria-label="Saved annotation comments"
+                    aria-label={gt("Saved annotation comments")}
                     className="absolute right-0 bottom-16 z-20 max-h-48 w-72 max-w-[85vw] space-y-2 overflow-auto rounded-lg border border-border bg-background p-3 text-sm text-foreground shadow-lg"
                   >
                     {visibleAnnotations.map((mark, index) => (
                       <p key={mark.id} className="whitespace-pre-wrap break-words">
                         <span className="font-semibold text-image-annotation">{index + 1}.</span>{" "}
-                        {mark.comment || "No comment"}
+                        {mark.comment || gt("No comment")}
                       </p>
                     ))}
                   </aside>
