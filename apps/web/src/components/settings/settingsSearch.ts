@@ -792,6 +792,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     scope: "environment-defaults",
   },
   {
+    id: "image-open-action",
+    title: msg("Image open action"),
+    to: "/settings/chat",
+    searchTerms: ["screenshot annotation circle comments zoom default click preview"],
+  },
+  {
     id: "response-streaming",
     title: msg("Response streaming"),
     to: "/settings/threads",

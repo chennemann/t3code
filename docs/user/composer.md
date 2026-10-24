@@ -173,3 +173,7 @@ Following an agent's file link to a file outside the workspace opens it read-onl
 ## HTML and PDF files in the file viewer
 
 On web and desktop, HTML and PDF files open rendered (HTML previews are sandboxed from your T3 Code session; line-specific HTML links open source view). On mobile, PDFs open in the native iOS viewer or an installed Android viewer.
+
+## Image annotations
+
+On web and desktop, open an attached image and choose **Annotate image** to mark it with numbered comments. Edit the comments before sending; the agent receives the marked image and numbered text. Annotations remain with drafts, queued edits and stashed prompts.

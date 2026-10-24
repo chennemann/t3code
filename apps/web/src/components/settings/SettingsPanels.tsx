@@ -1290,6 +1290,49 @@ export function ChatSettingsPanel() {
     <SettingsPageContainer>
       <SettingsSection id="composer" title={gt("Composer")}>
         <SettingsRow
+          {...setting("image-open-action")}
+          description={gt(
+            "Choose the primary image action. Hold Ctrl in the preview to use the other action while keeping your zoom level.",
+          )}
+          resetAction={
+            settings.imageOpenAction !== DEFAULT_UNIFIED_SETTINGS.imageOpenAction ? (
+              <SettingResetButton
+                ariaLabel={gt("Reset image open action")}
+                onClick={() =>
+                  updateSettings({ imageOpenAction: DEFAULT_UNIFIED_SETTINGS.imageOpenAction })
+                }
+              />
+            ) : null
+          }
+          control={
+            <Select
+              value={settings.imageOpenAction}
+              onValueChange={(value) => {
+                if (value === "zoom" || value === "annotate")
+                  updateSettings({ imageOpenAction: value });
+              }}
+            >
+              <SelectTrigger
+                size="sm"
+                className="w-full sm:w-56"
+                aria-label={gt("Image open action")}
+              >
+                <SelectValue>
+                  {settings.imageOpenAction === "annotate" ? gt("Annotate") : gt("Zoom")}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectPopup align="end" alignItemWithTrigger={false}>
+                <SelectItem value="zoom">
+                  <T>Zoom</T>
+                </SelectItem>
+                <SelectItem value="annotate">
+                  <T>Annotate</T>
+                </SelectItem>
+              </SelectPopup>
+            </Select>
+          }
+        />
+        <SettingsRow
           {...setting("composer-rich-text")}
           description={gt("Show formatted Markdown as you type.")}
           resetAction={

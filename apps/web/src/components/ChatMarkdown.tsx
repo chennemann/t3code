@@ -2147,7 +2147,11 @@ function ChatMarkdown({
         ))}
       </ChatMarkdownRendererContext>
       {localMediaPreview ? (
-        <ExpandedImageDialog preview={localMediaPreview} onClose={closeLocalMediaPreview} />
+        <ExpandedImageDialog
+          preview={localMediaPreview}
+          onClose={closeLocalMediaPreview}
+          composerTarget={componentState.threadRef}
+        />
       ) : null}
     </Root>
   );

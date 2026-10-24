@@ -49,6 +49,7 @@ import {
   SNAP_SHOT_ATTACHMENT_FRAME_CLASS,
   SnapShotAttachmentDetails,
 } from "./SnapShotAttachmentDetails";
+import { ImageAnnotationIndicator } from "./ImageAnnotationIndicator";
 import { prepareVideoFirstFrame } from "../../lib/videoFirstFrame";
 import { SharedTooltipTrigger } from "../ui/shared-tooltip";
 
@@ -233,7 +234,9 @@ export function ComposerAttachmentMediaRow({
                   aria-label={gt("Preview {name}", { name: image.name })}
                   disabled={!ready}
                   onClick={() => {
-                    const preview = buildExpandedImagePreview(images, image.id, onCopySnapshot);
+                    const preview = buildExpandedImagePreview(images, image.id, onCopySnapshot, {
+                      fromComposer: true,
+                    });
                     if (!preview) return;
                     onExpandImage(preview);
                   }}
@@ -260,6 +263,7 @@ export function ComposerAttachmentMediaRow({
               ) : (
                 <ComposerImageFallback />
               )}
+              <ImageAnnotationIndicator count={ready?.annotations?.length ?? 0} />
               {source?.kind === "snap-shot" ? (
                 <SnapShotAttachmentDetails
                   source={source}
@@ -620,7 +624,9 @@ export function ComposerRestingImagePreviews({
           aria-label={gt("Preview {name}", { name: image.name })}
           onPointerDown={(event) => event.preventDefault()}
           onClick={() => {
-            const preview = buildExpandedImagePreview(allImages, image.id, onCopySnapshot);
+            const preview = buildExpandedImagePreview(allImages, image.id, onCopySnapshot, {
+              fromComposer: true,
+            });
             if (preview) onExpandImage(preview);
           }}
         >
@@ -656,6 +662,7 @@ export function ComposerRestingImagePreviews({
               className="m-auto size-3.5"
             />
           )}
+          <ImageAnnotationIndicator count={image.annotations?.length ?? 0} />
         </button>
       ))}
       {counts.overflowCount > 0 ? (
