@@ -1,3 +1,4 @@
+import { repairForkDatabase } from "../downstream/persistence/repairForkDatabase.ts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as FileSystem from "effect/FileSystem";
@@ -30,6 +31,7 @@ const layerSetup = Layer.effectDiscard(
     yield* sql`PRAGMA checkpoint_fullfsync = ON;`;
     // PASSIVE checkpoints retain peak WAL size until the last connection closes.
     yield* sql.unsafe(`PRAGMA journal_size_limit = ${WAL_SIZE_LIMIT_BYTES};`);
+    yield* repairForkDatabase();
     yield* runMigrations();
     // Collecting stats scans every page, and stale small-table stats cause scans after growth; use indexes by default.
     // Connections cache stats; reload after deleting them.
