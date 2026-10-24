@@ -1,0 +1,65 @@
+name: Validate downstream compatibility
+description: Check the fork integration points and the behavior changed by the fork.
+runs:
+  using: composite
+  steps:
+    - name: Check integration points and release state
+      shell: bash
+      run: |
+        set -euo pipefail
+        node scripts/check-downstream.ts
+        node scripts/downstream-release-state.ts validate
+
+    - name: Typecheck affected packages
+      shell: bash
+      run: |
+        set -euo pipefail
+        for package in @t3tools/contracts @t3tools/shared @t3tools/provider-core @t3tools/provider-acp-registry @t3tools/client-runtime t3 @t3tools/web @t3tools/mobile @t3tools/desktop @t3tools/scripts; do
+          vp run --filter "$package" typecheck
+        done
+
+    # Fork browser tests run in headless Chromium, set up as upstream's CI does.
+    - name: Resolve Playwright version
+      id: playwright_version
+      shell: bash
+      run: echo "version=$(node -p "require('./apps/web/node_modules/playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+
+    - name: Cache Chromium
+      id: chromium_cache
+      uses: actions/cache@v6
+      with:
+        path: ~/.cache/ms-playwright
+        key: playwright-chromium-shell-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright_version.outputs.version }}
+
+    - name: Install Chromium for web browser tests
+      if: steps.chromium_cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: node apps/web/node_modules/playwright/cli.js install --only-shell chromium
+
+    - name: Install missing Chromium system dependencies
+      shell: bash
+      run: |
+        browser=$(find "$HOME/.cache/ms-playwright" -name chrome-headless-shell -type f -print -quit)
+        test -n "$browser"
+        if ldd "$browser" | grep '=> not found'; then
+          node apps/web/node_modules/playwright/cli.js install-deps chromium
+        fi
+
+    - name: Lint and test fork changes
+      shell: bash
+      run: |
+        set -euo pipefail
+        base="$(node -p "JSON.parse(require('fs').readFileSync('.github/downstream-integration.json', 'utf8')).baseCommit ?? JSON.parse(require('fs').readFileSync('.github/upstream-release.json', 'utf8')).commit")"
+        mapfile -t sources < <(git diff --name-only --diff-filter=ACMR "$base" -- '*.ts' '*.tsx')
+        test "${#sources[@]}" -gt 0
+        vp lint "${sources[@]}"
+        mapfile -t tests < <(git diff --name-only --diff-filter=ACMR "$base" -- '*.test.ts' '*.test.tsx')
+        test "${#tests[@]}" -gt 0
+        vp test run "${tests[@]}"
+
+    - name: Build and boot the web client
+      shell: bash
+      run: |
+        set -euo pipefail
+        vp run --filter @t3tools/web build
+        node apps/web/scripts/verify-built-boot.ts
