@@ -13,7 +13,7 @@ import {
   htmlRenderThemeMessage,
   htmlRenderResult,
   readHtmlRenderContentHeight,
-  readHtmlRenderImageRequest,
+  readHtmlRenderImageGallery,
   readHtmlRenderKeyDown,
   readHtmlRenderLinkRequest,
 } from "@t3tools/shared/htmlRender";
@@ -255,7 +255,7 @@ export function HtmlRenderDocument(props: {
   useEffect(() => {
     const openImage = (event: MessageEvent) => {
       const frame = frameRef.current;
-      const request = readHtmlRenderImageRequest(event.data);
+      const request = readHtmlRenderImageGallery(event.data);
       if (
         request === undefined ||
         frame === null ||
@@ -265,7 +265,7 @@ export function HtmlRenderDocument(props: {
       ) {
         return;
       }
-      setExpandedImage({ images: [{ src: request.src, name: request.name }], index: 0 });
+      setExpandedImage({ images: request.images, index: request.index });
     };
     window.addEventListener("message", openImage);
     return () => window.removeEventListener("message", openImage);
@@ -312,7 +312,11 @@ export function HtmlRenderDocument(props: {
         style={loaded ? { colorScheme: theme.appearance } : undefined}
       />
       {expandedImage !== null ? (
-        <ExpandedImageDialog preview={expandedImage} onClose={() => setExpandedImage(null)} />
+        <ExpandedImageDialog
+          preview={expandedImage}
+          composerTarget={props.threadRef}
+          onClose={() => setExpandedImage(null)}
+        />
       ) : null}
     </>
   );

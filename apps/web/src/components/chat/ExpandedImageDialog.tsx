@@ -4,7 +4,7 @@ import { Image as ImageGlyph, Text as TextGlyph } from "lucide";
 import { MorphIcon } from "~/components/MorphIcon";
 import { Button } from "../ui/button";
 import { Dialog, DialogPopup, DialogTitle } from "../ui/dialog";
-import type { ExpandedImageItem, ExpandedImagePreview } from "./ExpandedImagePreview";
+import { type ExpandedImageItem, type ExpandedImagePreview } from "./ExpandedImagePreview";
 import { resolveExternalWebLinkHost } from "./externalLinkContextMenu";
 import { useAssetUrlRefresh, useAssetUrlState } from "../../assets/assetUrls";
 import { OpenMediaLink } from "../media/OpenMediaLink";
@@ -28,6 +28,11 @@ import { attachImageAnnotation } from "../../lib/attachImageAnnotation";
 import type { ComposerThreadTarget } from "../../composerDraftStore";
 import type { ImageAnnotation } from "../../lib/imageAnnotations";
 import { useClientSettings } from "../../hooks/useSettings";
+
+// JavaScript `%` keeps the sign of the dividend, and a negative index blanks the dialog.
+function wrapExpandedImageIndex(index: number, imageCount: number): number {
+  return imageCount > 0 ? ((index % imageCount) + imageCount) % imageCount : 0;
+}
 
 interface ExpandedImageDialogProps {
   preview: ExpandedImagePreview;
@@ -99,7 +104,7 @@ export const ExpandedImageDialog = memo(function ExpandedImageDialog({
     Record<string, ReadonlyArray<ImageAnnotation>>
   >({});
   const savedComposerIds = useRef(new Map<string, string>());
-  const closeDestination = useRef<"close" | "zoom">("close");
+  const closeDestination = useRef<"close" | "zoom" | -1 | 1>("close");
   const annotationEditorRef = useRef<ImageAnnotationEditorHandle>(null);
   const [imageOffset, setImageOffset] = useState(0);
   const [failedImageSrc, setFailedImageSrc] = useState<string | null>(null);
@@ -109,10 +114,8 @@ export const ExpandedImageDialog = memo(function ExpandedImageDialog({
     document.activeElement instanceof HTMLElement ? document.activeElement : null,
   );
   const closeButtonRef = useRef<HTMLButtonElement>(null);
-  // JavaScript `%` keeps the sign of the dividend, and a negative index blanks the dialog.
   const imageCount = preview.images.length;
-  const index =
-    imageCount > 0 ? (((preview.index + imageOffset) % imageCount) + imageCount) % imageCount : 0;
+  const index = wrapExpandedImageIndex(preview.index + imageOffset, imageCount);
   const item = preview.images[index];
   const visibleAnnotations = item?.src
     ? (savedAnnotations[item.src] ?? item.annotations)
@@ -242,6 +245,49 @@ export const ExpandedImageDialog = memo(function ExpandedImageDialog({
               if (item.src) annotationDrafts.current.set(item.src, marks);
             }}
             onBusyChange={setAnnotationBusy}
+            onDiscard={() => {
+              if (item.src) {
+                const saved = savedAnnotations[item.src] ?? item.annotations ?? [];
+                annotationDrafts.current.set(
+                  item.src,
+                  saved.slice(item.burnedAnnotationCount ?? 0),
+                );
+              }
+              setAnnotating(false);
+            }}
+            navigation={
+              imageCount > 1 ? (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="overlay"
+                    size="icon-sm"
+                    aria-label="Previous media"
+                    disabled={annotationBusy}
+                    onClick={() => {
+                      closeDestination.current = -1;
+                      void annotationEditorRef.current?.close();
+                    }}
+                  >
+                    <ChevronLeftIcon />
+                  </Button>
+                  <span className="text-xs" aria-live="polite">
+                    {index + 1}/{imageCount}
+                  </span>
+                  <Button
+                    variant="overlay"
+                    size="icon-sm"
+                    aria-label="Next media"
+                    disabled={annotationBusy}
+                    onClick={() => {
+                      closeDestination.current = 1;
+                      void annotationEditorRef.current?.close();
+                    }}
+                  >
+                    <ChevronRightIcon />
+                  </Button>
+                </div>
+              ) : undefined
+            }
             onZoom={() => {
               closeDestination.current = "zoom";
               void annotationEditorRef.current?.close();
@@ -266,6 +312,16 @@ export const ExpandedImageDialog = memo(function ExpandedImageDialog({
               setSavedAnnotations((saved) => ({ ...saved, [item.src!]: savedMarks }));
               if (destination === "zoom") {
                 setAnnotating(false);
+              } else if (typeof destination === "number") {
+                const next =
+                  preview.images[wrapExpandedImageIndex(index + destination, imageCount)]!;
+                if (next.type === "video" || next.src === null) setAnnotating(false);
+                setAnnotationInitialMarks(
+                  annotationDrafts.current.get(next.src!) ??
+                    next.annotations?.slice(next.burnedAnnotationCount ?? 0) ??
+                    [],
+                );
+                navigateImage(destination);
               } else onClose();
             }}
           />

@@ -27,6 +27,9 @@ function ImagePreviewHeader(header: { readonly imageIndex: number }) {
       <View className="flex-row items-center gap-2 px-3">
         <AppText className="flex-1 text-base text-white" numberOfLines={2}>
           {source.name ?? "Image"}
+          {(props.source.gallery?.length ?? 0) > 1
+            ? ` (${header.imageIndex + 1}/${props.source.gallery!.length})`
+            : ""}
         </AppText>
         <MediaActionsMenu media={mediaActions} inModal />
         <Pressable

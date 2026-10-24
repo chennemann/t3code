@@ -6,6 +6,7 @@ import {
   useState,
   type PointerEvent,
   type Ref,
+  type ReactNode,
 } from "react";
 import { Trash2Icon, XIcon, ZoomInIcon } from "lucide-react";
 import { Button } from "../ui/button";
@@ -47,6 +48,8 @@ export function ImageAnnotationEditor({
   onDraftChange,
   onBusyChange,
   onZoom,
+  onDiscard,
+  navigation,
   ref,
 }: {
   src: string;
@@ -57,6 +60,8 @@ export function ImageAnnotationEditor({
   onDraftChange: (marks: ImageAnnotation[]) => void;
   onBusyChange: (busy: boolean) => void;
   onZoom: () => void;
+  onDiscard: () => void;
+  navigation?: ReactNode;
   ref?: Ref<ImageAnnotationEditorHandle> | undefined;
 }) {
   const imageRef = useRef<HTMLImageElement>(null);
@@ -216,7 +221,10 @@ export function ImageAnnotationEditor({
         }
       }}
     >
-      {!loaded && <p className="self-center text-sm">{error ?? "Loading image…"}</p>}
+      {navigation ? (
+        <div className="absolute bottom-0 left-1/2 z-30 -translate-x-1/2">{navigation}</div>
+      ) : null}
+      {!loaded && !error && <p className="self-center text-sm">Loading image…</p>}
       <div
         className="relative shrink-0"
         style={{ width: size.width * fit, marginTop: (maxHeight - size.height * fit) / 2 }}
@@ -509,10 +517,15 @@ export function ImageAnnotationEditor({
             </div>
           </aside>
         )}
-        {error && loaded && (
-          <p role="alert" className="mt-2 text-center text-sm text-white">
-            {error}
-          </p>
+        {error && (
+          <div className="mt-2 flex flex-col items-center gap-2">
+            <p role="alert" className="text-center text-sm text-white">
+              {error}
+            </p>
+            <Button variant="overlay" size="sm" disabled={busy} onClick={onDiscard}>
+              Discard unsaved changes
+            </Button>
+          </div>
         )}
       </div>
     </section>
