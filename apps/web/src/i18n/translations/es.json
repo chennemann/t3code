@@ -13013,5 +13013,9 @@
       "v": "v"
     },
     " más en Elementos vinculados"
-  ]
+  ],
+  "3a876d731a1c0340": "Elige el shell para las nuevas sesiones de terminal. Déjalo vacío para usar el predeterminado de la plataforma.",
+  "dae5122010cb296a": "Restablecer shell del terminal",
+  "1c733fd2752b26da": "Ruta del shell del terminal",
+  "f2ca6e0ce2a6297b": "Shell del terminal"
 }

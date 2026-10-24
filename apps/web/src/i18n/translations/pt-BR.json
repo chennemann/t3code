@@ -13018,5 +13018,9 @@
       "v": "v"
     },
     " mais em Itens vinculados"
-  ]
+  ],
+  "3a876d731a1c0340": "Escolha o shell para novas sessões de terminal. Deixe vazio para usar o padrão da plataforma.",
+  "dae5122010cb296a": "Redefinir shell do terminal",
+  "1c733fd2752b26da": "Caminho do shell do terminal",
+  "f2ca6e0ce2a6297b": "Shell do terminal"
 }

@@ -13018,5 +13018,9 @@
       "v": "v"
     },
     " de plus dans Éléments associés"
-  ]
+  ],
+  "3a876d731a1c0340": "Choisissez le shell des nouvelles sessions de terminal. Laissez vide pour utiliser celui de la plateforme.",
+  "dae5122010cb296a": "Réinitialiser le shell du terminal",
+  "1c733fd2752b26da": "Chemin du shell du terminal",
+  "f2ca6e0ce2a6297b": "Shell du terminal"
 }

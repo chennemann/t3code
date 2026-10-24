@@ -74,7 +74,7 @@ it.layer(services, { excludeTestServices: true })("terminal startup deadlines", 
         const manager = yield* makeWithOptions({
           logsDir: path.join(root, "logs"),
           env: { T3CODE_TERMINAL_SHELL: configured, SHELL: fallback },
-          shellResolver: () => preferred,
+          shellResolver: Effect.succeed(preferred),
           ptyAdapter: { spawn: () => Effect.sync(fakePtyProcess) },
         });
         const openings = yield* Effect.forEach(["first", "second"], (threadId) =>
@@ -120,7 +120,7 @@ it.layer(services, { excludeTestServices: true })("terminal startup deadlines", 
       const manager = yield* makeWithOptions({
         logsDir: path.join(cwd, "logs"),
         env: { PATH: "/usr/bin" },
-        shellResolver: () => "local-shell",
+        shellResolver: Effect.succeed("local-shell"),
         ...(stalled === "scan"
           ? { managedBinaryCacheDir: cacheDir, managedBinaryToolsDir: path.join(cwd, "tools") }
           : {}),
