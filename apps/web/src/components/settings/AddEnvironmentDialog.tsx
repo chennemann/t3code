@@ -110,6 +110,11 @@ export function AddEnvironmentDialog({
   })();
   const [savedBackendMode, setSavedBackendMode] = useState<"remote" | "ssh">("remote");
   const [savedBackendHost, setSavedBackendHost] = useState("");
+  const [isPreparingCertificate, setIsPreparingCertificate] = useState(false);
+  const [preparedCertificate, setPreparedCertificate] = useState<{
+    host: string;
+    message: string;
+  } | null>(null);
   const [savedBackendPairingCode, setSavedBackendPairingCode] = useState("");
   const [savedBackendSshHost, setSavedBackendSshHost] = useState("");
   const [savedBackendSshUsername, setSavedBackendSshUsername] = useState("");
@@ -334,6 +339,29 @@ export function AddEnvironmentDialog({
     }
     setSavedBackendHost(value);
   };
+  const handlePrepareClientCertificate = async () => {
+    if (!desktopBridge?.prepareClientCertificate) return;
+    setIsPreparingCertificate(true);
+    onErrorChange(null);
+    setPreparedCertificate(null);
+    try {
+      const host = savedBackendHost.trim();
+      const url = new URL(host.includes("://") ? host : `https://${host}`);
+      const certificate = await desktopBridge.prepareClientCertificate(url.toString());
+      setPreparedCertificate({
+        host: savedBackendHost,
+        message: certificate
+          ? `Ready to pair using ${certificate.subjectName || "the selected certificate"}.`
+          : "TLS connection ready. No client certificate choice was saved.",
+      });
+    } catch (error) {
+      onErrorChange(
+        error instanceof Error ? error.message : "Could not set up the client certificate.",
+      );
+    } finally {
+      setIsPreparingCertificate(false);
+    }
+  };
   const renderConnectionModeCard = (input: {
     readonly mode: "remote" | "ssh";
     readonly title: string;
@@ -385,7 +413,7 @@ export function AddEnvironmentDialog({
             value={savedBackendHost}
             onChange={(event) => handleSavedBackendHostChange(event.target.value)}
             placeholder="backend.example.com"
-            disabled={isAddingSavedBackend}
+            disabled={isAddingSavedBackend || isPreparingCertificate}
             spellCheck={false}
           />
         </label>
@@ -405,6 +433,23 @@ export function AddEnvironmentDialog({
           Paste a full pairing URL here to fill both fields automatically.
         </span>
       </div>
+      {desktopBridge?.prepareClientCertificate ? (
+        <div className="space-y-2">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!savedBackendHost.trim() || isAddingSavedBackend || isPreparingCertificate}
+            onClick={() => void handlePrepareClientCertificate()}
+          >
+            {isPreparingCertificate ? "Choosing certificate…" : "Choose client certificate…"}
+          </Button>
+          <p className="text-xs text-muted-foreground" role="status">
+            {preparedCertificate?.host === savedBackendHost
+              ? preparedCertificate.message
+              : "If this server requires a client certificate, choose one before pairing. Install your .p12 or .pfx on this computer first."}
+          </p>
+        </div>
+      ) : null}
     </div>
   );
   const relayRouteOffer =
@@ -461,7 +506,7 @@ export function AddEnvironmentDialog({
       <Button
         variant="outline"
         className="w-full"
-        disabled={isAddingSavedBackend}
+        disabled={isAddingSavedBackend || isPreparingCertificate}
         onClick={() => void handleAddSavedBackend()}
       >
         <PlusIcon className="size-3.5" />
