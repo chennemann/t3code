@@ -18,6 +18,7 @@ import {
 } from "@t3tools/client-runtime/state/runtime";
 import { readLocalApi } from "../../localApi";
 import { getUploadedAttachments } from "../../lib/attachmentUploadQueue";
+import { asKnownContextRecord, resolveUserMessageContext } from "../../lib/composerContextRecords";
 import { findRevertCheckpoint } from "../../session-logic";
 import { type ChatMessage } from "../../types";
 import { randomUUID } from "~/lib/utils";
@@ -238,7 +239,28 @@ export async function rewindToMessage(input: {
         file,
       };
       if (message.attachments?.[index]?.type === "image") {
-        images.push({ ...attachment, type: "image", previewUrl: URL.createObjectURL(file) });
+        const sourceId = message.attachments[index]?.id;
+        const known = asKnownContextRecord(
+          resolveUserMessageContext(message).records.find(
+            (candidate) =>
+              candidate.kind === "image" &&
+              "attachmentId" in candidate &&
+              candidate.attachmentId === sourceId,
+          ),
+        );
+        images.push({
+          ...attachment,
+          type: "image",
+          previewUrl: URL.createObjectURL(file),
+          ...(known?.kind === "image" && known.annotations
+            ? {
+                annotations: known.annotations,
+                ...(known.burnedAnnotationCount
+                  ? { burnedAnnotationCount: known.burnedAnnotationCount }
+                  : {}),
+              }
+            : {}),
+        });
       } else {
         restoredFiles.push({ ...attachment, type: "file" });
       }

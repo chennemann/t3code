@@ -9,6 +9,7 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   collectComposerContextReferences,
   formatComposerContextHref,
+  formatComposerContextReference,
   isImageReferencesOnly,
   parseComposerContextHref,
   projectComposerContextForProvider,
@@ -19,6 +20,46 @@ import {
 } from "./composerContextReferences.ts";
 
 const ctx = (value: string) => value as ComposerContextId;
+
+describe("image annotation context without a prose chip", () => {
+  const record = {
+    version: 1 as const,
+    contextId: ctx("image_pic"),
+    kind: "image" as const,
+    label: "screenshot.png",
+    name: "screenshot.png",
+    attachmentId: "att_original",
+    mimeType: "image/png",
+    sizeBytes: 123,
+    annotations: [
+      {
+        id: "circle-1",
+        x: 0.1,
+        y: 0.2,
+        width: 0.3,
+        height: 0.4,
+        comment: "Make this checkbox larger.",
+      },
+    ],
+  };
+  it("includes annotations in the provider envelope even when text has no image reference", () => {
+    const projected = projectComposerContextForProvider({
+      text: "Please change this.",
+      records: [record],
+    });
+    expect(projected).toContain("Please change this.");
+    expect(projected).toContain("attachmentId: att_original");
+    expect(projected).toContain("1. x=0.1, y=0.2, width=0.3, height=0.4");
+    expect(projected).toContain("Make this checkbox larger.");
+  });
+  it("does not duplicate annotations when the image also has a reference in the message", () => {
+    const projected = projectComposerContextForProvider({
+      text: formatComposerContextReference(record),
+      records: [record],
+    });
+    expect(projected.match(/Make this checkbox larger\./g)).toHaveLength(1);
+  });
+});
 
 describe("href codec", () => {
   it("round-trips kind and id", () => {
