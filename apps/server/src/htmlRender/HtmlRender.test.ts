@@ -55,6 +55,24 @@ const layerTest = layerHtmlRender();
 const PNG_BYTES = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 
 describe("HtmlRender", () => {
+  it.effect(
+    "prepares a gallery of full-resolution screenshots beyond the former image and page limits",
+    () =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const renderer = yield* HtmlRender.HtmlRender;
+        const directory = yield* fs.makeTempDirectoryScoped({ prefix: "t3-large-gallery-" });
+        const bytes = new Uint8Array(11 * 1024 * 1024);
+        bytes.set(PNG_BYTES);
+        const paths = [path.join(directory, "one.png"), path.join(directory, "two.png")];
+        for (const file of paths) yield* fs.writeFile(file, bytes);
+        const prepared = yield* renderer.prepare(paths.map((src) => `<img src="${src}">`).join(""));
+        expect(prepared.match(/<img src="data:image\/png;base64,/g)).toHaveLength(2);
+        expect(prepared).not.toContain(directory);
+      }).pipe(Effect.provide(layerTest)),
+  );
+
   it.effect("inlines local images by absolute path and leaves URLs and relative paths alone", () =>
     Effect.gen(function* () {
       const fileSystem = yield* FileSystem.FileSystem;
