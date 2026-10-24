@@ -5,7 +5,18 @@ import {
   backgroundActivitySharedPolicySettings,
   getChangedBrowserSettingLabels,
   hasChangedBackgroundActivitySettings,
+  normalizeTerminalShellPath,
 } from "./SettingsPanels.logic";
+
+describe("terminal shell setting", () => {
+  it.each([
+    [" /bin/fish ", "/bin/fish"],
+    ['"C:\\Program Files\\PowerShell\\7\\pwsh.exe"', "C:\\Program Files\\PowerShell\\7\\pwsh.exe"],
+    ["", ""],
+  ])("normalizes %s", (value, expected) => {
+    expect(normalizeTerminalShellPath(value)).toBe(expected);
+  });
+});
 
 describe("background activity settings restore", () => {
   it("detects legacy interval values even when the structured setting is at its default", () => {
