@@ -1029,6 +1029,16 @@ export type DesktopMediaRead = typeof DesktopMediaReadSchema.Type;
 export const SystemSettingsPaneSchema = Schema.Literals(["full-disk-access"]);
 export type SystemSettingsPane = typeof SystemSettingsPaneSchema.Type;
 
+export const DesktopClientCertificatePreferenceSchema = Schema.Struct({
+  origin: Schema.String,
+  fingerprint: Schema.String,
+  subjectName: Schema.String,
+  issuerName: Schema.String,
+  validExpiry: Schema.Number,
+});
+export type DesktopClientCertificatePreference =
+  typeof DesktopClientCertificatePreferenceSchema.Type;
+
 export interface DesktopBridge {
   getAppBranding: () => DesktopAppBranding | null;
   getRelayTelemetryEnabled: () => boolean;
@@ -1060,6 +1070,9 @@ export interface DesktopBridge {
   getLocalEnvironmentBearerToken: () => Promise<string>;
   getClientSettings: () => Promise<ClientSettings | null>;
   setClientSettings: (settings: ClientSettings) => Promise<void>;
+  getClientCertificates?: () => Promise<readonly DesktopClientCertificatePreference[]>;
+  prepareClientCertificate?: (url: string) => Promise<DesktopClientCertificatePreference | null>;
+  forgetClientCertificate?: (origin: string) => Promise<void>;
   getConnectionCatalog: () => Promise<string | null>;
   setConnectionCatalog: (catalog: string) => Promise<boolean>;
   discoverSshHosts: () => Promise<readonly DesktopDiscoveredSshHost[]>;
