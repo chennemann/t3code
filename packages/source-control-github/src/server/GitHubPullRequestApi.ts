@@ -1,3 +1,4 @@
+import { ActiveSourceControlProfile } from "@t3tools/source-control-core/server/PullRequestProvider";
 import { isCommitSha, normalizeHost } from "@t3tools/source-control-core/server/pullRequestUtils";
 import { removeAgentCredits } from "@t3tools/source-control-core/server/mergeMessage";
 import { KnownWorkflowRuns, makeChecksRevalidator } from "./gitHubConditionalChecks.ts";
@@ -945,7 +946,7 @@ export const make = Effect.gen(function* () {
       const host = input.host.toLowerCase();
       // A pinned credential is never handed on to another, so pick one that reaches the repository.
       const { token, fingerprint: key } =
-        input.repository === undefined
+        input.repository === undefined || (yield* ActiveSourceControlProfile) !== null
           ? yield* api.credential(host)
           : yield* appAccess.credentialFor(host, input.repository);
       const credential = { host, token, credentialFingerprint: key };

@@ -1,3 +1,4 @@
+import { ActiveSourceControlProfile } from "@t3tools/source-control-core/server/PullRequestProvider";
 import { SourceControlProviderKind } from "@t3tools/contracts";
 import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -4777,4 +4778,177 @@ it.effect.each(["expiry", "commit expiry", "cache hit", "commit cache hit", "ref
       assert.strictEqual(error.reason, "not-found");
       assert.strictEqual(diffReads, 2);
     }),
+);
+
+it.effect("combines profile PRs, deduplicates shared PRs, and isolates their viewers", () =>
+  Effect.gen(function* () {
+    const viewers: string[] = [];
+    const service = yield* makeService({
+      projects: [project({ id: "p1", title: "web", workspaceRoot: "/w", repository: "acme/web" })],
+      providers: [
+        fakePullRequestProvider(SourceControlProviderKind.make("github"), {
+          listProfiles: () =>
+            Effect.succeed([
+              { id: "personal", user: "person", host: "github.com" },
+              { id: "work", user: "worker", host: "github.com" },
+            ]),
+          getViewer: () =>
+            ActiveSourceControlProfile.pipe(Effect.map((profile) => profile ?? "default")),
+          listChangeRequests: (input) =>
+            ActiveSourceControlProfile.pipe(
+              Effect.map((profile) => {
+                viewers.push(`${profile}:${input.viewer}`);
+                return {
+                  items: [
+                    changeRequest(1, "2026-07-02T00:00:00Z"),
+                    changeRequest(profile === "work" ? 3 : 2, "2026-07-02T00:00:00Z"),
+                  ],
+                  truncated: false,
+                  continues: false,
+                };
+              }),
+            ),
+        }),
+      ],
+    });
+    const result = yield* service.list({ state: "open" });
+    expect(result.entries.map((entry) => entry.number).sort()).toEqual([1, 2, 3]);
+    expect(result.entries.find((entry) => entry.number === 3)?.profileId).toBe("work");
+    expect(viewers).toContain("personal:personal");
+    expect(viewers).toContain("work:work");
+  }),
+);
+
+it.effect("rejects an unknown explicit profile before running an operation", () =>
+  Effect.gen(function* () {
+    let ran = false;
+    const service = yield* makeService({
+      projects: [project({ id: "p1", title: "web", workspaceRoot: "/w", repository: "acme/web" })],
+      providers: [fakePullRequestProvider(SourceControlProviderKind.make("github"))],
+    });
+    const error = yield* service
+      .withRoutingCredential(
+        { projectId: "p1" as ProjectId, repository: "acme/web", number: 1, profileId: "missing" },
+        Effect.sync(() => {
+          ran = true;
+        }),
+      )
+      .pipe(Effect.flip);
+    expect(error._tag).toBe("PullRequestOperationError");
+    expect(ran).toBe(false);
+  }),
+);
+
+it.effect("keeps a working profile readable when another profile is signed out", () =>
+  Effect.gen(function* () {
+    const service = yield* makeService({
+      projects: [project({ id: "p1", title: "web", workspaceRoot: "/w", repository: "acme/web" })],
+      providers: [
+        fakePullRequestProvider(SourceControlProviderKind.make("github"), {
+          listProfiles: () =>
+            Effect.succeed([
+              { id: "broken", user: "broken", host: "github.com" },
+              { id: "work", user: "worker", host: "github.com" },
+            ]),
+          getViewer: () =>
+            ActiveSourceControlProfile.pipe(
+              Effect.flatMap((profile) =>
+                profile === "broken"
+                  ? Effect.fail(
+                      unusable(SourceControlProviderKind.make("github"), "unauthenticated"),
+                    )
+                  : Effect.succeed("worker"),
+              ),
+            ),
+          listChangeRequests: () =>
+            Effect.succeed({
+              items: [changeRequest(7, "2026-07-02T00:00:00Z")],
+              truncated: false,
+              continues: false,
+            }),
+        }),
+      ],
+    });
+    const result = yield* service.list({ state: "open" });
+    expect(result.entries.map((entry) => [entry.number, entry.profileId])).toEqual([[7, "work"]]);
+    expect(result.errors.some((error) => error.message.includes("broken"))).toBe(true);
+  }),
+);
+
+it.effect("pins explicit profile operations and refuses an account mismatch", () =>
+  Effect.gen(function* () {
+    const service = yield* makeService({
+      projects: [project({ id: "p1", title: "web", workspaceRoot: "/w", repository: "acme/web" })],
+      providers: [
+        fakePullRequestProvider(SourceControlProviderKind.make("github"), {
+          listProfiles: () => Effect.succeed([{ id: "work", user: "worker", host: "github.com" }]),
+          withVerifiedCredential: (_input, use) =>
+            use({ accountId: "123", viewer: "worker", credentialFingerprint: "work-token" }),
+        }),
+      ],
+    });
+    const ref = {
+      projectId: "p1" as ProjectId,
+      repository: "acme/web",
+      number: 1,
+      profileId: "work",
+    };
+    const profile = yield* service.withRoutingCredential(ref, ActiveSourceControlProfile);
+    expect(profile).toBe("work");
+    let ran = false;
+    yield* service
+      .withRoutingCredential(
+        { ...ref, expectedAccountId: "other" },
+        Effect.sync(() => {
+          ran = true;
+        }),
+      )
+      .pipe(Effect.flip);
+    expect(ran).toBe(false);
+  }),
+);
+
+it.effect("continues each profile from its own PR cursor", () =>
+  Effect.gen(function* () {
+    const service = yield* makeService({
+      projects: [project({ id: "p1", title: "web", workspaceRoot: "/w", repository: "acme/web" })],
+      providers: [
+        fakePullRequestProvider(SourceControlProviderKind.make("github"), {
+          listProfiles: () =>
+            Effect.succeed([
+              { id: "personal", user: "person", host: "github.com" },
+              { id: "work", user: "worker", host: "github.com" },
+            ]),
+          getViewer: () =>
+            ActiveSourceControlProfile.pipe(Effect.map((profile) => profile ?? "default")),
+          listChangeRequests: ({ cursor, limit }) =>
+            ActiveSourceControlProfile.pipe(
+              Effect.map((profile) => {
+                const offset = profile === "work" ? 10 : 0;
+                const rows = [
+                  changeRequest(offset + 1, "2026-07-03T00:00:00Z"),
+                  changeRequest(offset + 2, "2026-07-02T00:00:00Z"),
+                ].filter(
+                  (row) =>
+                    cursor === undefined ||
+                    row.updatedAt < cursor.updatedBefore ||
+                    (row.updatedAt === cursor.updatedBefore &&
+                      !(cursor.seenAt ?? []).includes(row.number)),
+                );
+                return {
+                  items: rows.slice(0, limit),
+                  truncated: rows.length > limit,
+                  continues: true,
+                };
+              }),
+            ),
+        }),
+      ],
+    });
+    const first = yield* service.list({ state: "open", limit: 1 });
+    expect(first.entries.map((entry) => entry.number).sort((a, b) => a - b)).toEqual([1, 11]);
+    expect(Object.keys(first.nextCursors)).toHaveLength(2);
+    const next = yield* service.list({ state: "open", limit: 1, cursors: first.nextCursors });
+    expect(next.entries.map((entry) => entry.number).sort((a, b) => a - b)).toEqual([2, 12]);
+  }),
 );

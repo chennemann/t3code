@@ -268,6 +268,7 @@ export function createPullRequestRouter() {
       return yield* request(tag, input);
     }
     const ref = input;
+    if (ref.profileId !== undefined) return yield* source;
     const origin = yield* EnvironmentSupervisor.EnvironmentSupervisor;
     const registry = yield* EnvironmentRegistry.EnvironmentRegistry;
     const entries = yield* SubscriptionRef.get(registry.entries);

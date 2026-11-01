@@ -1,3 +1,4 @@
+import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import type {
@@ -281,6 +282,10 @@ export interface ProviderRepositoryRef {
 }
 
 export interface PullRequestProviderApi {
+  readonly listProfiles?: () => Effect.Effect<
+    ReadonlyArray<{ readonly id: string; readonly user: string; readonly host: string }>,
+    PullRequestProviderError
+  >;
   readonly withVerifiedCredential?: <A, E, R>(
     /** `repository` lets a host pick the credential that can reach it. */
     input: { readonly cwd: string; readonly host: string; readonly repository?: string },
@@ -609,3 +614,9 @@ export interface PullRequestProviderApi {
     },
   ) => Effect.Effect<void, PullRequestProviderError>;
 }
+
+/** Explicit profile is invocation-local; providers retain automatic routing when absent. */
+export const ActiveSourceControlProfile = Context.Reference<string | null>(
+  "t3/ActiveSourceControlProfile",
+  { defaultValue: () => null },
+);

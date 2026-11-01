@@ -69,12 +69,13 @@ function normalizePullRequestQuery<A>(
 ) {
   return ({
     environmentId,
-    input: { projectId, host, repository, number, allowStale, expectedAccountId },
+    input: { projectId, host, repository, number, allowStale, expectedAccountId, profileId },
   }: Parameters<typeof query>[0]) =>
     query({
       environmentId,
       input: {
         projectId,
+        ...(profileId === undefined ? {} : { profileId }),
         ...(host === undefined ? {} : { host }),
         repository,
         number,

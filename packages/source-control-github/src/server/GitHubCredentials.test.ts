@@ -1,3 +1,4 @@
+import { ActiveSourceControlProfile } from "@t3tools/source-control-core/server/PullRequestProvider";
 import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import { afterEach, beforeEach, describe, expect, it, vi } from "@effect/vitest";
 import * as Effect from "effect/Effect";
@@ -47,7 +48,12 @@ function harness(
       }
       return {
         exitCode: ChildProcessSpawner.ExitCode(0),
-        stdout: input.args.includes("--user") ? `token-for-${user}\n` : "active-token\n",
+        stdout:
+          input.args[1] === "profiles"
+            ? `profile-${input.args[3]}\n`
+            : input.args.includes("--user")
+              ? `token-for-${user}\n`
+              : "active-token\n",
         stderr: "",
         stdoutTruncated: false,
         stderrTruncated: false,
@@ -191,3 +197,26 @@ describe("GitHubCredentials", () => {
     }).pipe(Effect.provide(layer));
   });
 });
+
+it.effect(
+  "retrieves explicit profiles through ghx and keeps their credential caches separate",
+  () => {
+    const { layer, calls } = harness();
+    return Effect.gen(function* () {
+      const credentials = yield* GitHubCredentials.GitHubCredentials;
+      yield* credentials
+        .get("github.com")
+        .pipe(Effect.provideService(ActiveSourceControlProfile, "work"));
+      yield* credentials
+        .get("github.com")
+        .pipe(Effect.provideService(ActiveSourceControlProfile, "personal"));
+      yield* credentials
+        .get("github.com")
+        .pipe(Effect.provideService(ActiveSourceControlProfile, "work"));
+      expect(calls).toEqual([
+        ["ghx", "profiles", "token", "work"],
+        ["ghx", "profiles", "token", "personal"],
+      ]);
+    }).pipe(Effect.provide(layer));
+  },
+);

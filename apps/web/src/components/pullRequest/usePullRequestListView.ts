@@ -47,6 +47,7 @@ export interface PullRequestsSearch extends PullRequestListPreferences {
   readonly number?: number;
   readonly selectedProjectId?: ProjectId;
   readonly selectedHost?: string;
+  readonly selectedProfileId?: string;
   readonly selectedEnvironmentId?: EnvironmentId;
 }
 
@@ -147,6 +148,9 @@ export function usePullRequestScope(search: PullRequestsSearch) {
           number: search.number,
           projectId: selectedProject.id,
           ...(selectedHost ? { host: selectedHost } : {}),
+          ...(search.selectedProfileId === undefined
+            ? {}
+            : { profileId: search.selectedProfileId }),
         }
       : null;
   const expectedHosts = (() => {

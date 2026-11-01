@@ -24,6 +24,7 @@ import {
   type PullRequestReaction,
   type PullRequestMergeMethod,
   type PullRequestRef,
+  type ProjectId,
   type RepositoryIdentity,
   type PullRequestReviewThread,
   type PullRequestState,
@@ -1495,4 +1496,21 @@ export function resolveDisplayedPullRequestDetail(input: {
   return link !== undefined && (link.authority ?? link.host) === input.reference.host.toLowerCase()
     ? input.cached
     : null;
+}
+
+// Query atoms key on JSON order, so the panel and the row prefetch must build the ref here.
+export function pullRequestPanelReference(target: {
+  readonly projectId: ProjectId;
+  readonly repository: string;
+  readonly number: number;
+  readonly host?: string | undefined;
+  readonly profileId?: string | undefined;
+}): PullRequestRef {
+  return {
+    projectId: target.projectId,
+    repository: target.repository,
+    number: target.number,
+    ...(target.host ? { host: target.host } : {}),
+    ...(target.profileId === undefined ? {} : { profileId: target.profileId }),
+  };
 }

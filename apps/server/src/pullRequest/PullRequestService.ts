@@ -1,3 +1,4 @@
+import { ActiveSourceControlProfile } from "@t3tools/source-control-core/server/PullRequestProvider";
 import { isSshRemoteUrl } from "@t3tools/shared/sourceControl";
 import { parseDiffFilePaths } from "@t3tools/source-control-core/server/diffFileRevisions";
 import * as Cache from "effect/Cache";
@@ -525,6 +526,7 @@ function withRateLimitBackoff(
     ...(api.readsPublicHostWithoutCheckout === undefined
       ? {}
       : { readsPublicHostWithoutCheckout: api.readsPublicHostWithoutCheckout }),
+    ...(api.listProfiles === undefined ? {} : { listProfiles: api.listProfiles }),
     getViewer:
       options?.viewerAllowsPause === true
         ? interactive("getViewer", api.getViewer)
@@ -1130,10 +1132,11 @@ export const make = Effect.gen(function* () {
   const viewersByHost = new Map<string, { readonly at: number; readonly result: ResolvedViewer }>();
   const viewerFlights = yield* Cache.makeWith(
     (key: string): Effect.Effect<ResolvedViewer> => {
-      const [host, kind, roots] = JSON.parse(key) as [
+      const [host, kind, roots, profile] = JSON.parse(key) as [
         string,
         SourceControlProviderKind,
         ReadonlyArray<string>,
+        string | null,
       ];
       const registered = registry.get(kind);
       if (registered === null) {
@@ -1141,6 +1144,7 @@ export const make = Effect.gen(function* () {
       }
       const api = withRateLimitBackoff(registered, host, rateLimits, { viewerAllowsPause: true });
       return Effect.firstSuccessOf(roots.map((cwd) => api.getViewer({ cwd, host }))).pipe(
+        Effect.provideService(ActiveSourceControlProfile, profile),
         Effect.map((viewer) => ({
           host,
           kind,
@@ -1148,7 +1152,9 @@ export const make = Effect.gen(function* () {
           error: null as PullRequestProviderError | null,
         })),
         Effect.tap((result) =>
-          Effect.map(Clock.currentTimeMillis, (at) => viewersByHost.set(host, { at, result })),
+          Effect.map(Clock.currentTimeMillis, (at) =>
+            viewersByHost.set(JSON.stringify([host, profile]), { at, result }),
+          ),
         ),
         Effect.catch((error) =>
           Effect.succeed({
@@ -1171,13 +1177,13 @@ export const make = Effect.gen(function* () {
   const resolveViewers = (
     projects: ReadonlyArray<SupportedProject>,
     viewerRoots: WorkspaceProjects["viewerRoots"],
-    options?: { readonly allowPaused: boolean },
+    options?: { readonly allowPaused: boolean; readonly profile?: string },
   ) =>
     Effect.forEach(
       [...new Set(projects.map(({ host }) => host))],
       (host) =>
         Effect.flatMap(Clock.currentTimeMillis, (now): Effect.Effect<ResolvedViewer> => {
-          const held = viewersByHost.get(host);
+          const held = viewersByHost.get(JSON.stringify([host, options?.profile ?? null]));
           if (held !== undefined && now - held.at <= Duration.toMillis(VIEWER_CACHE_TTL)) {
             return Effect.succeed(held.result);
           }
@@ -1186,7 +1192,12 @@ export const make = Effect.gen(function* () {
           // Include deduplicated checkouts too; one unreadable worktree must not mark the whole host signed out.
           const roots =
             viewerRoots.get(host) ?? forHost.map(({ project }) => project.workspaceRoot);
-          const key = JSON.stringify([host, api.kind, [...new Set(roots)].sort()]);
+          const key = JSON.stringify([
+            host,
+            api.kind,
+            [...new Set(roots)].sort(),
+            options?.profile ?? null,
+          ]);
           if (options?.allowPaused === true) return Cache.get(viewerFlights, key);
           // Check pauses outside the shared lookup so background reads cannot spawn repeated failing CLIs and extend the pause.
           return rateLimits.check({ provider: api.kind, host }).pipe(
@@ -1278,19 +1289,25 @@ export const make = Effect.gen(function* () {
     };
   };
 
-  const listUncached: PullRequestService["Service"]["list"] = Effect.fn(
-    "PullRequestService.listUncached",
-  )(function* (input) {
+  const listForProfile = Effect.fn("PullRequestService.listUncached")(function* (
+    input: PullRequestListInput,
+    profile?: string,
+    excludedHosts?: ReadonlySet<string>,
+  ) {
     const involvement = input.involvement ?? "all";
     const epochAtStart = epochCounter;
     const continuation = yield* decodeCursors(input.cursors);
-    const { supported: projects, unimplemented, viewerRoots } = yield* listWorkspaceProjects(input);
+    const { supported, unimplemented, viewerRoots } = yield* listWorkspaceProjects(input);
+    const projects = supported.filter((project) => !excludedHosts?.has(project.host.toLowerCase()));
     const projectCounts = new Map<string, number>();
     for (const { host } of projects) {
       projectCounts.set(host, (projectCounts.get(host) ?? 0) + 1);
     }
 
-    const viewerResults = yield* resolveViewers(projects, viewerRoots);
+    const viewerResults = yield* resolveViewers(projects, viewerRoots, {
+      allowPaused: false,
+      ...(profile === undefined ? {} : { profile }),
+    });
     const viewers: Record<string, string> = {};
     for (const result of viewerResults) {
       if (result.viewer !== null) viewers[result.host] = result.viewer;
@@ -1595,6 +1612,120 @@ export const make = Effect.gen(function* () {
     };
   });
 
+  const listUncached: PullRequestService["Service"]["list"] = Effect.fn(
+    "PullRequestService.listProfiles",
+  )(function* (input) {
+    const profiles = yield* Effect.forEach(registry.kinds, (kind) =>
+      (registry.get(kind)?.listProfiles?.() ?? Effect.succeed([])).pipe(
+        Effect.mapError(toPullRequestError("profiles")),
+      ),
+    );
+    const configured = profiles
+      .flat()
+      .filter(
+        (profile) =>
+          input.host === undefined || input.host.toLowerCase() === profile.host.toLowerCase(),
+      );
+    if (configured.length === 0) return yield* listForProfile(input);
+    const empty: PullRequestListResult = {
+      viewers: {},
+      providers: [],
+      entries: [],
+      errors: [],
+      truncated: false,
+      nextCursors: {},
+    };
+    const results = yield* Effect.forEach(
+      configured,
+      (profile) => {
+        const prefix = JSON.stringify([profile.host, profile.id]) + ":";
+        const cursors =
+          input.cursors === undefined
+            ? undefined
+            : Object.fromEntries(
+                Object.entries(input.cursors)
+                  .filter(([key]) => key.startsWith(prefix))
+                  .map(([key, value]) => [key.slice(prefix.length), value]),
+              );
+        if (cursors !== undefined && Object.keys(cursors).length === 0)
+          return Effect.succeed(empty);
+        return listForProfile(
+          { ...input, host: profile.host, ...(cursors === undefined ? {} : { cursors }) },
+          profile.id,
+        ).pipe(
+          Effect.provideService(ActiveSourceControlProfile, profile.id),
+          Effect.catch(() =>
+            listWorkspaceProjects({ host: profile.host }).pipe(
+              Effect.map(({ supported }) => ({
+                ...empty,
+                errors: supported.map(({ project }) => ({
+                  projectId: project.id,
+                  projectTitle: project.title,
+                  message: `Profile ${profile.id} could not read pull requests.`,
+                })),
+              })),
+            ),
+          ),
+          Effect.map((result): PullRequestListResult => ({
+            ...result,
+            entries: result.entries.map((entry) => ({
+              ...entry,
+              profileId: profile.id,
+              ...(result.viewers[entry.host] === undefined
+                ? {}
+                : { profileViewer: result.viewers[entry.host] }),
+            })),
+            nextCursors: Object.fromEntries(
+              Object.entries(result.nextCursors).map(([key, value]) => [prefix + key, value]),
+            ),
+          })),
+        );
+      },
+      { concurrency: 2 },
+    );
+    const profileHosts = new Set(configured.map((profile) => profile.host.toLowerCase()));
+    const ordinary = yield* listForProfile(input, undefined, profileHosts);
+    results.push({
+      ...ordinary,
+      entries: ordinary.entries.filter((entry) => !profileHosts.has(entry.host.toLowerCase())),
+      providers: ordinary.providers.filter(
+        (provider) => !profileHosts.has(provider.host.toLowerCase()),
+      ),
+    });
+    const entries = new Map<string, PullRequestListEntry>();
+    for (const result of results)
+      for (const entry of result.entries) {
+        const key = `${entry.host}/${entry.repository.toLowerCase()}/${entry.number}`;
+        const previous = entries.get(key);
+        entries.set(
+          key,
+          previous === undefined
+            ? entry
+            : {
+                ...(entry.viewerReviewRequested && !previous.viewerReviewRequested
+                  ? entry
+                  : previous),
+                viewerReviewRequested:
+                  previous.viewerReviewRequested || entry.viewerReviewRequested,
+              },
+        );
+      }
+    return {
+      viewers: Object.assign({}, ...results.map((r) => r.viewers)),
+      providers: [
+        ...new Map(
+          results
+            .flatMap((r) => r.providers)
+            .map((provider) => [`${provider.kind}/${provider.host}`, provider]),
+        ).values(),
+      ],
+      entries: [...entries.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+      errors: results.flatMap((r) => r.errors),
+      truncated: results.some((r) => r.truncated),
+      nextCursors: Object.assign({}, ...results.map((r) => r.nextCursors)),
+    };
+  });
+
   const viewerOf = (project: SupportedProject): Effect.Effect<string | null> =>
     routingCredential.pipe(
       Effect.flatMap((credential) =>
@@ -1630,6 +1761,50 @@ export const make = Effect.gen(function* () {
   const withRoutingCredential: PullRequestService["Service"]["withRoutingCredential"] = Effect.fn(
     "PullRequestService.withRoutingCredential",
   )(function* (input, operation) {
+    if (input.profileId !== undefined) {
+      const project = yield* requireProject(input);
+      const profiles = yield* (project.api.listProfiles?.() ?? Effect.succeed([])).pipe(
+        Effect.mapError(toPullRequestError("profiles")),
+      );
+      if (
+        !profiles.some(
+          (profile) =>
+            profile.id === input.profileId &&
+            profile.host.toLowerCase() === project.host.toLowerCase(),
+        )
+      )
+        return yield* new PullRequestOperationError({
+          operation: "profile",
+          detail: "The selected source control profile is unavailable.",
+        });
+      const api = project.api;
+      if (api.withVerifiedCredential === undefined)
+        return yield* new PullRequestUnavailableError({ reason: "provider-unsupported" });
+      return yield* api
+        .withVerifiedCredential(
+          {
+            cwd: project.project.workspaceRoot,
+            host: project.host,
+            repository: project.repository,
+          },
+          (identity) =>
+            input.expectedAccountId !== undefined && identity.accountId !== input.expectedAccountId
+              ? Effect.fail(
+                  new PullRequestOperationError({
+                    operation: "profile",
+                    detail: "The profile account changed before this operation.",
+                  }),
+                )
+              : operation.pipe(Effect.provideService(routingCredential, identity), Effect.result),
+        )
+        .pipe(
+          Effect.provideService(ActiveSourceControlProfile, input.profileId),
+          Effect.catchTags({
+            PullRequestProviderError: (error) => Effect.fail(toPullRequestError("profile")(error)),
+          }),
+          Effect.flatMap(Effect.fromResult),
+        );
+    }
     if (input.expectedAccountId === undefined) return yield* operation;
     const rejected = () =>
       new PullRequestOperationError({
@@ -3794,7 +3969,25 @@ export const make = Effect.gen(function* () {
       const refs = yield* Effect.forEach(input.refs, (ref) =>
         canonicalRef(ref).pipe(Effect.option),
       );
-      return yield* listStats({ ...input, refs: refs.flatMap(Option.toArray) });
+      const canonical = refs.flatMap(Option.toArray);
+      if (!canonical.some((ref) => ref.profileId !== undefined))
+        return yield* listStats({ ...input, refs: canonical });
+      const groups = new Map<string, PullRequestRef[]>();
+      for (const ref of canonical) {
+        const key = `${ref.host ?? ""}\u0000${ref.profileId ?? ""}`;
+        const group = groups.get(key) ?? [];
+        group.push(ref);
+        groups.set(key, group);
+      }
+      const results = yield* Effect.forEach(
+        groups.values(),
+        (group) =>
+          group[0]!.profileId === undefined
+            ? listStats({ refs: group })
+            : withRoutingCredential(group[0]!, listStatsUncached({ refs: group })),
+        { concurrency: 2 },
+      );
+      return { stats: results.flatMap((result) => result.stats) };
     }),
     summary: credentialCached(summary),
     stack: credentialCached(stack),

@@ -329,6 +329,8 @@ export const PullRequestStackMembership = Schema.Struct({
 export type PullRequestStackMembership = typeof PullRequestStackMembership.Type;
 
 export const PullRequestListEntry = Schema.Struct({
+  profileViewer: Schema.optional(TrimmedNonEmptyString),
+  profileId: Schema.optional(TrimmedNonEmptyString),
   stack: Schema.optional(PullRequestStackMembership),
   provider: SourceControlProviderKind,
   host: TrimmedNonEmptyString,
@@ -407,6 +409,7 @@ export const PullRequestListResult = Schema.Struct({
 export type PullRequestListResult = typeof PullRequestListResult.Type;
 
 export const PullRequestRef = Schema.Struct({
+  profileId: Schema.optional(TrimmedNonEmptyString),
   projectId: ProjectId,
   host: Schema.optional(TrimmedNonEmptyString),
   expectedAccountId: Schema.optional(TrimmedNonEmptyString),
