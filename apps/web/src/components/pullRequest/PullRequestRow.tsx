@@ -69,7 +69,7 @@ const PAGE_ROW_CLASS = "px-3 py-2.5";
 
 export type PullRequestRowTarget = Pick<
   EnvironmentPullRequestEntry,
-  "environmentId" | "projectId" | "host" | "repository" | "number"
+  "environmentId" | "projectId" | "host" | "repository" | "number" | "profileId"
 >;
 
 function PullRequestRowImpl({
@@ -189,6 +189,7 @@ function PullRequestRowImpl({
                   environmentId={entry.environmentId}
                   reference={{
                     projectId: entry.projectId,
+                    ...(entry.profileId === undefined ? {} : { profileId: entry.profileId }),
                     host: entry.host,
                     repository: entry.repository,
                     number: entry.number,
@@ -203,6 +204,7 @@ function PullRequestRowImpl({
                 environmentId={entry.environmentId}
                 reference={{
                   projectId: entry.projectId,
+                  ...(entry.profileId === undefined ? {} : { profileId: entry.profileId }),
                   host: entry.host,
                   repository: entry.repository,
                   number: entry.number,
@@ -216,6 +218,7 @@ function PullRequestRowImpl({
           metaClassName="@container/pr-row-meta"
           meta={
             <>
+              {entry.profileId === undefined ? null : <span>{entry.profileId}</span>}
               {matchedElsewhere ? (
                 <Tooltip>
                   <TooltipTrigger

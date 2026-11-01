@@ -32,6 +32,7 @@ import {
   type PullRequestReaction,
   type PullRequestMergeMethod,
   type PullRequestRef,
+  type ProjectId,
   type RepositoryIdentity,
   type PullRequestConversationThread,
   type PullRequestReviewThread,
@@ -1783,4 +1784,45 @@ export function samePullRequestReadExceptStamps(left: unknown, right: unknown): 
         samePullRequestReadExceptStamps(leftRecord[key], rightRecord[key]),
     )
   );
+}
+
+// Query atoms key on JSON order, so the panel and the row prefetch must build the ref here.
+export function pullRequestPanelReference(target: {
+  readonly projectId: ProjectId;
+  readonly repository: string;
+  readonly number: number;
+  readonly host?: string | undefined;
+  readonly profileId?: string | undefined;
+}): PullRequestRef {
+  return {
+    projectId: target.projectId,
+    repository: target.repository,
+    number: target.number,
+    ...(target.host ? { host: target.host } : {}),
+    ...(target.profileId === undefined ? {} : { profileId: target.profileId }),
+  };
+}
+
+const internedReferences = new Map<string, PullRequestRef>();
+
+/**
+ * One object per pull request reference. Parents rebuild the reference on unrelated updates, and
+ * every comment's reaction bar, form and resolve button closes over it.
+ */
+export function internPullRequestReference(reference: PullRequestRef): PullRequestRef {
+  const key = JSON.stringify([
+    reference.projectId,
+    reference.host ?? null,
+    reference.repository,
+    reference.number,
+    reference.expectedAccountId ?? null,
+    reference.profileId ?? null,
+    reference.allowStale ?? null,
+  ]);
+  const interned = internedReferences.get(key);
+  if (interned !== undefined) return interned;
+  // Losing old entries only costs those pull requests one extra render.
+  if (internedReferences.size >= 500) internedReferences.clear();
+  internedReferences.set(key, reference);
+  return reference;
 }

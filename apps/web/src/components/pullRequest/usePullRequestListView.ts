@@ -53,6 +53,7 @@ export interface PullRequestsSearch extends PullRequestListPreferences {
   readonly selectedProjectId?: ProjectId | undefined;
   readonly selectedHost?: string | undefined;
   readonly selectedEnvironmentId?: EnvironmentId | undefined;
+  readonly selectedProfileId?: string | undefined;
 }
 
 const SEARCH_DEBOUNCE_MS = 250;
@@ -168,6 +169,9 @@ export function usePullRequestScope(
           projectId: selectedProject.id,
           ...(selectedUrl ? { url: selectedUrl, revealUrl: selectedUrl } : {}),
           ...(selectedHost ? { host: selectedHost } : {}),
+          ...(search.selectedProfileId === undefined
+            ? {}
+            : { profileId: search.selectedProfileId }),
         }
       : null;
   const expectedHosts = (() => {

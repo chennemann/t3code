@@ -878,6 +878,7 @@ function PullRequestSurfaceIcon({
               ? { host: surface.host }
               : {}),
             repository: surface.repository,
+            ...(surface.profileId === undefined ? {} : { profileId: surface.profileId }),
             number: surface.number,
             allowStale: false,
           },
@@ -886,6 +887,7 @@ function PullRequestSurfaceIcon({
   const reference = {
     projectId: surface.projectId as ProjectId,
     repository: surface.repository,
+    ...(surface.profileId === undefined ? {} : { profileId: surface.profileId }),
     number: surface.number,
   };
   const sharedSummary = useSharedPullRequestSummary(resolvedEnvironmentId, reference);
