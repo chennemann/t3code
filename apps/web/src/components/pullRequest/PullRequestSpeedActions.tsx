@@ -23,7 +23,14 @@ import { SharedTooltipTrigger } from "../ui/shared-tooltip";
 
 type PullRequestSpeedActionEntry = Pick<
   EnvironmentPullRequestEntry,
-  "environmentId" | "projectId" | "host" | "repository" | "number" | "state" | "isDraft"
+  | "environmentId"
+  | "projectId"
+  | "host"
+  | "repository"
+  | "number"
+  | "state"
+  | "isDraft"
+  | "profileId"
 > & { readonly stack?: object | undefined };
 
 export interface PullRequestSpeedActionResult<Entry = EnvironmentPullRequestEntry> {
@@ -60,6 +67,7 @@ export function PullRequestSpeedActions<Entry extends PullRequestSpeedActionEntr
   );
   const reference = {
     projectId: entry.projectId,
+    ...(entry.profileId === undefined ? {} : { profileId: entry.profileId }),
     host: entry.host,
     repository: entry.repository,
     number: entry.number,

@@ -1602,6 +1602,9 @@ export function PullRequestDetailPanel({
           onBack={onBack}
         />
         <div className="mr-4 flex h-7 shrink-0 select-none items-center justify-end gap-1">
+          {reference.profileId === undefined ? null : (
+            <span className="text-xs text-muted-foreground">{reference.profileId}</span>
+          )}
           {detail ? (
             <>
               {detail.visibility === "private" ? <PullRequestPrivateBadge /> : null}

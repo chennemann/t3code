@@ -90,3 +90,7 @@ Open **Issues** from the sidebar utility row or **Open issues** in the command p
 - **GitHub verification fails**: Upgrade `gh` to 2.81.0+ or save a token in Settings.
 - **Push fails**: Check Git SSH/HTTPS credentials separately from API auth.
 - **Fork PR badge missing**: Set upstream with `git branch --set-upstream-to=<remote>/<branch>`.
+
+## ghx profiles
+
+With ghx 1.0.5 or newer, T3 Code discovers its configured profiles and combines their pull requests for your projects. Directory mappings stay in ghx. Each row shows its profile, and opening or acting on it keeps that profile. A profile that cannot sign in does not prevent other profiles from loading. Without ghx profiles, the usual account selection applies.

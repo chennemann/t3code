@@ -225,7 +225,9 @@ export function pullRequestEntryViewer(
   entry: ScopedEntry,
   viewers: PullRequestViewers,
 ): string | null {
-  return normalize(viewers[pullRequestViewerKey(entry)] ?? viewers[entry.host]);
+  return normalize(
+    entry.profileViewer ?? viewers[pullRequestViewerKey(entry)] ?? viewers[entry.host],
+  );
 }
 
 function isAuthoredByViewer(entry: ScopedEntry, viewers: PullRequestViewers): boolean {
@@ -325,6 +327,7 @@ export interface PullRequestStatsTarget {
   readonly input: {
     readonly refs: ReadonlyArray<{
       readonly projectId: ProjectId;
+      readonly profileId?: string | undefined;
       readonly repository: string;
       readonly number: number;
     }>;
@@ -384,6 +387,7 @@ export function pullRequestStatsBatches(
       key,
       ref: {
         projectId: entry.projectId,
+        ...(entry.profileId === undefined ? {} : { profileId: entry.profileId }),
         repository: entry.repository,
         number: entry.number,
       },
@@ -465,22 +469,26 @@ export function retainVisiblePullRequestStatsBatches(
   });
 }
 
+function pullRequestProfileKey(entry: PullRequestListEntry): string {
+  return JSON.stringify([entry.url, entry.profileId ?? null]);
+}
+
 /** Recency pagination can introduce older priority rows; grouping pages would reorder read rows. */
 export function partitionPullRequestsWithPriority<Entry extends PullRequestListEntry>(
   entries: ReadonlyArray<Entry>,
   authored: ReadonlyArray<Entry>,
   reviewRequested: ReadonlyArray<Entry>,
 ): ReadonlyArray<PullRequestGroup<Entry>> {
-  // Matched by URL: each list may hold the pull request under a different environment.
-  const authoredByKey = new Map(authored.map((entry) => [entry.url, entry]));
+  const authoredByKey = new Map(authored.map((entry) => [pullRequestProfileKey(entry), entry]));
   const reviewByKey = new Map(
-    reviewRequested.flatMap((entry) =>
-      authoredByKey.has(entry.url) ? [] : [[entry.url, entry] as const],
-    ),
+    reviewRequested.flatMap((entry) => {
+      const key = pullRequestProfileKey(entry);
+      return authoredByKey.has(key) ? [] : [[key, entry] as const];
+    }),
   );
   const others: Entry[] = [];
   for (const entry of entries) {
-    const key = entry.url;
+    const key = pullRequestProfileKey(entry);
     if (authoredByKey.has(key)) {
       authoredByKey.set(key, entry);
     } else if (reviewByKey.has(key)) {
@@ -581,13 +589,14 @@ export function mergePullRequestLists(
       );
     }
     for (const entry of answer.entries) {
-      const held = entries.get(entry.url);
+      const key = pullRequestProfileKey(entry);
+      const held = entries.get(key);
       // The first environment to answer keeps a pull request that several of them read.
       if (
         held === undefined ||
         (held.environmentId === environmentId && entry.updatedAt > held.updatedAt)
       ) {
-        entries.set(entry.url, { ...entry, environmentId });
+        entries.set(key, { ...entry, environmentId });
       }
     }
     errors.push(...answer.errors.map((error) => ({ ...error, environmentId })));
