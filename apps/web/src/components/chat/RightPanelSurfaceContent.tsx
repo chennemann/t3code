@@ -146,6 +146,7 @@ export function RightPanelSurfaceContent(props: {
             projectId: surface.projectId as ProjectId,
             ...(surface.host ? { host: surface.host } : {}),
             repository: surface.repository,
+            ...(surface.profileId === undefined ? {} : { profileId: surface.profileId }),
             number: surface.number,
           }}
           initialTab={surface.detailTab ?? "summary"}

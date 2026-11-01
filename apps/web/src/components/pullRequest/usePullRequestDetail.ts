@@ -23,7 +23,7 @@ import {
 } from "./pullRequestDetail.logic";
 
 export function pullRequestRefKey(reference: PullRequestRef) {
-  return `${reference.projectId}:${reference.host ?? ""}:${reference.repository}#${reference.number}`;
+  return `${reference.profileId ?? ""}:${reference.projectId}:${reference.host ?? ""}:${reference.repository}#${reference.number}`;
 }
 
 /**
