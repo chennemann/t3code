@@ -681,3 +681,11 @@ Checklist:
 - Build fails with signing error:
   - Retry with secrets removed to confirm unsigned path still works.
   - Re-check certificate/profile names and tenant/client credentials.
+
+## Standalone fork releases
+
+This repository develops and releases from `main`. It does not track an upstream remote or use
+the dcn review queue. Push a verified change to `main` to run `downstream-release.yml`, which
+builds and publishes the desktop installers. The existing `-fork.N` version sequence is retained
+for installed clients' update compatibility; the recorded v0.1.6 baseline is historical and does
+not require fetching or integrating upstream changes.
