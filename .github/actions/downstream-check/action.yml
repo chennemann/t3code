@@ -1,19 +1,20 @@
-name: Validate release
-description: Check the release state and changed behavior.
+name: Validate downstream compatibility
+description: Check the fork integration points and the behavior changed by the fork.
 runs:
   using: composite
   steps:
-    - name: Check release state
+    - name: Check integration points and release state
       shell: bash
       run: |
         set -euo pipefail
+        node scripts/check-downstream.ts
         node scripts/downstream-release-state.ts validate
 
     - name: Typecheck affected packages
       shell: bash
       run: |
         set -euo pipefail
-        for package in @t3tools/source-control-core @t3tools/source-control-github @t3tools/contracts @t3tools/shared @t3tools/provider-core @t3tools/provider-acp-registry @t3tools/client-runtime t3 @t3tools/web @t3tools/mobile @t3tools/desktop @t3tools/scripts; do
+        for package in @t3tools/contracts @t3tools/shared @t3tools/provider-core @t3tools/provider-acp-registry @t3tools/client-runtime t3 @t3tools/web @t3tools/mobile @t3tools/desktop @t3tools/scripts; do
           vp run --filter "$package" typecheck
         done
 
@@ -44,15 +45,17 @@ runs:
           node apps/web/node_modules/playwright/cli.js install-deps chromium
         fi
 
-    - name: Lint and test changed behavior
+    - name: Lint and test fork changes
       shell: bash
       run: |
         set -euo pipefail
-        base="$(git describe --tags --match 'v*-fork.*' --abbrev=0 HEAD^ 2>/dev/null || git rev-parse HEAD^)"
+        base="$(node -p "JSON.parse(require('fs').readFileSync('.github/downstream-integration.json', 'utf8')).baseCommit ?? JSON.parse(require('fs').readFileSync('.github/upstream-release.json', 'utf8')).commit")"
         mapfile -t sources < <(git diff --name-only --diff-filter=ACMR "$base" -- '*.ts' '*.tsx')
-        if (( ${#sources[@]} )); then vp lint "${sources[@]}"; fi
+        test "${#sources[@]}" -gt 0
+        vp lint "${sources[@]}"
         mapfile -t tests < <(git diff --name-only --diff-filter=ACMR "$base" -- '*.test.ts' '*.test.tsx')
-        if (( ${#tests[@]} )); then vp test run "${tests[@]}"; fi
+        test "${#tests[@]}" -gt 0
+        vp test run "${tests[@]}"
 
     - name: Build and boot the web client
       shell: bash

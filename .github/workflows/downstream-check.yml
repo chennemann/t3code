@@ -1,9 +1,9 @@
 name: Downstream compatibility
 on:
   pull_request:
-    branches: [main]
+    branches: [fork, fork-next]
   push:
-    branches: [main]
+    branches: [fork, fork-next]
   workflow_dispatch:
 permissions:
   contents: read
