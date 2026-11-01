@@ -1,3 +1,4 @@
+import { ActiveSourceControlProfile } from "@t3tools/source-control-core/server/PullRequestProvider";
 import { normalizeHost } from "@t3tools/source-control-core/server/pullRequestUtils";
 import { SourceControlProviderKind } from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
@@ -307,6 +308,7 @@ export const make = Effect.gen(function* () {
         fromApp: false,
       } satisfies ChosenCredential;
     }
+    if ((yield* ActiveSourceControlProfile) !== null) return yield* personalCredential(host);
     const saved = yield* credentials.saved(host);
     if (Option.isSome(saved)) {
       return {

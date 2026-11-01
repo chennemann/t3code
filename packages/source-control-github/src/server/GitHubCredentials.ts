@@ -1,3 +1,4 @@
+import { ActiveSourceControlProfile } from "@t3tools/source-control-core/server/PullRequestProvider";
 import { normalizeHost } from "@t3tools/source-control-core/server/pullRequestUtils";
 import * as Cache from "effect/Cache";
 import * as Context from "effect/Context";
@@ -251,6 +252,7 @@ export const make = Effect.gen(function* () {
     if ((yield* hostChoice(host))?.enabled === false) {
       return yield* new GitHubHostDisabledError({ host });
     }
+    if ((yield* ActiveSourceControlProfile) !== null) return Option.none<GitHubCredential>();
     const token = yield* savedToken(host);
     if (token === null) return Option.none<GitHubCredential>();
     return Option.some<GitHubCredential>({
@@ -261,18 +263,55 @@ export const make = Effect.gen(function* () {
     });
   });
 
+  const profileTokens = yield* Cache.makeWith(
+    (key: string) =>
+      Effect.gen(function* () {
+        const [host, profile] = key.split("\u0000") as [string, string];
+        const result = yield* process
+          .run({
+            operation: "GitHubCredentials.profile",
+            command: "ghx",
+            args: ["ghx", "profiles", "token", profile],
+            cwd: workingDirectory,
+            env: { GH_DEBUG: "", GH_PROMPT_DISABLED: "1" },
+            timeoutMs: 10_000,
+          })
+          .pipe(Effect.mapError((cause) => new GitHubCliFailedError({ host, cause })));
+        const token = result.stdout.trim();
+        if (result.exitCode !== 0 || !token)
+          return yield* new GitHubNotSignedInError({ host, account: profile });
+        return {
+          host,
+          token: Redacted.make(token),
+          source: "gh" as const,
+          fingerprint: yield* fingerprintOf(host, token),
+        };
+      }),
+    { capacity: 32, timeToLive: (exit) => (Exit.isSuccess(exit) ? TOKEN_TTL : Duration.zero) },
+  );
+
   return GitHubCredentials.of({
     get: Effect.fn("GitHubCredentials.get")(function* (rawHost) {
       const host = normalizeHost(rawHost);
+      if (!isGitHubHost(host)) return yield* new GitHubNotSignedInError({ host });
+      const profile = yield* ActiveSourceControlProfile;
+      if (profile !== null) {
+        if ((yield* hostChoice(host))?.enabled === false)
+          return yield* new GitHubHostDisabledError({ host });
+        return yield* Cache.get(profileTokens, `${host}\u0000${profile}`);
+      }
       const fromSettings = yield* saved(host);
       if (Option.isSome(fromSettings)) return fromSettings.value;
       return yield* Cache.get(cache, cacheKey(host, (yield* hostChoice(host))?.account));
     }),
     saved,
     fingerprint: fingerprintOf,
-    invalidate: Effect.fn("GitHubCredentials.invalidate")(function (rawHost) {
+    invalidate: Effect.fn("GitHubCredentials.invalidate")(function* (rawHost) {
       const host = normalizeHost(rawHost);
-      return hostChoice(host).pipe(
+      const profile = yield* ActiveSourceControlProfile;
+      if (profile !== null)
+        return yield* Cache.invalidate(profileTokens, `${host}\u0000${profile}`);
+      return yield* hostChoice(host).pipe(
         Effect.flatMap((choice) => Cache.invalidate(cache, cacheKey(host, choice?.account))),
       );
     }),

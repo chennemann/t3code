@@ -207,7 +207,9 @@ export function pullRequestEntryViewer(
   entry: ScopedEntry,
   viewers: PullRequestViewers,
 ): string | null {
-  return normalize(viewers[pullRequestViewerKey(entry)] ?? viewers[entry.host]);
+  return normalize(
+    entry.profileViewer ?? viewers[pullRequestViewerKey(entry)] ?? viewers[entry.host],
+  );
 }
 
 function isAuthoredByViewer(entry: ScopedEntry, viewers: PullRequestViewers): boolean {
@@ -307,6 +309,7 @@ export interface PullRequestStatsTarget {
   readonly input: {
     readonly refs: ReadonlyArray<{
       readonly projectId: ProjectId;
+      readonly profileId?: string | undefined;
       readonly repository: string;
       readonly number: number;
     }>;
@@ -366,6 +369,7 @@ export function pullRequestStatsBatches(
       key,
       ref: {
         projectId: entry.projectId,
+        ...(entry.profileId === undefined ? {} : { profileId: entry.profileId }),
         repository: entry.repository,
         number: entry.number,
       },

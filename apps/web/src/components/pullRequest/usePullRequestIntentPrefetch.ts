@@ -13,6 +13,7 @@ interface PullRequestIntentTarget {
   readonly environmentId: EnvironmentId;
   readonly projectId: ProjectId;
   readonly host: string;
+  readonly profileId?: string | undefined;
   readonly repository: string;
   readonly number: number;
 }

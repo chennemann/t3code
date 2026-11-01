@@ -53,6 +53,7 @@ import {
   pullRequestLinkSubject,
   writePullRequestDetailSnapshot,
   readableFailure,
+  pullRequestPanelReference,
 } from "./pullRequestDetail.logic";
 import type { ReviewCommentContext } from "~/reviewCommentContext";
 
@@ -1892,5 +1893,22 @@ describe("readableFailure", () => {
     expect(readableFailure(new Error("Branch is protected."), "Try again.")).toBe(
       "Branch is protected.",
     );
+  });
+});
+
+describe("profile-specific detail requests", () => {
+  it("keeps two accounts on the same PR in separate query entries", () => {
+    const target = {
+      projectId: ProjectId.make("project"),
+      repository: "acme/web",
+      number: 42,
+      host: "github.com",
+    };
+    const personal = pullRequestPanelReference({ ...target, profileId: "personal" });
+    const work = pullRequestPanelReference({ ...target, profileId: "work" });
+    expect(personal.profileId).toBe("personal");
+    expect(work.profileId).toBe("work");
+    expect(JSON.stringify(personal)).not.toBe(JSON.stringify(work));
+    expect(pullRequestPanelReference(target)).not.toHaveProperty("profileId");
   });
 });

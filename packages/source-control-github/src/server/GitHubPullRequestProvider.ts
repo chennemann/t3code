@@ -1,3 +1,7 @@
+import * as Option from "effect/Option";
+import * as HostProcess from "@t3tools/shared/HostProcess";
+import * as Schema from "effect/Schema";
+import * as SourceControlHost from "@t3tools/source-control-core/server/SourceControlHost";
 import { SourceControlProviderKind } from "@t3tools/contracts";
 import { removeAgentCredits } from "@t3tools/source-control-core/server/mergeMessage";
 import * as Cache from "effect/Cache";
@@ -31,6 +35,21 @@ import type {
   GitHubWorkflowRunApproval,
 } from "./gitHubPullRequestJson.ts";
 import { definition } from "../shared/definition.ts";
+
+const decodeProfiles = Schema.decodeEffect(
+  Schema.fromJsonString(
+    Schema.Struct({
+      version: Schema.Literals([1]),
+      profiles: Schema.Array(
+        Schema.Struct({
+          id: Schema.NonEmptyString,
+          user: Schema.NonEmptyString,
+          host: Schema.NonEmptyString,
+        }),
+      ),
+    }),
+  ),
+);
 
 const CAPABILITIES: PullRequestCapabilities = {
   diff: true,
@@ -237,6 +256,8 @@ const rendersEmpty = (body: string): boolean =>
 
 export const make = Effect.gen(function* () {
   const cli = yield* GitHubPullRequestApi.GitHubPullRequestApi;
+  const host = yield* Effect.serviceOption(SourceControlHost.SourceControlHost);
+  const cwd = yield* HostProcess.WorkingDirectory;
 
   // GitHub does not index every repository for search: a renamed one answers for its old name
   // with silence rather than with an error. Where search has any pull request for a repository it
@@ -357,6 +378,25 @@ export const make = Effect.gen(function* () {
   const provider: PullRequestProviderApi = {
     kind: SourceControlProviderKind.make("github"),
     capabilities: CAPABILITIES,
+    listProfiles: () =>
+      Option.isNone(host)
+        ? Effect.succeed([])
+        : host.value.process
+            .run({
+              operation: "GitHub.profiles",
+              command: "ghx",
+              cwd,
+              args: ["ghx", "profiles", "list", "--json"],
+              timeoutMs: 10_000,
+            })
+            .pipe(
+              Effect.flatMap((result) =>
+                result.exitCode === 0
+                  ? decodeProfiles(result.stdout).pipe(Effect.map((value) => value.profiles))
+                  : Effect.succeed([]),
+              ),
+              Effect.orElseSucceed(() => []),
+            ),
     unavailableRequirement: UNAVAILABLE_REQUIREMENT,
     readsPublicHostWithoutCheckout: true,
     mergeMessageRewrite: removeAgentCredits,
