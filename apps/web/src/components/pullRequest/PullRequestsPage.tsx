@@ -263,6 +263,7 @@ export function PullRequestsPage() {
           ...(next.projectId ? { projectId: next.projectId } : {}),
           ...(next.environmentId ? { environmentId: next.environmentId } : {}),
           ...(next.host ? { host: next.host } : {}),
+          ...(next.selectedProfileId ? { selectedProfileId: next.selectedProfileId } : {}),
           ...(next.selectedHost ? { selectedHost: next.selectedHost } : {}),
           ...(next.selectedProjectId ? { selectedProjectId: next.selectedProjectId } : {}),
           ...(next.selectedEnvironmentId
@@ -285,6 +286,7 @@ export function PullRequestsPage() {
     selectedProjectId: undefined,
     selectedEnvironmentId: undefined,
     selectedHost: undefined,
+    selectedProfileId: undefined,
   };
   const updateListScope = (patch: PullRequestListPreferencePatch) => {
     const currentPreferences = pullRequestListPreferences({
@@ -1143,6 +1145,7 @@ export function PullRequestsPage() {
             number: surface.number,
             selectedProjectId: surface.projectId as ProjectId,
             selectedHost: surface.host,
+            selectedProfileId: surface.profileId,
             ...(surface.environmentId === undefined
               ? {}
               : { selectedEnvironmentId: surface.environmentId as EnvironmentId }),
@@ -1183,6 +1186,7 @@ export function PullRequestsPage() {
       selectedProjectId: entry.projectId,
       selectedEnvironmentId: entry.environmentId,
       selectedHost: entry.host,
+      selectedProfileId: entry.profileId,
     });
   };
 
@@ -1622,6 +1626,7 @@ export function PullRequestsPage() {
                   repository: reference.repository,
                   number: reference.number,
                   selectedHost: reference.host,
+                  selectedProfileId: reference.profileId,
                   selectedProjectId: reference.projectId,
                   selectedEnvironmentId: panelEnvironmentId,
                 });

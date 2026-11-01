@@ -66,6 +66,7 @@ export type RightPanelSurface =
   | {
       id: `pull-request:${string}`;
       kind: "pull-request";
+      profileId?: string | undefined;
       /** Cross-environment lists can repeat project ids; thread panels inherit their ref's environment. */
       environmentId?: string;
       projectId: string;
@@ -268,19 +269,21 @@ export function pullRequestSurfaceId(target: {
   environmentId?: string;
   projectId: string;
   host?: string;
+  profileId?: string | undefined;
   repository: string;
   number: number;
 }): PullRequestSurface["id"] {
   const scope =
     target.environmentId === undefined ? "" : `${encodeURIComponent(target.environmentId)}:`;
   const host = target.host === undefined ? "" : `${encodeURIComponent(target.host.toLowerCase())}:`;
-  return `pull-request:${scope}${encodeURIComponent(target.projectId)}:${host}${encodeURIComponent(target.repository)}:${target.number}`;
+  return `pull-request:${target.profileId === undefined ? "" : encodeURIComponent(target.profileId) + ":"}${scope}${encodeURIComponent(target.projectId)}:${host}${encodeURIComponent(target.repository)}:${target.number}`;
 }
 
 export function pullRequestSurface(target: {
   environmentId?: string;
   projectId: string;
   host?: string;
+  profileId?: string | undefined;
   repository: string;
   number: number;
   url?: string;
@@ -291,6 +294,7 @@ export function pullRequestSurface(target: {
     kind: "pull-request",
     ...(target.environmentId === undefined ? {} : { environmentId: target.environmentId }),
     projectId: target.projectId,
+    ...(target.profileId === undefined ? {} : { profileId: target.profileId }),
     ...(typeof target.host === "string" ? { host: target.host.toLowerCase() } : {}),
     repository: target.repository,
     number: target.number,

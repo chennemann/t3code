@@ -485,9 +485,13 @@ describe("merging the environments' own listings", () => {
     ]);
   });
 
-  it.each([false, true])(
-    "merges worktree batches without duplicate rows (reversed: %s)",
-    (reverse) => {
+  it.each([
+    { reverse: false, separateProfile: false },
+    { reverse: true, separateProfile: false },
+    { reverse: false, separateProfile: true },
+  ])(
+    "merges worktree batches without dropping profiles (reversed: $reverse, separate: $separateProfile)",
+    ({ reverse, separateProfile }) => {
       const older = entry({
         projectId: "worktree-1" as ProjectId,
         number: 4,
@@ -499,11 +503,25 @@ describe("merging the environments' own listings", () => {
         updatedAt: "2026-07-02T00:00:00Z",
       });
       const rows = reverse ? [newer, older] : [older, newer];
+      const otherProfile = { ...older, profileId: "work", profileViewer: "work-login" };
       const merged = mergePullRequestLists([
         ...rows.map((row) => [ENV_1, answer({ entries: [row] })] as const),
         [ENV_2, answer({ entries: [older] })],
+        ...(separateProfile ? [[ENV_1, answer({ entries: [otherProfile] })] as const] : []),
       ]);
-      expect(merged?.entries).toEqual([{ ...newer, environmentId: ENV_1 }]);
+      expect(merged?.entries).toEqual([
+        { ...newer, environmentId: ENV_1 },
+        ...(separateProfile ? [{ ...otherProfile, environmentId: ENV_1 }] : []),
+      ]);
+      if (separateProfile) {
+        const groups = partitionPullRequestsWithPriority(merged!.entries, [newer], [otherProfile]);
+        expect(groups.find((group) => group.key === "authored")?.entries).toEqual([
+          { ...newer, environmentId: ENV_1 },
+        ]);
+        expect(groups.find((group) => group.key === "reviewRequested")?.entries).toEqual([
+          { ...otherProfile, environmentId: ENV_1 },
+        ]);
+      }
     },
   );
 
