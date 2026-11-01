@@ -3,7 +3,7 @@ name: Downstream desktop release
 on:
   push:
     branches:
-      - fork
+      - main
   workflow_dispatch:
     inputs:
       version:
@@ -29,7 +29,7 @@ jobs:
       - name: Checkout downstream fork
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event_name == 'push' && github.sha || 'fork' }}
+          ref: ${{ github.event_name == 'push' && github.sha || 'main' }}
           fetch-depth: 0
 
       - name: Setup Vite+
@@ -65,20 +65,20 @@ jobs:
             exit 1
           fi
 
-          git fetch --no-tags origin fork
+          git fetch --no-tags origin main
           git fetch --tags --no-force origin
           sha="$(git rev-parse HEAD)"
-          fork_sha="$(git rev-parse origin/fork)"
+          fork_sha="$(git rev-parse origin/main)"
           if [[ -n "$EVENT_SHA" && "$sha" != "$EVENT_SHA" ]]; then
             echo "Release checkout $sha does not match push commit $EVENT_SHA." >&2
             exit 1
           fi
-          if [[ -n "$EVENT_SHA" ]] && ! git merge-base --is-ancestor "$sha" origin/fork; then
-            echo "Push commit $sha is no longer on current origin/fork." >&2
+          if [[ -n "$EVENT_SHA" ]] && ! git merge-base --is-ancestor "$sha" origin/main; then
+            echo "Push commit $sha is no longer on current origin/main." >&2
             exit 1
           fi
           if [[ -z "$EVENT_SHA" && "$sha" != "$fork_sha" ]]; then
-            echo "Release checkout $sha is not current origin/fork $fork_sha." >&2
+            echo "Release checkout $sha is not current origin/main $fork_sha." >&2
             exit 1
           fi
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
