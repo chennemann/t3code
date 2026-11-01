@@ -48,7 +48,7 @@ runs:
       shell: bash
       run: |
         set -euo pipefail
-        base="$(git rev-parse HEAD^)"
+        base="$(git describe --tags --match 'v*-fork.*' --abbrev=0 HEAD^ 2>/dev/null || git rev-parse HEAD^)"
         mapfile -t sources < <(git diff --name-only --diff-filter=ACMR "$base" -- '*.ts' '*.tsx')
         if (( ${#sources[@]} )); then vp lint "${sources[@]}"; fi
         mapfile -t tests < <(git diff --name-only --diff-filter=ACMR "$base" -- '*.test.ts' '*.test.tsx')

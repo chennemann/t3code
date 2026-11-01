@@ -4743,7 +4743,8 @@ it.effect("continues each profile from its own PR cursor", () =>
                   (row) =>
                     cursor === undefined ||
                     row.updatedAt < cursor.updatedBefore ||
-                    (row.updatedAt === cursor.updatedBefore && !cursor.seenAt.includes(row.number)),
+                    (row.updatedAt === cursor.updatedBefore &&
+                      !(cursor.seenAt ?? []).includes(row.number)),
                 );
                 return {
                   items: rows.slice(0, limit),
