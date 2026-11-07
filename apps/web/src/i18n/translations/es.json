@@ -13025,5 +13025,10 @@
   "aeddf4420f291989": "Instrucciones del agente",
   "4530d1e0dc4bb130": "Controla qué pull requests vinculan los agentes a los hilos. Déjalo vacío para desactivar las instrucciones. Inicia un hilo nuevo para que las instrucciones anteriores dejen de aplicarse.",
   "ccfb9aec36900f53": "Restablecer instrucciones de enlace de PR",
-  "fd3b48389394ac2c": "Instrucciones de enlace de PR"
+  "fd3b48389394ac2c": "Instrucciones de enlace de PR",
+  "a8345f9fa84f9ead": "Ocultar anteriores",
+  "52208043531f27eb": "Mostrar anteriores ({count})",
+  "0bdd203864223e39": "Desanclar proyecto {name}",
+  "6176d44259ac996b": "Anclar proyecto {name}",
+  "b67dfd6af7548dc9": "Anclado"
 }

@@ -13030,5 +13030,10 @@
   "aeddf4420f291989": "Instruções do agente",
   "4530d1e0dc4bb130": "Controle quais pull requests os agentes vinculam às conversas. Deixe vazio para desativar as instruções. Inicie uma nova conversa para que as instruções anteriores não se apliquem.",
   "ccfb9aec36900f53": "Redefinir instruções de vínculo de PR",
-  "fd3b48389394ac2c": "Instruções de vínculo de PR"
+  "fd3b48389394ac2c": "Instruções de vínculo de PR",
+  "a8345f9fa84f9ead": "Ocultar antigos",
+  "52208043531f27eb": "Mostrar antigos ({count})",
+  "0bdd203864223e39": "Desafixar projeto {name}",
+  "6176d44259ac996b": "Fixar projeto {name}",
+  "b67dfd6af7548dc9": "Fixado"
 }

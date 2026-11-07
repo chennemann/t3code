@@ -13037,5 +13037,10 @@
   "aeddf4420f291989": "Agentinstruktioner",
   "4530d1e0dc4bb130": "Styr vilka pull requests agenter länkar till trådar. Lämna tomt för att inaktivera instruktionerna. Starta en ny tråd så att tidigare instruktioner slutar gälla.",
   "ccfb9aec36900f53": "Återställ instruktioner för PR-länkning",
-  "fd3b48389394ac2c": "Instruktioner för PR-länkning"
+  "fd3b48389394ac2c": "Instruktioner för PR-länkning",
+  "a8345f9fa84f9ead": "Dölj äldre",
+  "52208043531f27eb": "Visa äldre ({count})",
+  "0bdd203864223e39": "Lossa projekt {name}",
+  "6176d44259ac996b": "Fäst projekt {name}",
+  "b67dfd6af7548dc9": "Fäst"
 }
