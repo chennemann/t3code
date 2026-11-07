@@ -156,8 +156,11 @@ threads has no folder unless it is pinned or you pick it in the project filter. 
 project's folder comes last and shows only while it has active threads. Click a folder to open or
 close it. A closed folder shows how many threads it holds, and a dot when one of them
 needs you. Use the pen button on a folder, or right-click it, to start a thread in that project.
-Pinned threads stay above the folders, and Snoozed and Settled stay below them. In this mode you
-cannot drag threads, and the Working section is off. Each device keeps its own choice.
+Pin a project with the pin button on its folder or from its right-click menu. Unpin it the same way.
+Pinned threads stay above the folders. When the Working section is enabled, running threads move
+there in this mode too. Working, Snoozed, and Settled stay at the bottom while you scroll the
+project list; expand a section to browse its threads. In this mode you cannot drag threads.
+Each device keeps its own choice.
 
 ## Settle finished work
 
