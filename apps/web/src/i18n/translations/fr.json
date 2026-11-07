@@ -13073,5 +13073,10 @@
   "aeddf4420f291989": "Instructions de l’agent",
   "4530d1e0dc4bb130": "Définissez les pull requests que les agents lient aux fils. Laissez vide pour désactiver les instructions. Créez un nouveau fil pour que les anciennes instructions ne s’appliquent plus.",
   "ccfb9aec36900f53": "Réinitialiser les instructions de liaison des PR",
-  "fd3b48389394ac2c": "Instructions de liaison des PR"
+  "fd3b48389394ac2c": "Instructions de liaison des PR",
+  "a8345f9fa84f9ead": "Masquer les anciens",
+  "52208043531f27eb": "Afficher les anciens ({count})",
+  "0bdd203864223e39": "Détacher le projet {name}",
+  "6176d44259ac996b": "Épingler le projet {name}",
+  "b67dfd6af7548dc9": "Épinglé"
 }

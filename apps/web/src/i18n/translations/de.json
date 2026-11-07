@@ -13073,5 +13073,10 @@
   "aeddf4420f291989": "Agent-Anweisungen",
   "4530d1e0dc4bb130": "Legen Sie fest, welche Pull Requests Agenten mit Threads verknüpfen. Leer lassen deaktiviert die Anweisungen. Beginnen Sie einen neuen Thread, damit vorherige Anweisungen nicht mehr gelten.",
   "ccfb9aec36900f53": "PR-Verknüpfungsanweisungen zurücksetzen",
-  "fd3b48389394ac2c": "PR-Verknüpfungsanweisungen"
+  "fd3b48389394ac2c": "PR-Verknüpfungsanweisungen",
+  "a8345f9fa84f9ead": "Ältere ausblenden",
+  "52208043531f27eb": "Ältere anzeigen ({count})",
+  "0bdd203864223e39": "Projekt {name} lösen",
+  "6176d44259ac996b": "Projekt {name} anheften",
+  "b67dfd6af7548dc9": "Angeheftet"
 }

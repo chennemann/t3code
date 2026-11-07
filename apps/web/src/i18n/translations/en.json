@@ -13082,5 +13082,10 @@
   "aeddf4420f291989": "Agent instructions",
   "4530d1e0dc4bb130": "Control which pull requests agents link to threads. Leave empty to disable the instructions. Start a new thread to ensure previous instructions no longer apply.",
   "ccfb9aec36900f53": "Reset PR linking instructions",
-  "fd3b48389394ac2c": "PR linking instructions"
+  "fd3b48389394ac2c": "PR linking instructions",
+  "a8345f9fa84f9ead": "Hide older",
+  "52208043531f27eb": "Show older ({count})",
+  "0bdd203864223e39": "Unpin project {name}",
+  "6176d44259ac996b": "Pin project {name}",
+  "b67dfd6af7548dc9": "Pinned"
 }
