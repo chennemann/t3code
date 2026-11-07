@@ -85,4 +85,38 @@ describe("sidebar pointer lifecycle", () => {
     expect(drag.onEnd).not.toHaveBeenCalled();
     expect(drag.onFinish).toHaveBeenCalledExactlyOnceWith(true);
   });
+  it.each([30, 90])(
+    "keeps a project-folder reference drag out of sorting when released at x=%s",
+    (clientX) => {
+      using _environment = setup();
+      const onDrop = vi.fn((point: { x: number; y: number }) => point.x > 50);
+      const drag = gesture({ referenceOnly: true, onMove: (point) => point.x > 50, onDrop });
+      document.dispatchEvent(pointer("pointermove", { clientY: 20 }));
+      document.dispatchEvent(pointer("pointermove", { clientX, clientY: 30 }));
+      document.dispatchEvent(pointer("pointerup", { buttons: 0, clientX, clientY: 30 }));
+
+      expect(drag.onStart).toHaveBeenCalledOnce();
+      expect(drag.onMove).not.toHaveBeenCalled();
+      expect(onDrop).toHaveBeenCalledExactlyOnceWith({ x: clientX, y: 30 });
+      expect(drag.onCancel).toHaveBeenCalledOnce();
+      expect(drag.onEnd).not.toHaveBeenCalled();
+      expect(drag.onFinish).toHaveBeenCalledExactlyOnceWith(true);
+    },
+  );
+  it("still opens a thread on a click in reference-only mode", () => {
+    using _environment = setup();
+    const drag = gesture({ referenceOnly: true });
+    const row = document.createElement("button");
+    const clicked = vi.fn();
+    row.addEventListener("click", clicked);
+    document.body.append(row);
+    try {
+      document.dispatchEvent(pointer("pointerup", { buttons: 0 }));
+      row.click();
+      expect(clicked).toHaveBeenCalledOnce();
+      expect(drag.onStart).not.toHaveBeenCalled();
+    } finally {
+      row.remove();
+    }
+  });
 });
