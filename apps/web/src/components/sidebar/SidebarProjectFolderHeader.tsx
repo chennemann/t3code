@@ -1,6 +1,6 @@
 import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/models";
 import { scopedThreadKey, scopeThreadRef } from "@t3tools/client-runtime/environment";
-import { ChevronDownIcon, SquarePenIcon, PinIcon } from "lucide-react";
+import { ChevronDownIcon, SquarePenIcon, PinIcon, PinOffIcon } from "lucide-react";
 import { memo } from "react";
 
 import { cn } from "~/lib/utils";
@@ -78,10 +78,15 @@ export const SidebarProjectFolderHeader = memo(function SidebarProjectFolderHead
         className="flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-(--control-radius) px-(--sidebar-row-content-inset) text-left outline-none hover:bg-sidebar-row-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
       >
         <ProjectFavicon project={group} className="size-4 shrink-0" />
+        {group.pinned ? (
+          <span className="inline-flex shrink-0 items-center gap-1 rounded bg-info/10 px-1.5 py-0.5 text-2xs font-medium text-info">
+            <PinIcon aria-hidden className="size-3 fill-current" />
+            Pinned
+          </span>
+        ) : null}
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-sidebar-foreground/90">
           {group.displayName}
         </span>
-        {group.pinned ? <span className="sr-only">Pinned project</span> : null}
         {dot ? (
           <span className={cn("size-1.5 shrink-0 rounded-full", FOLDER_DOT_CLASS_NAME[dot])}>
             <span className="sr-only">{FOLDER_DOT_LABEL[dot]}</span>
@@ -101,14 +106,7 @@ export const SidebarProjectFolderHeader = memo(function SidebarProjectFolderHead
         />
       </button>
       {/* Sits over the count, which hides on hover, and left of the chevron. */}
-      <span
-        className={cn(
-          "absolute inset-y-0 right-6 flex items-center",
-          group.pinned
-            ? "opacity-100"
-            : "opacity-0 focus-within:opacity-100 group-hover/project-folder:opacity-100 pointer-coarse:opacity-100",
-        )}
-      >
+      <span className="absolute inset-y-0 right-6 flex items-center opacity-0 focus-within:opacity-100 group-hover/project-folder:opacity-100 pointer-coarse:opacity-100">
         {props.canPin ? (
           <Button
             data-sidebar-action-for={rowId}
@@ -119,7 +117,7 @@ export const SidebarProjectFolderHeader = memo(function SidebarProjectFolderHead
             title={`${group.pinned ? "Unpin" : "Pin"} project`}
             onClick={() => props.onTogglePin(group)}
           >
-            <PinIcon aria-hidden />
+            {group.pinned ? <PinOffIcon aria-hidden /> : <PinIcon aria-hidden />}
           </Button>
         ) : null}
         <Tooltip>
