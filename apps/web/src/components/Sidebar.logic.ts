@@ -1028,13 +1028,54 @@ export function sidebarFolderExpansionKeys(group: {
   ];
 }
 
+/** Keep the latest five, recent activity, and the open thread visible in each project. */
+export function selectSidebarFolderThreads<
+  T extends Pick<
+    SidebarThreadSummary,
+    "environmentId" | "id" | "createdAt" | "updatedAt" | "latestUserMessageAt" | "latestRun"
+  >,
+>(
+  threads: readonly T[],
+  options: { now: string; expanded: boolean; routeThreadKey: string | null },
+) {
+  const activity = (thread: T) =>
+    Math.max(
+      ...[
+        thread.createdAt,
+        thread.updatedAt,
+        thread.latestUserMessageAt,
+        thread.latestRun?.requestedAt,
+        thread.latestRun?.startedAt,
+        thread.latestRun?.completedAt,
+      ].map((value) => toSortableTimestamp(value ?? undefined) ?? Number.NEGATIVE_INFINITY),
+    );
+  const ordered = threads
+    .map((thread) => ({ thread, activity: activity(thread) }))
+    .sort((a, b) => b.activity - a.activity);
+  const cutoff = Date.parse(options.now) - 24 * 60 * 60 * 1000;
+  const visible: T[] = [];
+  let olderCount = 0;
+  for (const [index, entry] of ordered.entries()) {
+    const older =
+      index >= 5 &&
+      entry.activity < cutoff &&
+      scopedThreadKey(scopeThreadRef(entry.thread.environmentId, entry.thread.id)) !==
+        options.routeThreadKey;
+    if (older) olderCount++;
+    if (!older || options.expanded) visible.push(entry.thread);
+  }
+  return { threads: visible, olderCount };
+}
+
 /**
  * Boring sidebar folders. Folders follow `groups` order and threads keep their
- * input order. A project with no threads gets a folder only when `keepEmpty` says so.
+ * input order. Pinned projects keep an empty folder; `keepEmpty` can retain other folders.
  * A thread whose project is in no group has no folder and is left out.
  */
 export function groupSidebarThreadsByProject<
   TGroup extends {
+    readonly pinned?: boolean;
+    readonly archived?: boolean;
     readonly memberProjectRefs: ReadonlyArray<{
       readonly environmentId: EnvironmentId;
       readonly projectId: string;
@@ -1056,7 +1097,12 @@ export function groupSidebarThreadsByProject<
   for (const thread of threads) {
     folderByProject.get(`${thread.environmentId}:${thread.projectId}`)?.threads.push(thread);
   }
-  return folders.filter((folder) => folder.threads.length > 0 || keepEmpty(folder.group));
+  return folders.filter(
+    (folder) =>
+      folder.threads.length > 0 ||
+      (folder.group.pinned === true && folder.group.archived !== true) ||
+      keepEmpty(folder.group),
+  );
 }
 
 export type SidebarV2TopStatusKind =

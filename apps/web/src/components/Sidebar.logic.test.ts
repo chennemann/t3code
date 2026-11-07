@@ -32,6 +32,7 @@ import {
   type SidebarSection,
   resolveSidebarDropVerb,
   groupSidebarThreadsByProject,
+  selectSidebarFolderThreads,
   resolveSidebarFolderDot,
   sidebarFolderExpansionKeys,
 } from "./Sidebar.logic";
@@ -1548,6 +1549,78 @@ describe("sidebarFolderExpansionKeys", () => {
   });
 });
 
+describe("selectSidebarFolderThreads", () => {
+  const now = "2026-11-09T12:00:00.000Z";
+  const thread = (id: string, at: string) => ({
+    id: ThreadId.make(id),
+    environmentId: localEnvironmentId,
+    createdAt: at,
+    updatedAt: at,
+    latestUserMessageAt: at,
+    latestRun: null,
+  });
+  const options = { now, expanded: false, routeThreadKey: null };
+  const old = Array.from({ length: 8 }, (_, index) =>
+    thread(`old-${index}`, `2026-11-0${8 - index}T10:00:00.000Z`),
+  );
+  it("keeps five most recently active threads even when all are older than a day", () => {
+    expect(selectSidebarFolderThreads(old.toReversed(), options)).toEqual({
+      threads: old.slice(0, 5),
+      olderCount: 3,
+    });
+    expect(selectSidebarFolderThreads(old.slice(0, 3), options)).toEqual({
+      threads: old.slice(0, 3),
+      olderCount: 0,
+    });
+    expect(selectSidebarFolderThreads([], options)).toEqual({ threads: [], olderCount: 0 });
+    expect(selectSidebarFolderThreads(old, { ...options, expanded: true })).toEqual({
+      threads: old,
+      olderCount: 3,
+    });
+  });
+  it("keeps all activity in the last day including the exact boundary and agent completion", () => {
+    const recent = Array.from({ length: 7 }, (_, index) =>
+      thread(`recent-${index}`, `2026-11-09T0${9 - index}:00:00.000Z`),
+    );
+    const boundary = thread("boundary", "2026-11-08T12:00:00.000Z");
+    const completed = {
+      ...old[7]!,
+      latestRun: {
+        runId: RunId.make("completed-run"),
+        status: "completed" as const,
+        assistantMessageId: null,
+        completedAt: "2026-11-09T11:00:00.000Z",
+        requestedAt: null,
+        startedAt: null,
+      },
+    };
+    const result = selectSidebarFolderThreads(
+      [...old.slice(0, 7), boundary, ...recent, completed],
+      options,
+    );
+    expect(result.threads.map((t) => t.id)).toEqual([
+      completed.id,
+      ...recent.map((t) => t.id),
+      boundary.id,
+    ]);
+    expect(result.olderCount).toBe(7);
+    const expired = selectSidebarFolderThreads([boundary, ...recent], {
+      ...options,
+      now: "2026-11-09T12:01:00.000Z",
+    });
+    expect(expired.threads).toEqual(recent);
+    expect(expired.olderCount).toBe(1);
+  });
+  it("keeps the open old thread visible and excludes it from the hidden count", () => {
+    const result = selectSidebarFolderThreads(old, {
+      ...options,
+      routeThreadKey: scopedThreadKey(scopeThreadRef(localEnvironmentId, old[7]!.id)),
+    });
+    expect(result.threads).toEqual([...old.slice(0, 5), old[7]]);
+    expect(result.olderCount).toBe(2);
+  });
+});
+
 describe("groupSidebarThreadsByProject", () => {
   it("puts each thread in its project's folder and drops empty projects unless kept", () => {
     const remoteEnvironmentId = EnvironmentId.make("environment-remote");
@@ -1569,6 +1642,7 @@ describe("groupSidebarThreadsByProject", () => {
       },
       {
         projectKey: "fleet",
+        pinned: true,
         memberProjectRefs: [{ environmentId: localEnvironmentId, projectId: fleet }],
       },
       {
@@ -1595,7 +1669,10 @@ describe("groupSidebarThreadsByProject", () => {
       { projectKey: "fleet", threads: [] },
       { projectKey: "notes", threads: [] },
     ]);
-    expect(summarize(() => false)).toEqual([{ projectKey: "t3code", threads: ["a", "b"] }]);
+    expect(summarize(() => false)).toEqual([
+      { projectKey: "t3code", threads: ["a", "b"] },
+      { projectKey: "fleet", threads: [] },
+    ]);
     // A pinned project keeps its empty folder while other empty projects drop out.
     expect(summarize((group) => group.projectKey === "fleet")).toEqual([
       { projectKey: "t3code", threads: ["a", "b"] },

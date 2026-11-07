@@ -23,7 +23,7 @@ import {
   type Modifier,
 } from "@dnd-kit/core";
 import { SortableContext } from "@dnd-kit/sortable";
-import { restrictToFirstScrollableAncestor, restrictToVerticalAxis } from "@dnd-kit/modifiers";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import {
   canSnooze,
   effectiveSnoozed,
@@ -176,6 +176,7 @@ import {
   applySidebarThreadDrop,
   filterSidebarV2VisibleThreads,
   groupSidebarThreadsByProject,
+  selectSidebarFolderThreads,
   sidebarFolderExpansionKeys,
   buildBulkTitleRegenerationContextMenuItem,
   buildBulkUnpinContextMenuItem,
@@ -362,7 +363,10 @@ interface SidebarThreadPartitionInput {
 }
 
 function scrollSidebarToTop(content: HTMLElement | null) {
-  content?.closest("[data-slot=scroll-area-viewport]")?.scrollTo({ top: 0 });
+  const viewport =
+    content?.querySelector("[data-sidebar-main-scroll]") ??
+    content?.closest("[data-slot=scroll-area-viewport]");
+  viewport?.scrollTo({ top: 0 });
 }
 
 function threadShellKey(thread: Pick<SidebarThreadSummary, "environmentId" | "id">): string {
@@ -437,9 +441,7 @@ function useSidebarThreads(input: {
     folderGroups,
     keepEmptyFolders: keepEmpty,
   } = input;
-  // Folders already separate the work, so boring mode has no Working shelf.
-  const workingShelfEnabled =
-    useClientSettings((s) => s.sidebarWorkingShelfEnabled) && folderGroups === null;
+  const workingShelfEnabled = useClientSettings((s) => s.sidebarWorkingShelfEnabled);
   const inboxReturnsVersion = useSyncExternalStore(
     inboxReturns.subscribe,
     inboxReturns.getSnapshot,
@@ -463,6 +465,9 @@ function useSidebarThreads(input: {
     Schema.Boolean,
   );
   // Shared with the old per-project sidebar, so folders keep their open state.
+  const [expandedOlderProjects, setExpandedOlderProjects] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const projectExpandedById = useUiStateStore((store) => store.projectExpandedById);
   const setProjectExpanded = useUiStateStore((store) => store.setProjectExpanded);
   const [settledTail, setSettledTail] = useState({
@@ -529,13 +534,21 @@ function useSidebarThreads(input: {
             projectExpandedById,
             sidebarFolderExpansionKeys(folder.group),
           );
+          const olderExpanded = expandedOlderProjects.has(folder.group.projectKey);
+          const preview = selectSidebarFolderThreads(folder.threads, {
+            now: nowMinute,
+            expanded: olderExpanded,
+            routeThreadKey: routeRowThreadKey,
+          });
           return {
             group: folder.group,
             collapsed,
+            olderExpanded,
+            olderCount: preview.olderCount,
             // A closed folder still shows the open thread, and hints at the rest.
             threads: collapsed
               ? routeThreadOnly(folder.threads, routeRowThreadKey)
-              : folder.threads,
+              : preview.threads,
             hiddenThreads: collapsed
               ? folder.threads.filter((thread) => threadShellKey(thread) !== routeRowThreadKey)
               : EMPTY_THREADS,
@@ -587,6 +600,13 @@ function useSidebarThreads(input: {
     workingShelfExpanded,
     toggleWorkingShelf: () => setWorkingShelfExpanded((value) => !value),
     projectFolders,
+    toggleOlderProjectThreads: (projectKey: string) =>
+      setExpandedOlderProjects((current) => {
+        const next = new Set(current);
+        if (next.has(projectKey)) next.delete(projectKey);
+        else next.add(projectKey);
+        return next;
+      }),
     toggleProjectFolder: (group: SidebarProjectSnapshot) => {
       const keys = sidebarFolderExpansionKeys(group);
       setProjectExpanded(keys, !resolveProjectExpanded(projectExpandedById, keys));
@@ -1322,6 +1342,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     workingShelfExpanded,
     toggleWorkingShelf,
     projectFolders,
+    toggleOlderProjectThreads,
     toggleProjectFolder,
     renderedSettledThreads,
     visibleSnoozedThreads,
@@ -1348,10 +1369,13 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
       ? scopedProjectGroups.length === 0
         ? // An archived project keeps a folder for its active threads, below the rest.
           [...scopeGroups, ...projectGroups.filter((project) => project.archived)]
-        : scopedProjectGroups
+        : scopeGroups.filter(
+            (group) =>
+              group.pinned ||
+              scopedProjectGroups.some((scoped) => scoped.projectKey === group.projectKey),
+          )
       : null,
-    keepEmptyFolders: (group) =>
-      scopedProjectGroups.length > 0 || (group.pinned && !group.archived),
+    keepEmptyFolders: () => scopedProjectGroups.length > 0,
   });
 
   // Ranked across environments as the palette ranks them, so one
@@ -1687,13 +1711,9 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   };
   const restrictBelowPins: Modifier = (args) =>
     restrictBelowSidebarLabel(args, dragLabelOffsetRef.current);
-  const dndModifiers = [
-    restrictToVerticalAxis,
-    restrictBelowPins,
-    restrictToFirstScrollableAncestor,
-  ];
+  // Rows can cross between the main list and the independently scrolling shelves.
+  const dndModifiers = [restrictToVerticalAxis, restrictBelowPins];
   const attachListMotionRef = (node: HTMLUListElement) => {
-    threadListRef.current = node;
     const motion = createSidebarListMotion(node);
     listMotionRef.current = motion;
     motion.update(false);
@@ -1704,22 +1724,21 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
       dragSensorRef.current?.cancel();
       motion.dispose();
       if (listMotionRef.current === motion) listMotionRef.current = null;
-      if (threadListRef.current === node) threadListRef.current = null;
     };
   };
 
   const attachTreeRef = (node: HTMLUListElement) => {
-    const detachMotion = attachListMotionRef(node);
+    threadListRef.current = node;
     const detachTree = attachSidebarTree(node);
     return () => {
       detachTree?.();
-      detachMotion();
+      if (threadListRef.current === node) threadListRef.current = null;
     };
   };
 
   // Folder rows only drag out to the composer; folders own their order, so nothing drops in the list.
   const isContextDrag =
-    projectFolders !== null ||
+    (dragState !== null && projectFolders !== null) ||
     dragState?.contextDrag === true ||
     dragState?.activeSection === "working";
   const dragTargetSection = isContextDrag ? null : (dragState?.targetSection ?? null);
@@ -1786,6 +1805,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   // useSensor memoizes options identity; fresh options rebuild DndContext and every sortable row.
   const pointerSensorOptions = {
     distance: SIDEBAR_DRAG_DISTANCE,
+    referenceOnly: projectFolders !== null,
     onAttach: attachDragSensor,
     onFinish: finishThreadDrag,
     onMove: moveThreadContextDrag,
@@ -2969,7 +2989,8 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
       <SidebarChromeHeader isElectron={isElectron} />
       <SidebarContent
         ref={sidebarContentRef}
-        className="min-h-full"
+        contained={!isSearchingThreads}
+        className={isSearchingThreads ? "min-h-full" : "min-h-0"}
         fixedHeader={
           <SidebarGroup className="z-[1]">
             <SidebarThreadHeader
@@ -3202,7 +3223,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
           </SidebarGroup>
         }
       >
-        <SidebarGroup className="flex-1" role="presentation">
+        <SidebarGroup className="min-h-0 flex-1" role="presentation">
           {isSearchingThreads ? (
             threadSearchResults.length > 0 ? (
               <TooltipProvider
@@ -3304,7 +3325,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                     // controls.
                     role="presentation"
                     className={cn(
-                      "relative flex flex-col gap-px",
+                      "relative flex min-h-0 flex-col gap-px overflow-hidden",
                       sidebarListItems.length > 0 && "flex-1",
                       actionSweep !== null && "**:pointer-events-none",
                       // Projected rows (two boundary labels, two hints) extend the scroll range; a range that
@@ -3445,11 +3466,15 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                           onDraftContextMenu={handleDraftContextMenu}
                         />,
                       ];
+                      const shelves: { key: string; header: ReactNode; rows: ReactNode[] }[] = [];
+                      let shelf: (typeof shelves)[number] | undefined;
                       for (const item of sidebarListItems) {
                         if (item.kind === "thread") {
                           // Folders draw active rows in their own place below.
                           if (projectFolders !== null && item.section === "active") continue;
-                          items.push(renderThreadRow(threadByKey.get(item.key)!, item.section));
+                          (shelf?.rows ?? items).push(
+                            renderThreadRow(threadByKey.get(item.key)!, item.section),
+                          );
                           continue;
                         }
                         if (projectFolders !== null && item.marker === "active-placeholder") {
@@ -3460,6 +3485,8 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                                 group={folder.group}
                                 collapsed={folder.collapsed}
                                 hiddenThreads={folder.hiddenThreads}
+                                canPin={canPinProject(folder.group)}
+                                onTogglePin={toggleProjectGroupPin}
                                 onToggle={toggleProjectFolder}
                                 onNewThread={startThreadInProjectFolder}
                                 onContextMenu={handleProjectFolderContextMenu}
@@ -3474,9 +3501,36 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                                 ),
                               );
                             }
+                            if (!folder.collapsed && folder.olderCount > 0) {
+                              items.push(
+                                <li key={`older:${folder.group.projectKey}`} className="list-none">
+                                  <button
+                                    type="button"
+                                    data-sidebar-row={`folder-older:${folder.group.projectKey}`}
+                                    data-sidebar-parent={sidebarFolderRowId(
+                                      folder.group.projectKey,
+                                    )}
+                                    aria-expanded={folder.olderExpanded}
+                                    onClick={() =>
+                                      toggleOlderProjectThreads(folder.group.projectKey)
+                                    }
+                                    className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-md px-8 text-left text-xs text-sidebar-muted-foreground hover:bg-sidebar-row-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                                  >
+                                    <ChevronDownIcon
+                                      aria-hidden
+                                      className={cn("size-3", folder.olderExpanded && "rotate-180")}
+                                    />
+                                    {folder.olderExpanded
+                                      ? "Hide older"
+                                      : `Show older (${folder.olderCount})`}
+                                  </button>
+                                </li>,
+                              );
+                            }
                           }
                           continue;
                         }
+                        const start = items.length;
                         switch (item.marker) {
                           case "pinned-header":
                             items.push(
@@ -3523,7 +3577,6 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                               <SidebarSectionHeader
                                 key="working-shelf-header"
                                 marker="working-header"
-                                className="mt-auto"
                                 label="Working"
                                 count={workingThreads.length}
                                 toggle={{
@@ -3538,7 +3591,6 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                               <SidebarSectionHeader
                                 key="snoozed-shelf-header"
                                 marker="snoozed-header"
-                                className={cn(workingThreads.length === 0 && "mt-auto")}
                                 label="Snoozed"
                                 count={snoozedThreads.length}
                                 toggle={{
@@ -3553,9 +3605,6 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                               <SidebarSectionHeader
                                 key="settled-shelf-header"
                                 marker="settled-header"
-                                className={cn(
-                                  workingThreads.length + snoozedThreads.length === 0 && "mt-auto",
-                                )}
                                 label="Settled"
                                 count={settledCount}
                                 dragging={from !== null}
@@ -3586,32 +3635,76 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                             );
                             break;
                         }
+                        if (
+                          item.marker === "working-header" ||
+                          item.marker === "snoozed-header" ||
+                          item.marker === "settled-header"
+                        ) {
+                          shelf = { key: item.marker, header: items.splice(start, 1)[0], rows: [] };
+                          shelves.push(shelf);
+                        } else if (shelf) {
+                          shelf.rows.push(...items.splice(start));
+                        }
                       }
-                      return items;
+                      shelf?.rows.push(
+                        settledShelfExpanded && hiddenSettledCount > 0 ? (
+                          <li key="settled-more" className="list-none">
+                            <button
+                              type="button"
+                              data-sidebar-row="settled:more"
+                              data-sidebar-parent="shelf:settled"
+                              disabled={olderSettledShelf.loading}
+                              onClick={() => {
+                                olderSettledShelf.retry();
+                                showMoreSettled();
+                              }}
+                              className="flex h-9 w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 text-left text-sm text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground disabled:cursor-default"
+                            >
+                              {/* Plus means "add", so revealing more uses a chevron. */}
+                              <ChevronDownIcon aria-hidden className="size-4 shrink-0" />
+                              {olderSettledShelf.loading
+                                ? "Loading"
+                                : olderSettledShelf.failed
+                                  ? "Could not load older threads. Retry"
+                                  : `Show ${Math.min(hiddenSettledCount, SETTLED_TAIL_PAGE_COUNT)} more`}
+                            </button>
+                          </li>
+                        ) : null,
+                      );
+                      return (
+                        <>
+                          <li
+                            className="min-h-0 flex-1 list-none overflow-y-auto overscroll-contain"
+                            data-sidebar-main-scroll=""
+                            data-testid="sidebar-main-scroll"
+                          >
+                            <ul ref={attachListMotionRef} role="presentation" className="relative">
+                              {items}
+                            </ul>
+                          </li>
+                          <li
+                            className={cn(
+                              "flex max-h-[55%] min-h-0 shrink-0 flex-col list-none",
+                              shelves.length > 0 && "mt-2 border-t border-sidebar-border pt-2",
+                            )}
+                            data-testid="sidebar-bottom-shelves"
+                          >
+                            {shelves.map((section) => (
+                              <ul
+                                key={section.key}
+                                role="presentation"
+                                className="flex min-h-0 flex-col"
+                              >
+                                {section.header}
+                                <li className="min-h-0 list-none overflow-y-auto overscroll-contain">
+                                  <ul role="presentation">{section.rows}</ul>
+                                </li>
+                              </ul>
+                            ))}
+                          </li>
+                        </>
+                      );
                     })()}
-                    {settledShelfExpanded && hiddenSettledCount > 0 ? (
-                      <li className="list-none">
-                        <button
-                          type="button"
-                          data-sidebar-row="settled:more"
-                          data-sidebar-parent="shelf:settled"
-                          disabled={olderSettledShelf.loading}
-                          onClick={() => {
-                            olderSettledShelf.retry();
-                            showMoreSettled();
-                          }}
-                          className="flex h-9 w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 text-left text-sm text-sidebar-muted-foreground hover:bg-sidebar-row-hover hover:text-sidebar-foreground disabled:cursor-default"
-                        >
-                          {/* Plus means "add", so revealing more uses a chevron. */}
-                          <ChevronDownIcon aria-hidden className="size-4 shrink-0" />
-                          {olderSettledShelf.loading
-                            ? "Loading"
-                            : olderSettledShelf.failed
-                              ? "Could not load older threads. Retry"
-                              : `Show ${Math.min(hiddenSettledCount, SETTLED_TAIL_PAGE_COUNT)} more`}
-                        </button>
-                      </li>
-                    ) : null}
                   </ul>
                 </SortableContext>
               </DndContext>
