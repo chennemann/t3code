@@ -159,7 +159,8 @@ needs you. Use the pen button on a folder, or right-click it, to start a thread 
 Pin a project with the pin button on its folder or from its right-click menu. Unpin it the same way.
 Pinned threads stay above the folders. When the Working section is enabled, running threads move
 there in this mode too. Working, Snoozed, and Settled stay at the bottom while you scroll the
-project list; expand a section to browse its threads. In this mode you cannot drag threads.
+project list; expand a section to browse its threads. Drag a thread into the composer to attach
+it as context. Dragging within the project sidebar does not reorder threads.
 Each device keeps its own choice.
 
 ## Settle finished work

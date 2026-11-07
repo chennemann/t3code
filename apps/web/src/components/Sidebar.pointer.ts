@@ -4,6 +4,8 @@ import { getOwnerDocument, getWindow } from "@dnd-kit/utilities";
 
 type Options = {
   distance: number;
+  /** Allow references to leave project folders without reordering sidebar rows. */
+  referenceOnly?: boolean;
   onAttach: (sensor: SidebarPointerSensor) => void;
   onFinish: (started: boolean) => void;
   /** Return true to claim the move and hide this position from sorting. */
@@ -87,7 +89,7 @@ export class SidebarPointerSensor {
     if (this.phase === "dragging") {
       if (event.cancelable) event.preventDefault();
       if (this.props.options.onMove?.(coordinates) === true) return;
-      this.props.onMove(coordinates);
+      if (!this.props.options.referenceOnly) this.props.onMove(coordinates);
     }
   };
 
@@ -96,7 +98,9 @@ export class SidebarPointerSensor {
     const dropped =
       this.phase === "dragging" &&
       this.props.options.onDrop?.({ x: event.clientX, y: event.clientY }) === true;
-    this.finish(dropped);
+    this.finish(
+      dropped || (this.phase === "dragging" && this.props.options.referenceOnly === true),
+    );
   };
   private pointerCancel = (event: PointerEvent) => {
     if (event.pointerId === this.pointer.pointerId) this.cancel();

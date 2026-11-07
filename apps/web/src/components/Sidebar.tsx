@@ -1721,7 +1721,10 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     };
   };
 
-  const isContextDrag = dragState?.contextDrag === true || dragState?.activeSection === "working";
+  const isContextDrag =
+    (dragState !== null && projectFolders !== null) ||
+    dragState?.contextDrag === true ||
+    dragState?.activeSection === "working";
   const dragTargetSection = isContextDrag ? null : (dragState?.targetSection ?? null);
   const finishThreadDrag = (started: boolean) => {
     dragSensorRef.current = null;
@@ -1777,6 +1780,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
   // useSensor memoizes options identity; fresh options rebuild DndContext and every sortable row.
   const pointerSensorOptions = {
     distance: SIDEBAR_DRAG_DISTANCE,
+    referenceOnly: projectFolders !== null,
     onAttach: attachDragSensor,
     onFinish: finishThreadDrag,
     onMove: moveThreadContextDrag,
@@ -3326,7 +3330,6 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                             sortableId={threadKey}
                             contextDrag={isContextDrag}
                             sortableDisabled={
-                              projectFolders !== null ||
                               renamingThreadKey === threadKey ||
                               !draggableThreadKeys.has(threadKey) ||
                               optimisticDrop !== null
