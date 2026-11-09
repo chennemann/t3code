@@ -3677,7 +3677,10 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                             </ul>
                           </li>
                           <li
-                            className="flex max-h-[55%] min-h-0 shrink-0 flex-col list-none"
+                            className={cn(
+                              "flex max-h-[55%] min-h-0 shrink-0 flex-col list-none",
+                              shelves.length > 0 && "mt-2 border-t border-sidebar-border pt-2",
+                            )}
                             data-testid="sidebar-bottom-shelves"
                           >
                             {shelves.map((section) => (
