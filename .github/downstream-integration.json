@@ -68,6 +68,8 @@
     "apps/web/src/components/ChatMarkdown.tsx",
     "apps/web/src/components/ChatView.tsx",
     "apps/web/src/components/RightPanelTabs.tsx",
+    "apps/web/src/components/Sidebar.logic.test.ts",
+    "apps/web/src/components/Sidebar.logic.ts",
     "apps/web/src/components/Sidebar.pointer.browser.test.tsx",
     "apps/web/src/components/Sidebar.pointer.ts",
     "apps/web/src/components/Sidebar.tsx",

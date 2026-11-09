@@ -181,6 +181,7 @@ import {
   applySidebarThreadDrop,
   filterSidebarV2VisibleThreads,
   groupSidebarThreadsByProject,
+  selectSidebarFolderThreads,
   sidebarFolderExpansionKeys,
   buildBulkTitleRegenerationContextMenuItem,
   buildBulkUnpinContextMenuItem,
@@ -478,6 +479,9 @@ function useSidebarThreads(input: {
     Schema.Boolean,
   );
   // Shared with the old per-project sidebar, so folders keep their open state.
+  const [expandedOlderProjects, setExpandedOlderProjects] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const projectExpandedById = useUiStateStore((store) => store.projectExpandedById);
   const setProjectExpanded = useUiStateStore((store) => store.setProjectExpanded);
   const [settledTail, setSettledTail] = useState({
@@ -545,13 +549,21 @@ function useSidebarThreads(input: {
             projectExpandedById,
             sidebarFolderExpansionKeys(folder.group),
           );
+          const olderExpanded = expandedOlderProjects.has(folder.group.projectKey);
+          const preview = selectSidebarFolderThreads(folder.threads, {
+            now: nowMinute,
+            expanded: olderExpanded,
+            routeThreadKey: routeRowThreadKey,
+          });
           return {
             group: folder.group,
             collapsed,
+            olderExpanded,
+            olderCount: preview.olderCount,
             // A closed folder still shows the open thread, and hints at the rest.
             threads: collapsed
               ? routeThreadOnly(folder.threads, routeRowThreadKey)
-              : folder.threads,
+              : preview.threads,
             hiddenThreads: collapsed
               ? folder.threads.filter((thread) => threadShellKey(thread) !== routeRowThreadKey)
               : EMPTY_THREADS,
@@ -603,6 +615,13 @@ function useSidebarThreads(input: {
     workingShelfExpanded,
     toggleWorkingShelf: () => setWorkingShelfExpanded((value) => !value),
     projectFolders,
+    toggleOlderProjectThreads: (projectKey: string) =>
+      setExpandedOlderProjects((current) => {
+        const next = new Set(current);
+        if (next.has(projectKey)) next.delete(projectKey);
+        else next.add(projectKey);
+        return next;
+      }),
     toggleProjectFolder: (group: SidebarProjectSnapshot) => {
       const keys = sidebarFolderExpansionKeys(group);
       setProjectExpanded(keys, !resolveProjectExpanded(projectExpandedById, keys));
@@ -1331,6 +1350,7 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
     workingShelfExpanded,
     toggleWorkingShelf,
     projectFolders,
+    toggleOlderProjectThreads,
     toggleProjectFolder,
     renderedSettledThreads,
     visibleSnoozedThreads,
@@ -1357,10 +1377,13 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
       ? scopedProjectGroups.length === 0
         ? // An archived project keeps a folder for its active threads, below the rest.
           [...scopeGroups, ...projectGroups.filter((project) => project.archived)]
-        : scopedProjectGroups
+        : scopeGroups.filter(
+            (group) =>
+              group.pinned ||
+              scopedProjectGroups.some((scoped) => scoped.projectKey === group.projectKey),
+          )
       : null,
-    keepEmptyFolders: (group) =>
-      scopedProjectGroups.length > 0 || (group.pinned && !group.archived),
+    keepEmptyFolders: () => scopedProjectGroups.length > 0,
   });
 
   // Ranked across environments as the palette ranks them, so one
@@ -3470,6 +3493,32 @@ export default function Sidebar({ routeReveal }: { routeReveal: SidebarRouteReve
                                   "active",
                                   sidebarFolderRowId(folder.group.projectKey),
                                 ),
+                              );
+                            }
+                            if (!folder.collapsed && folder.olderCount > 0) {
+                              items.push(
+                                <li key={`older:${folder.group.projectKey}`} className="list-none">
+                                  <button
+                                    type="button"
+                                    data-sidebar-row={`folder-older:${folder.group.projectKey}`}
+                                    data-sidebar-parent={sidebarFolderRowId(
+                                      folder.group.projectKey,
+                                    )}
+                                    aria-expanded={folder.olderExpanded}
+                                    onClick={() =>
+                                      toggleOlderProjectThreads(folder.group.projectKey)
+                                    }
+                                    className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-md px-8 text-left text-xs text-sidebar-muted-foreground hover:bg-sidebar-row-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+                                  >
+                                    <ChevronDownIcon
+                                      aria-hidden
+                                      className={cn("size-3", folder.olderExpanded && "rotate-180")}
+                                    />
+                                    {folder.olderExpanded
+                                      ? "Hide older"
+                                      : `Show older (${folder.olderCount})`}
+                                  </button>
+                                </li>,
                               );
                             }
                           }
